@@ -1,0 +1,9 @@
+; Engine configuration file.
+
+config_version=5
+
+[application]
+
+config/name="Lucky DMX"
+run/main_scene="res://demo/demo.tscn"
+config/features=PackedStringArray("4.4")
