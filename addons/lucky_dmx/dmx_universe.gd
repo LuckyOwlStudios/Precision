@@ -16,6 +16,8 @@ var _accum := 0.0
 
 func _init() -> void:
 	data.resize(512)
+	# Run after fixtures (default priority 0) so each send carries this frame's values.
+	process_priority = 100
 
 
 ## address is 1-based, like on a console / fixture display.
@@ -31,6 +33,8 @@ func get_channel(address: int) -> int:
 	return data[address - 1]
 
 
+## Zero every channel and send once. Fixtures rewrite their channels on the
+## next frame, so for a lasting blackout set fixture dimmers to 0 as well.
 func blackout() -> void:
 	data.fill(0)
 	if output:

@@ -22,14 +22,19 @@ func back() -> void:
 	go_to(current - 1)
 
 
+## Stop any fade in progress, leaving fixtures where they are.
+func stop() -> void:
+	if _tween:
+		_tween.kill()
+		_tween = null
+
+
 func go_to(index: int) -> void:
 	if index < 0 or index >= cues.size():
 		return
 	current = index
 	var cue := cues[index]
-	if _tween:
-		_tween.kill()
-		_tween = null
+	stop()
 
 	var fade := cue.fade_time > 0.0
 	if fade:

@@ -132,5 +132,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				status.text = "Timeline playing"
 		KEY_ESCAPE:
 			player.stop()
+			cues.stop() # otherwise a running fade would bring the light back up
 			fixture.dimmer = 0.0
 			status.text = "Blackout"
