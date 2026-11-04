@@ -3,6 +3,8 @@ extends Control
 ## rearranged in the Godot editor; this script only wires panels to the
 ## shared StudioContext and handles workspaces and global shortcuts.
 ##
+## Drag audio files onto the window to import them into the song library.
+##
 ## Shortcuts: Space = play/pause, Esc = blackout, Delete = remove selected fixture,
 ## 1/2/3 = Stage/Program/Live workspace (when no text field has focus).
 
@@ -34,6 +36,15 @@ func _ready() -> void:
 	ctx.blackout_changed.connect(func(_on: bool) -> void: _update_footers())
 	_apply_workspace(ctx.workspace)
 	_update_footers()
+
+	# Audio files dropped anywhere on the window go into the song library.
+	get_window().files_dropped.connect(_on_files_dropped)
+
+
+func _on_files_dropped(files: PackedStringArray) -> void:
+	ctx.import_songs(files)
+	if left_dock.visible:
+		left_tabs.current_tab = 2 # Songs, so you see what came in
 
 
 func _title_tabs(tabs: TabContainer, titles: Array[String]) -> void:

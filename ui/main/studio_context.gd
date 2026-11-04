@@ -12,6 +12,10 @@ signal transport_changed
 signal blackout_changed(active: bool)
 signal workspace_changed(workspace: Workspace)
 signal cues_changed
+signal song_changed(song: Song)
+## The linked show should start: fired when a song starts playing from
+## stopped or paused. The show player will listen to this once shows exist.
+signal show_started(song: Song)
 
 enum Workspace { STAGE, PROGRAM, LIVE }
 
@@ -27,6 +31,9 @@ var output: ArtNetOutput
 var universe: DMXUniverse
 var rig: Node ## parent of every DMXFixture
 var cue_stack: CueStack
+var library: SongLibrary
+var music_player: AudioStreamPlayer
+var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
 var workspace: Workspace = Workspace.PROGRAM
@@ -69,13 +76,29 @@ func _ready() -> void:
 	cue_stack.fixtures_root = rig
 	add_child(cue_stack)
 
+	library = SongLibrary.new()
+	library.name = "Songs"
+	add_child(library)
+	library.songs_changed.connect(_on_library_changed)
+
+	music_player = AudioStreamPlayer.new()
+	music_player.name = "Music"
+	add_child(music_player)
+	music_player.finished.connect(_on_music_finished)
+
 
 func _process(delta: float) -> void:
-	if playing:
+	if not playing:
+		return
+	if song and music_player.playing:
+		# The audio clock is the master: lights follow the music, not the frame rate.
+		var t := music_player.get_playback_position() + AudioServer.get_time_since_last_mix() - AudioServer.get_output_latency()
+		position_beats = clampf(seconds_to_beats(t), 0.0, length_beats)
+	else:
 		position_beats += delta * bpm / 60.0
 		if position_beats >= length_beats:
 			position_beats = 0.0
-		transport_changed.emit()
+	transport_changed.emit()
 
 
 # ---------------------------------------------------------------- fixtures
@@ -169,22 +192,97 @@ func _clear_universe() -> void:
 
 func toggle_play() -> void:
 	playing = not playing
+	if song:
+		if playing:
+			if position_beats >= length_beats:
+				position_beats = 0.0
+			music_player.play(beats_to_seconds(position_beats))
+			show_started.emit(song)
+		else:
+			music_player.stop() # position_beats keeps where we paused
 	transport_changed.emit()
 
 
 func stop() -> void:
 	playing = false
 	position_beats = 0.0
+	music_player.stop()
 	transport_changed.emit()
 
 
 func seek(beats: float) -> void:
 	position_beats = clampf(beats, 0.0, length_beats)
+	if song and music_player.playing:
+		music_player.seek(beats_to_seconds(position_beats))
 	transport_changed.emit()
 
 
 func set_bpm(value: float) -> void:
+	var seconds := beats_to_seconds(position_beats)
 	bpm = clampf(value, 40.0, 220.0)
+	if song:
+		# Same moment in the song, new grid. The song remembers its tempo.
+		position_beats = seconds_to_beats(seconds)
+		length_beats = seconds_to_beats(song.duration)
+		if not is_equal_approx(song.bpm, bpm):
+			song.bpm = bpm
+			library.update(song)
+	transport_changed.emit()
+
+
+func beats_to_seconds(beats: float) -> float:
+	return beats * 60.0 / bpm
+
+
+func seconds_to_beats(seconds: float) -> float:
+	return seconds * bpm / 60.0
+
+
+# ---------------------------------------------------------------- songs
+
+## Put a song on the timeline: its audio, tempo, length and linked show.
+func load_song(s: Song) -> void:
+	if s == song:
+		return
+	var was_playing := playing
+	stop()
+	song = s
+	if s == null:
+		music_player.stream = null
+		song_title = ""
+		show_name = "Untitled show"
+		length_beats = 256.0
+	else:
+		music_player.stream = AudioDecoder.load_stream(s.file_path)
+		if s.bpm > 0.0:
+			bpm = s.bpm
+		song_title = s.display_title()
+		show_name = s.show_name
+		length_beats = seconds_to_beats(s.duration)
+		library.ensure_peaks(s)
+	song_changed.emit(s)
+	transport_changed.emit()
+	if was_playing and s:
+		toggle_play()
+
+
+## Drop files on the window or pick them in the import dialog. If nothing is
+## on the timeline yet, the first new song is loaded.
+func import_songs(paths: PackedStringArray) -> Array[Song]:
+	var added := library.import_files(paths)
+	if song == null and not added.is_empty():
+		load_song(added[0])
+	return added
+
+
+func _on_library_changed() -> void:
+	if song and not library.songs.has(song):
+		load_song(null)
+
+
+func _on_music_finished() -> void:
+	playing = false
+	position_beats = length_beats
 	transport_changed.emit()
 
 
