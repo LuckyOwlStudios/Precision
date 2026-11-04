@@ -1,0 +1,227 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://ui/main/main_window.gd" id="1_main"]
+[ext_resource type="Script" path="res://ui/main/studio_context.gd" id="2_ctx"]
+[ext_resource type="Script" path="res://ui/panels/now_playing_bar.gd" id="3_now"]
+[ext_resource type="Script" path="res://ui/panels/fixture_library_panel.gd" id="4_lib"]
+[ext_resource type="Script" path="res://ui/panels/rig_panel.gd" id="5_rig"]
+[ext_resource type="Script" path="res://ui/panels/song_library_panel.gd" id="6_songs"]
+[ext_resource type="Script" path="res://ui/stage/stage_view.gd" id="7_stage"]
+[ext_resource type="Script" path="res://ui/panels/timeline_panel.gd" id="8_timeline"]
+[ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="9_inspector"]
+[ext_resource type="Script" path="res://ui/panels/cue_panel.gd" id="10_cues"]
+[ext_resource type="Script" path="res://ui/panels/dmx_monitor_panel.gd" id="11_dmx"]
+
+[sub_resource type="StyleBoxFlat" id="Dot"]
+bg_color = Color(0.239, 0.863, 0.592, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="Background"]
+bg_color = Color(0.051, 0.059, 0.071, 1)
+
+[node name="MainWindow" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Studio" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_ctx")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("Background")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="PanelContainer" parent="Layout"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+theme_type_variation = &"HeaderBar"
+
+[node name="Row" type="HBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Brand" type="Label" parent="Layout/Header/Row"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_type_variation = &"BigTitle"
+theme_override_font_sizes/font_size = 18
+text = "Lucky DMX"
+
+[node name="Divider" type="VSeparator" parent="Layout/Header/Row"]
+layout_mode = 2
+
+[node name="WorkspaceTabs" type="TabBar" parent="Layout/Header/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 8
+theme_type_variation = &"WorkspaceTabs"
+focus_mode = 0
+
+[node name="Search" type="LineEdit" parent="Layout/Header/Row"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 4
+placeholder_text = "Search fixtures and songs"
+clear_button_enabled = true
+
+[node name="NowPlaying" type="PanelContainer" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("3_now")
+
+[node name="Body" type="HSplitContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 0
+
+[node name="LeftDock" type="PanelContainer" parent="Layout/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_type_variation = &"SidePanel"
+
+[node name="Column" type="VBoxContainer" parent="Layout/Body/LeftDock"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LeftTabs" type="TabContainer" parent="Layout/Body/LeftDock/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Library" type="MarginContainer" parent="Layout/Body/LeftDock/Column/LeftTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("4_lib")
+metadata/_tab_index = 0
+
+[node name="OnStage" type="MarginContainer" parent="Layout/Body/LeftDock/Column/LeftTabs"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("5_rig")
+metadata/_tab_index = 1
+
+[node name="Songs" type="MarginContainer" parent="Layout/Body/LeftDock/Column/LeftTabs"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("6_songs")
+metadata/_tab_index = 2
+
+[node name="LeftFooter" type="PanelContainer" parent="Layout/Body/LeftDock/Column"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_type_variation = &"FooterBar"
+
+[node name="Row" type="HBoxContainer" parent="Layout/Body/LeftDock/Column/LeftFooter"]
+layout_mode = 2
+
+[node name="OutputDot" type="Panel" parent="Layout/Body/LeftDock/Column/LeftFooter/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("Dot")
+
+[node name="OutputLabel" type="Label" parent="Layout/Body/LeftDock/Column/LeftFooter/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Subtitle"
+text = "Art-Net"
+text_overrun_behavior = 3
+
+[node name="RightSplit" type="HSplitContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CenterSplit" type="VSplitContainer" parent="Layout/Body/RightSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StageFrame" type="PanelContainer" parent="Layout/Body/RightSplit/CenterSplit"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"StagePanel"
+
+[node name="StageView" type="Control" parent="Layout/Body/RightSplit/CenterSplit/StageFrame"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("7_stage")
+
+[node name="Timeline" type="VBoxContainer" parent="Layout/Body/RightSplit/CenterSplit"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+script = ExtResource("8_timeline")
+
+[node name="RightDock" type="PanelContainer" parent="Layout/Body/RightSplit"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_type_variation = &"SidePanel"
+
+[node name="Column" type="VBoxContainer" parent="Layout/Body/RightSplit/RightDock"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="RightTabs" type="TabContainer" parent="Layout/Body/RightSplit/RightDock/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Inspector" type="ScrollContainer" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("9_inspector")
+metadata/_tab_index = 0
+
+[node name="Cues" type="MarginContainer" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("10_cues")
+metadata/_tab_index = 1
+
+[node name="DMX" type="MarginContainer" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("11_dmx")
+metadata/_tab_index = 2
+
+[node name="RightFooter" type="PanelContainer" parent="Layout/Body/RightSplit/RightDock/Column"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_type_variation = &"FooterBar"
+
+[node name="RigLabel" type="Label" parent="Layout/Body/RightSplit/RightDock/Column/RightFooter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "0 fixtures"

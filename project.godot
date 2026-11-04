@@ -5,5 +5,15 @@ config_version=5
 [application]
 
 config/name="Lucky DMX"
-run/main_scene="res://demo/demo.tscn"
+run/main_scene="res://ui/main/main_window.tscn"
 config/features=PackedStringArray("4.4")
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/size/resizable=true
+
+[gui]
+
+theme/custom="res://ui/theme/lucky_dark.tres"

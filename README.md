@@ -1,7 +1,31 @@
 # Lucky DMX: fixture control from Godot 4
 
-Open `project.godot` in Godot 4.4+ and press Play.
-Controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline, **ESC** = blackout.
+Open `project.godot` in Godot 4.4+ and press Play. The editor UI opens (see below).
+The original one-light test is still at `demo/demo.tscn` (open it and press F6).
+Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline, **ESC** = blackout.
+
+![Lucky DMX editor UI](docs/ui/program.png)
+
+## The editor UI (ui/)
+| Area | What it's for |
+|---|---|
+| Header | Workspaces: **Stage** (place and patch), **Program** (build a song's show), **Live** (run the night). Keys 1/2/3. |
+| Now playing band | Transport, tempo, beat dots, **Blackout** (Esc). Its background blends the rig's live colours. |
+| Left dock | **Library** (drag a fixture onto the stage, or double-click), **On stage** (patch list), **Songs** (placeholder). |
+| Centre | 3D stage. Right drag orbit, middle drag pan, wheel zoom, F frame, left click select, drag to move, Delete to remove. |
+| Bottom | Beat-grid timeline: music lane, a lane per fixture, red playhead (Space plays). Clips come next. |
+| Right dock | **Inspector** (patch, colour, dimmer, pan/tilt), **Cues** (Record / GO), **DMX** (live 512-channel monitor). |
+
+The UI sends Art-Net to 127.0.0.1 by default so nothing hits the network until you
+change `artnet_target` on the `Studio` node in `ui/main/main_window.tscn`.
+
+### Theme
+All colours, sizes and fonts live in `ui/theme/ui_palette.gd`. `ui/theme/lucky_theme.gd`
+builds a Theme from them, baked to `ui/theme/lucky_dark.tres` (set as the project theme).
+After changing the palette, open `ui/theme/bake_theme.gd` and use File > Run, or run
+`godot --headless --script res://ui/theme/bake_theme_cli.gd`.
+Fonts are looked up on the system (Inter, then Open Sans, Segoe UI, ...); install
+[Inter](https://rsms.me/inter/) for the intended look.
 
 ## Hooking up your light
 1. In `demo/demo.gd`, set `PROFILE_CHANNELS` to your fixture's channel list,

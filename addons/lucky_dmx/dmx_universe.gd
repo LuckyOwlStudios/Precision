@@ -9,13 +9,18 @@ extends Node
 @export_range(1.0, 44.0) var refresh_rate: float = 40.0
 ## Send DMX while in the editor, so scrubbing an AnimationPlayer moves the real light.
 @export var send_in_editor: bool = false
+## While true every send carries zeros, but `data` keeps the live values so
+## releasing blackout snaps straight back to the current look.
+@export var blackout_held: bool = false
 
 var data := PackedByteArray()
+var _zeros := PackedByteArray()
 var _accum := 0.0
 
 
 func _init() -> void:
 	data.resize(512)
+	_zeros.resize(512)
 	# Run after fixtures (default priority 0) so each send carries this frame's values.
 	process_priority = 100
 
@@ -38,7 +43,7 @@ func get_channel(address: int) -> int:
 func blackout() -> void:
 	data.fill(0)
 	if output:
-		output.send_universe(universe_id, data)
+		output.send_universe(universe_id, _zeros if blackout_held else data)
 
 
 func _process(delta: float) -> void:
@@ -50,4 +55,4 @@ func _process(delta: float) -> void:
 	var interval := 1.0 / refresh_rate
 	if _accum >= interval:
 		_accum = fmod(_accum, interval)
-		output.send_universe(universe_id, data)
+		output.send_universe(universe_id, _zeros if blackout_held else data)
