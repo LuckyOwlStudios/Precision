@@ -117,17 +117,22 @@ func _add_static(mesh: Mesh, mat: Material, pos: Vector3) -> void:
 	_world.add_child(mi)
 
 
-## Amber ring that shows where a dragged-in fixture will land, lying on the surface.
+## Amber ring that shows where a dragged-in fixture will land, lying flat on
+## the surface (same look as the selection brackets).
 func _build_drop_marker() -> void:
-	var ring := TorusMesh.new()
-	ring.inner_radius = 0.16
-	ring.outer_radius = 0.22
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = UIPalette.ACCENT
-	mat.no_depth_test = true
-	_drop_marker.mesh = ring
+	var quad := QuadMesh.new()
+	quad.size = Vector2(2, 2)
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://ui/stage/marker.gdshader")
+	mat.set_shader_parameter("color", UIPalette.ACCENT)
+	mat.set_shader_parameter("style", 1)
+	mat.set_shader_parameter("billboard", false)
+	mat.set_shader_parameter("world_size", 0.28)
+	mat.set_shader_parameter("min_px", 16.0)
+	mat.render_priority = 10
+	_drop_marker.mesh = quad
 	_drop_marker.material_override = mat
+	_drop_marker.extra_cull_margin = 4.0
 	_drop_marker.visible = false
 	_world.add_child(_drop_marker)
 
@@ -346,8 +351,9 @@ func _can_drop_data(at: Vector2, data: Variant) -> bool:
 		_drop_marker.visible = xf != null
 		if xf != null:
 			var t: Transform3D = xf
-			# Lay the ring on the surface: its hole faces along the beam.
-			_drop_marker.global_transform = Transform3D(t.basis, t.origin + t.basis.y * StageFixture3D.mount_offset(entry.body) * 0.9)
+			# Lay the ring flat on the surface: the quad faces along the surface normal.
+			var b := Basis(t.basis.x, t.basis.z, -t.basis.y)
+			_drop_marker.global_transform = Transform3D(b, t.origin + t.basis.y * StageFixture3D.mount_offset(entry.body) * 0.97)
 	return ok
 
 

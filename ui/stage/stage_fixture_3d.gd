@@ -11,6 +11,7 @@ const TILT_RANGE_DEG := 270.0
 const PAR_AIM_DEG := -18.0 ## pars lean slightly towards the audience
 
 const BEAM_SHADER := preload("res://ui/stage/beam.gdshader")
+const MARKER_SHADER := preload("res://ui/stage/marker.gdshader")
 
 var fixture: DMXFixture
 var ctx: StudioContext
@@ -21,7 +22,9 @@ var _head := Node3D.new()   ## rotates with tilt; the beam points down its -Y
 var _beam_mat := ShaderMaterial.new()
 var _lens_mat := StandardMaterial3D.new()
 var _light := SpotLight3D.new()
-var _ring := MeshInstance3D.new()
+var _marker := MeshInstance3D.new() ## camera-facing corner brackets while selected
+var _marker_mat := ShaderMaterial.new()
+var _marker_tween: Tween
 
 
 func setup(p_fixture: DMXFixture, p_ctx: StudioContext) -> void:
@@ -58,7 +61,17 @@ func center() -> Vector3:
 
 
 func set_selected(on: bool) -> void:
-	_ring.visible = on
+	if _marker_tween:
+		_marker_tween.kill()
+	if on:
+		_marker.visible = true
+		_marker_mat.set_shader_parameter("appear", 0.0)
+	_marker_tween = create_tween()
+	_marker_tween.tween_method(func(v: float) -> void: _marker_mat.set_shader_parameter("appear", v),
+		float(_marker_mat.get_shader_parameter("appear")), 1.0 if on else 0.0, 0.16 if on else 0.1) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if not on:
+		_marker_tween.tween_callback(func() -> void: _marker.visible = false)
 
 
 func _build() -> void:
@@ -127,19 +140,34 @@ func _build() -> void:
 	_light.shadow_enabled = false
 	_head.add_child(_light)
 
-	# Amber ring shown while selected.
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.3
-	torus.outer_radius = 0.36
-	var ring_mat := StandardMaterial3D.new()
-	ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ring_mat.albedo_color = UIPalette.ACCENT
-	_ring.mesh = torus
-	_ring.material_override = ring_mat
-	_ring.position.y = -0.05
-	_ring.rotation_degrees.x = 90.0 # stand it up so it faces the audience/camera
-	_ring.visible = false
-	add_child(_ring)
+	# Selection brackets: a billboard, so they always face the camera.
+	var quad := QuadMesh.new()
+	quad.size = Vector2(2, 2)
+	_marker_mat.shader = MARKER_SHADER
+	_marker_mat.set_shader_parameter("color", UIPalette.ACCENT)
+	_marker_mat.set_shader_parameter("style", 0)
+	_marker_mat.set_shader_parameter("world_size", _marker_size())
+	_marker_mat.set_shader_parameter("appear", 0.0)
+	_marker_mat.render_priority = 10
+	_marker.mesh = quad
+	_marker.material_override = _marker_mat
+	_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_marker.extra_cull_margin = 4.0 # the shader grows the quad past its mesh bounds
+	_marker.position = Vector3(0, -0.18 if body == FixtureCatalog.Body.MOVING_HEAD else -0.08, 0)
+	_marker.visible = false
+	add_child(_marker)
+
+
+## Half-width of the selection frame, roughly the body's size.
+func _marker_size() -> float:
+	match body:
+		FixtureCatalog.Body.BAR:
+			return 0.62
+		FixtureCatalog.Body.STROBE:
+			return 0.32
+		FixtureCatalog.Body.MOVING_HEAD:
+			return 0.42
+	return 0.26
 
 
 func _add_bracket(mat: Material) -> void:
