@@ -21,6 +21,8 @@ var _world := Node3D.new()
 var _pivot := Node3D.new()
 var _camera := Camera3D.new()
 var _visuals: Dictionary = {} ## DMXFixture -> StageFixture3D
+var look := StageLook.new() ## haze and render quality (visual only)
+var _env: Environment
 
 var _yaw := 0.0
 var _pitch := -14.0
@@ -46,6 +48,7 @@ var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
 var _snap_button := Button.new()
 var _tools: HBoxContainer
 var _drop_marker := MeshInstance3D.new()
+var _grid: MeshInstance3D
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -67,7 +70,8 @@ func _ready() -> void:
 	_container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_container)
 	_viewport.own_world_3d = true
-	_viewport.msaa_3d = Viewport.MSAA_4X
+	look.load_saved()
+	look.changed.connect(_apply_look)
 	_container.add_child(_viewport)
 	_viewport.add_child(_world)
 	_build_world()
@@ -78,28 +82,20 @@ func _ready() -> void:
 # ---------------------------------------------------------------- world
 
 func _build_world() -> void:
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = UIPalette.APP_BG
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("39404d")
-	env.ambient_light_energy = 0.6
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# Glow makes beams bloom nicely in Forward+, but washes the whole frame
-	# grey in the Compatibility renderer, so only turn it on for Forward+.
-	env.glow_enabled = RenderingServer.get_current_rendering_method() == "forward_plus"
-	env.glow_intensity = 0.9
-	env.glow_bloom = 0.08
-	env.glow_hdr_threshold = 0.8
+	_env = look.build_environment()
 	var we := WorldEnvironment.new()
-	we.environment = env
+	we.environment = _env
 	_world.add_child(we)
+	_apply_look()
 
 	_surfaces = StageRoom.surfaces()
 	for surf in _surfaces:
+		if surf.kind == StageRoom.Kind.TRUSS:
+			continue # drawn as a lattice by StageSet
 		var mesh := BoxMesh.new()
 		mesh.size = surf.box.size
 		_add_static(mesh, surf.material, surf.box.get_center())
+	StageSet.build(_world)
 	_add_grid(16, 12)
 	_build_drop_marker()
 
@@ -107,6 +103,17 @@ func _build_world() -> void:
 	_pivot.add_child(_camera)
 	_camera.fov = 50.0
 	_pivot.position = Vector3(0, 1.4, -0.5)
+
+
+## Haze or quality changed: retune the environment and the viewport.
+## (Each fixture listens to `look` itself for its shadows and beams.)
+func _apply_look() -> void:
+	look.apply(_env)
+	_viewport.msaa_3d = look.msaa()
+	_viewport.positional_shadow_atlas_size = look.shadow_atlas_size()
+	_viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	_viewport.use_taa = false
+	look.save()
 
 
 func _add_static(mesh: Mesh, mat: Material, pos: Vector3) -> void:
@@ -149,12 +156,13 @@ func _add_grid(w: int, d: int) -> void:
 	im.surface_end()
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1, 1, 1, 0.045)
+	mat.albedo_color = Color(1, 1, 1, 0.05)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var mi := MeshInstance3D.new()
-	mi.mesh = im
-	mi.material_override = mat
-	_world.add_child(mi)
+	_grid = MeshInstance3D.new()
+	_grid.mesh = im
+	_grid.material_override = mat
+	_grid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_world.add_child(_grid)
 
 
 # ---------------------------------------------------------------- overlay (2D on top of 3D)
@@ -216,6 +224,8 @@ func _build_overlay() -> void:
 	tools.add_child(_snap_button)
 	set_gizmo_mode(TransformGizmo.Mode.MOVE)
 
+	_build_look_controls()
+
 	var help := Label.new()
 	help.text = "Right drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename"
 	help.theme_type_variation = &"Caption"
@@ -251,6 +261,69 @@ func _build_overlay() -> void:
 	_overlay.add_child(box)
 
 
+## Haze and quality, bottom right: how the stage is drawn, not the show.
+func _build_look_controls() -> void:
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	row.offset_left = -16
+	row.offset_right = -16
+	row.offset_top = -14
+	row.offset_bottom = -14
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.add_child(row)
+
+	var haze_label := Label.new()
+	haze_label.text = "Haze"
+	haze_label.theme_type_variation = &"Caption"
+	row.add_child(haze_label)
+	var haze := HSlider.new()
+	haze.custom_minimum_size = Vector2(110, 0)
+	haze.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	haze.min_value = 0.0
+	haze.max_value = 1.0
+	haze.step = 0.01
+	haze.value = look.haze
+	haze.focus_mode = Control.FOCUS_NONE
+	haze.mouse_filter = Control.MOUSE_FILTER_STOP
+	haze.tooltip_text = "How much haze is in the room. Beams and light shafts show up more in haze."
+	haze.value_changed.connect(func(v: float) -> void: look.haze = v)
+	row.add_child(haze)
+	var quality_buttons: Array[Button] = []
+
+	var gap := Control.new()
+	gap.custom_minimum_size.x = 6
+	row.add_child(gap)
+	for q in StageLook.Quality.size():
+		var b := Button.new()
+		b.text = StageLook.QUALITY_NAMES[q]
+		b.theme_type_variation = &"PillButton"
+		b.toggle_mode = true
+		b.button_pressed = q == look.quality
+		b.focus_mode = Control.FOCUS_NONE
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		b.tooltip_text = [
+			"Fastest: beam cones only, no shadows or volumetric haze",
+			"Volumetric haze, moving head shadows, ambient occlusion",
+			"Every light casts shadows, floor reflections, smoother haze",
+			"Highest detail haze, soft shadows, light bounce. Needs a strong GPU",
+		][q]
+		b.pressed.connect(func() -> void: look.quality = q as StageLook.Quality)
+		row.add_child(b)
+		quality_buttons.append(b)
+	look.changed.connect(func() -> void:
+		haze.set_value_no_signal(look.haze)
+		for i in quality_buttons.size():
+			quality_buttons[i].button_pressed = i == look.quality)
+	if not look.forward_plus:
+		var note := Label.new()
+		note.text = "Haze and shadows need the Forward+ renderer"
+		note.theme_type_variation = &"Caption"
+		row.add_child(note)
+
+
 func _set_view(preset: String, bar: HBoxContainer) -> void:
 	for b in bar.get_children():
 		(b as Button).button_pressed = (b as Button).text == preset
@@ -281,7 +354,7 @@ func _sync_fixtures() -> void:
 		if not _visuals.has(fx):
 			var v := StageFixture3D.new()
 			_world.add_child(v)
-			v.setup(fx, ctx)
+			v.setup(fx, ctx, look)
 			_visuals[fx] = v
 	_empty_hint.visible = live.is_empty()
 	_update_gizmo()
@@ -304,6 +377,7 @@ func _update_gizmo() -> void:
 	# Handles only while setting up the stage, so programming can't nudge the rig.
 	var fx := ctx.selected if ctx else null
 	var staging := ctx != null and ctx.workspace == StudioContext.Workspace.STAGE
+	_grid.visible = staging # a placement aid; the show looks cleaner without it
 	_tools.visible = staging
 	_gizmo.shown = staging and fx != null and _visuals.has(fx)
 	if _gizmo.shown:
@@ -519,6 +593,14 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		ctx.request_rename(fx)
 		return
 	_begin_body_drag(fx, mb.position, mb.shift_pressed)
+
+
+## Point the orbit camera (degrees, metres). Used by the screenshot helper.
+func set_orbit(yaw: float, pitch: float, distance: float) -> void:
+	_yaw = yaw
+	_pitch = pitch
+	_distance = distance
+	_update_camera()
 
 
 func _update_camera() -> void:

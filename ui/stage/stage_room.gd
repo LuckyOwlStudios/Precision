@@ -10,7 +10,8 @@ extends RefCounted
 enum Kind { FLOOR, WALL, TRUSS, FURNITURE }
 
 const TRUSS_Y := 3.7
-const TRUSS_SIZE := 0.12
+const TRUSS_SIZE := 0.29 ## a standard 29 cm box truss
+const TRUSS_LENGTH := 9.0
 const TRUSS_BOTTOM := TRUSS_Y - TRUSS_SIZE * 0.5
 const TRUSS_Z: Array[float] = [0.5, -0.8]
 ## Trusses are thin, so aiming this close to one still hangs the fixture on it.
@@ -45,32 +46,71 @@ class Hit:
 static func surfaces() -> Array[Surface]:
 	var list: Array[Surface] = []
 
-	# Floor: dark, slightly glossy so beams leave a pool and a reflection.
+	# Floor: polished dark concrete, glossy enough to mirror the beams.
 	var floor_mat := StandardMaterial3D.new()
-	floor_mat.albedo_color = Color("1c1f24")
-	floor_mat.roughness = 0.55
-	floor_mat.metallic = 0.1
+	floor_mat.albedo_color = Color("5a5e66")
+	floor_mat.albedo_texture = _noise(0.9, 0.035, 7)
+	floor_mat.roughness = 0.22
+	floor_mat.roughness_texture = _noise(0.0, 0.08, 3)
+	floor_mat.metallic = 0.0
+	floor_mat.metallic_specular = 0.6
+	floor_mat.uv1_triplanar = true
+	floor_mat.uv1_scale = Vector3(0.12, 0.12, 0.12)
 	list.append(Surface.new(_box(Vector3(0, -0.05, 0), Vector3(60, 0.1, 60)), Kind.FLOOR, floor_mat))
 
-	var wall_mat := StandardMaterial3D.new()
-	wall_mat.albedo_color = Color("15171b")
-	list.append(Surface.new(_box(Vector3(0, 3, -6), Vector3(16, 6, 0.2)), Kind.WALL, wall_mat))
+	list.append(Surface.new(_box(Vector3(0, 3, -6), Vector3(16, 6, 0.2)), Kind.WALL, wall_material()))
 
+	# Drawn as lattice truss by StageSet; the box is only for snapping.
 	var truss_mat := StandardMaterial3D.new()
-	truss_mat.albedo_color = Color("5a606b")
-	truss_mat.metallic = 0.8
-	truss_mat.roughness = 0.35
+	truss_mat.albedo_color = Color("9aa0a8")
+	truss_mat.metallic = 0.95
+	truss_mat.roughness = 0.28
 	for z in TRUSS_Z:
-		list.append(Surface.new(_box(Vector3(0, TRUSS_Y, z), Vector3(9.0, TRUSS_SIZE, TRUSS_SIZE)), Kind.TRUSS, truss_mat))
+		list.append(Surface.new(_box(Vector3(0, TRUSS_Y, z), Vector3(TRUSS_LENGTH, TRUSS_SIZE, TRUSS_SIZE)), Kind.TRUSS, truss_mat))
 
+	# DJ booth: black laminate front with a satin sheen.
 	var booth_mat := StandardMaterial3D.new()
-	booth_mat.albedo_color = Color("1f2228")
-	booth_mat.roughness = 0.7
+	booth_mat.albedo_color = Color("0f1013")
+	booth_mat.roughness = 0.38
+	booth_mat.metallic_specular = 0.7
 	list.append(Surface.new(_box(Vector3(0, 0.5, -2.6), Vector3(2.0, 1.0, 0.8)), Kind.FURNITURE, booth_mat))
 	var deck_mat := StandardMaterial3D.new()
-	deck_mat.albedo_color = Color("0b0c0e")
+	deck_mat.albedo_color = Color("08090a")
+	deck_mat.roughness = 0.6
 	list.append(Surface.new(_box(Vector3(0, 1.03, -2.6), Vector3(1.6, 0.06, 0.5)), Kind.FURNITURE, deck_mat))
 	return list
+
+
+## Matte painted plaster for the walls, so colour spill reads softly on them.
+static func wall_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color("6a6e76")
+	m.albedo_texture = _noise(0.85, 0.05, 11)
+	m.roughness = 0.9
+	m.uv1_triplanar = true
+	m.uv1_scale = Vector3(0.25, 0.25, 0.25)
+	return m
+
+
+## Subtle grey noise centred on `base`, used for albedo and roughness variation.
+static func _noise(base: float, amount: float, p_seed: int) -> NoiseTexture2D:
+	var n := FastNoiseLite.new()
+	n.seed = p_seed
+	n.frequency = 0.02
+	n.fractal_octaves = 4
+	var t := NoiseTexture2D.new()
+	t.noise = n
+	t.width = 512
+	t.height = 512
+	t.seamless = true
+	var g := Gradient.new()
+	g.set_color(0, Color.from_hsv(0, 0, clampf(base - amount, 0, 1)))
+	g.set_color(1, Color.from_hsv(0, 0, clampf(base + amount, 0, 1)))
+	if base < 0.1: # roughness map: 0 means "use the material value as is"
+		g.set_color(0, Color(0.75, 0.75, 0.75))
+		g.set_color(1, Color(1.0, 1.0, 1.0))
+	t.color_ramp = g
+	return t
 
 
 static func _box(center: Vector3, size: Vector3) -> AABB:

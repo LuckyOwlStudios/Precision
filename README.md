@@ -31,6 +31,29 @@ Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline
 
 ![Move gizmo](docs/ui/stage_move.png)
 
+### How the stage looks
+Best in **Godot 4.7+ with the Forward+ renderer**. Visual only: none of this changes DMX.
+- **Moving heads** are real `SpotLight3D`s with a round iris (spot movers) or a soft
+  wash ("Wash" profiles), and cast shadows from Medium quality up.
+- **Pars** are `SpotLight3D` washes; **light bars and strobes** are `AreaLight3D`s the size
+  of their LED face (Godot 4.7+; older versions fall back to a row of spot lights).
+- Every fixture also draws a soft beam cone, a glowing lens and a halo, and follows
+  colour, dimmer, strobe, pan and tilt.
+- **Haze** slider (bottom right of the stage): how much smoke is in the room. Beams and
+  volumetric light shafts read more in haze.
+- **Low / Medium / High / Ultra**: Low is beam cones only; Medium adds volumetric haze,
+  mover shadows and ambient occlusion; High adds shadows on every light and floor
+  reflections; Ultra adds finer haze, soft shadows and light bounce.
+  Haze and quality are saved per computer in `user://stage_look.cfg`.
+- The floor grid only shows in the **Stage** workspace.
+
+Code: `ui/stage/stage_look.gd` (environment and quality), `stage_fixture_3d.gd` (fixtures),
+`stage_set.gd` (truss, walls, booth gear), `beam.gdshader`, `lens_glow.gdshader`.
+`godot --path . --script res://ui/stage/stage_shot_cli.gd -- out.png [haze] [quality] [yaw pitch distance]`
+renders the stage alone for checking the look.
+
+![Stage lighting](docs/ui/stage_look.png)
+
 The UI sends Art-Net to 127.0.0.1 by default so nothing hits the network until you
 change `artnet_target` on the `Studio` node in `ui/main/main_window.tscn`.
 

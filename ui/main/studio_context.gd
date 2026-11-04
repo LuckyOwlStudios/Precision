@@ -413,4 +413,9 @@ func load_demo_rig() -> void:
 		fx.dimmer = 0.8
 		fx.pan = 0.5 + (0.06 if i == 0 else -0.06)
 		fx.tilt = 0.62
+	# Two LED bars on the floor at the back wall, washing up it.
+	var bar: FixtureCatalog.Entry = catalog[6]
+	for i in 2:
+		var fx := add_fixture(bar, Vector3(-2.6 + i * 5.2, StageFixture3D.mount_offset(bar.body), -5.55), StageRoom.mount_basis(Vector3.UP) * Basis(Vector3.UP, PI)) # lean towards the wall
+		fx.color = Color("19d3c5")
 	select(null)
