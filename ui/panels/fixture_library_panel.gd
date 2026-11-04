@@ -94,4 +94,5 @@ func _get_drag(at: Vector2) -> Variant:
 func _on_activated() -> void:
 	var e := _selected_entry()
 	if e and ctx:
-		ctx.add_fixture(e, Vector3(0, 0, 1.0))
+		# Hang it under the front truss, centre stage.
+		ctx.add_fixture(e, Vector3(0, StageRoom.TRUSS_BOTTOM - StageFixture3D.mount_offset(e.body), StageRoom.TRUSS_Z[0]))

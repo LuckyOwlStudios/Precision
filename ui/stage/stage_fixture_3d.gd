@@ -4,7 +4,7 @@ extends Node3D
 ## spot light, all following the fixture's colour, dimmer, pan and tilt.
 ## Pure visuals: it reads the fixture and never writes DMX.
 
-const MOUNT_HEIGHT := 3.4
+const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
 const BEAM_LENGTH := 6.0
 const PAN_RANGE_DEG := 540.0
 const TILT_RANGE_DEG := 270.0
@@ -34,8 +34,27 @@ func setup(p_fixture: DMXFixture, p_ctx: StudioContext) -> void:
 
 
 func sync_position() -> void:
-	var p: Vector3 = fixture.get_meta(StudioContext.META_POSITION, Vector3.ZERO)
-	position = Vector3(p.x, MOUNT_HEIGHT, p.z)
+	transform = StudioContext.fixture_transform(fixture)
+
+
+## Distance from the fixture's origin to its mounting face (bracket or top of
+## the base), along local +Y. Placing puts that face flush on the surface.
+static func mount_offset(p_body: FixtureCatalog.Body) -> float:
+	match p_body:
+		FixtureCatalog.Body.PAR:
+			return 0.215
+		FixtureCatalog.Body.MOVING_HEAD:
+			return 0.19
+		FixtureCatalog.Body.BAR:
+			return 0.07
+		FixtureCatalog.Body.STROBE:
+			return 0.11
+	return 0.1
+
+
+## Middle of the body in world space: what you click on, and where the gizmo sits.
+func center() -> Vector3:
+	return to_global(Vector3(0, -0.08, 0))
 
 
 func set_selected(on: bool) -> void:

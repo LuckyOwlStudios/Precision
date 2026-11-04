@@ -12,9 +12,24 @@ Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline
 | Header | Workspaces: **Stage** (place and patch), **Program** (build a song's show), **Live** (run the night). Keys 1/2/3. |
 | Now playing band | Transport, tempo, beat dots, **Blackout** (Esc). Its background blends the rig's live colours. |
 | Left dock | **Library** (drag a fixture onto the stage, or double-click), **On stage** (patch list), **Songs** (your music, see below). |
-| Centre | 3D stage. Right drag orbit, middle drag pan, wheel zoom, F frame, left click select, drag to move, Delete to remove. |
+| Centre | 3D stage. Right drag orbit, middle drag pan, wheel zoom, F frame, left click select, Delete to remove. See **Placing fixtures** below. |
 | Bottom | Beat-grid timeline: the song's waveform, a lane per fixture, red playhead (Space plays the song). Clips come next. |
 | Right dock | **Inspector** (patch, colour, dimmer, pan/tilt), **Cues** (Record / GO), **DMX** (live 512-channel monitor). |
+
+### Placing fixtures
+- **Drop from the library** onto a truss, the back wall, the floor or the DJ booth: the fixture sticks
+  flush to that surface with its beam pointing into the room (an amber ring shows where it lands).
+  Hold **Alt** while dropping to skip snapping and just hang it above that spot.
+- **Drag a fixture** to slide it along the surface it's on; the spot you grabbed stays under the cursor.
+  **Shift + drag** re-sticks it onto whatever surface is under the cursor.
+- **Gizmo** (Stage workspace): **W** move (arrows = one axis, squares = a plane), **E** rotate (rings).
+  Turn on **Snap**, or hold **Ctrl** while dragging, for 0.25 m / 15° steps.
+  The inspector's **Placement** fields take exact numbers.
+- **Rename**: F2, double-click the fixture, or type in the inspector's **Name** field.
+  Double-click a row in **On stage** to rename it in place. An empty name goes back to "Par 3".
+  Your name is display only; cues still find the fixture by its node name.
+
+![Move gizmo](docs/ui/stage_move.png)
 
 The UI sends Art-Net to 127.0.0.1 by default so nothing hits the network until you
 change `artnet_target` on the `Studio` node in `ui/main/main_window.tscn`.

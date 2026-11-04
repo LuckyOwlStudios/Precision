@@ -6,6 +6,7 @@ extends Control
 ## Drag audio files onto the window to import them into the song library.
 ##
 ## Shortcuts: Space = play/pause, Esc = blackout, Delete = remove selected fixture,
+## F2 = rename selected fixture, W/E = move/rotate gizmo (stage view),
 ## 1/2/3 = Stage/Program/Live workspace (when no text field has focus).
 
 @onready var ctx: StudioContext = %Studio
@@ -34,6 +35,8 @@ func _ready() -> void:
 	ctx.workspace_changed.connect(_apply_workspace)
 	ctx.fixtures_changed.connect(_update_footers)
 	ctx.blackout_changed.connect(func(_on: bool) -> void: _update_footers())
+	# Renaming happens in the inspector's Name field, so bring it to the front.
+	ctx.rename_requested.connect(func(_fx: DMXFixture) -> void: right_tabs.current_tab = 0)
 	_apply_workspace(ctx.workspace)
 	_update_footers()
 
@@ -90,6 +93,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_DELETE:
 			if ctx.selected:
 				ctx.remove_fixture(ctx.selected)
+		KEY_F2:
+			if ctx.selected:
+				ctx.request_rename(ctx.selected)
 		KEY_1:
 			ctx.set_workspace(StudioContext.Workspace.STAGE)
 		KEY_2:

@@ -47,7 +47,7 @@ class TimelineCanvas:
 		# Lanes
 		var lanes: Array[String] = [ctx.song_title if ctx.song else "Music"]
 		for fx in ctx.fixtures():
-			lanes.append(fx.name)
+			lanes.append(StudioContext.display_name(fx))
 		var y := RULER_H
 		for i in lanes.size():
 			var lh := MUSIC_H if i == 0 else LANE_H

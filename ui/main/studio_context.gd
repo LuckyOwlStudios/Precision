@@ -8,6 +8,10 @@ extends Node
 
 signal fixtures_changed
 signal selection_changed(fixture: DMXFixture)
+## A fixture was moved or rotated on the stage (drag, gizmo or inspector).
+signal fixture_moved(fixture: DMXFixture)
+## Someone pressed F2 or double-clicked a fixture: the inspector focuses its name field.
+signal rename_requested(fixture: DMXFixture)
 signal transport_changed
 signal blackout_changed(active: bool)
 signal workspace_changed(workspace: Workspace)
@@ -19,7 +23,11 @@ signal show_started(song: Song)
 
 enum Workspace { STAGE, PROGRAM, LIVE }
 
-const META_POSITION := &"stage_position"
+const META_POSITION := &"stage_position" ## Vector3, the fixture's mounting point in the room
+const META_BASIS := &"stage_basis" ## Basis; local -Y is where the beam points
+## Your own name for a fixture ("Left wash"). The node name stays fixed
+## ("Par 3") because recorded cues find fixtures by node path.
+const META_LABEL := &"display_name"
 const META_BODY := &"stage_body"
 const META_PROFILE_LABEL := &"profile_label"
 
@@ -111,7 +119,7 @@ func fixtures() -> Array[DMXFixture]:
 	return list
 
 
-func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3) -> DMXFixture:
+func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3, stage_basis: Basis = Basis.IDENTITY) -> DMXFixture:
 	var count := entry.profile.channels.size()
 	var fx := DMXFixture.new()
 	_counters[entry.short_name] = int(_counters.get(entry.short_name, 0)) + 1
@@ -120,6 +128,7 @@ func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3) -> DMXFix
 	fx.universe = universe
 	fx.start_address = next_free_address(count)
 	fx.set_meta(META_POSITION, stage_position)
+	fx.set_meta(META_BASIS, stage_basis)
 	fx.set_meta(META_BODY, entry.body)
 	fx.set_meta(META_PROFILE_LABEL, entry.profile.fixture_name)
 	rig.add_child(fx)
@@ -146,8 +155,44 @@ func select(fx: DMXFixture) -> void:
 	selection_changed.emit(fx)
 
 
-func move_fixture(fx: DMXFixture, stage_position: Vector3) -> void:
-	fx.set_meta(META_POSITION, stage_position)
+func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
+	fx.set_meta(META_POSITION, xform.origin)
+	fx.set_meta(META_BASIS, xform.basis.orthonormalized())
+	fixture_moved.emit(fx)
+
+
+## Where a fixture sits on the stage and which way it faces.
+static func fixture_transform(fx: DMXFixture) -> Transform3D:
+	var b: Basis = fx.get_meta(META_BASIS, Basis.IDENTITY)
+	var p: Vector3 = fx.get_meta(META_POSITION, Vector3.ZERO)
+	return Transform3D(b, p)
+
+
+## The name shown everywhere in the UI: your own name if you gave one.
+static func display_name(fx: DMXFixture) -> String:
+	return String(fx.get_meta(META_LABEL, fx.name))
+
+
+## Give a fixture your own name. An empty name goes back to "Par 3" style.
+func rename_fixture(fx: DMXFixture, new_name: String) -> void:
+	if fx == null:
+		return
+	var clean := new_name.strip_edges()
+	if clean.is_empty() or clean == String(fx.name):
+		if not fx.has_meta(META_LABEL):
+			return
+		fx.remove_meta(META_LABEL)
+	elif clean == display_name(fx):
+		return
+	else:
+		fx.set_meta(META_LABEL, clean)
+	fixtures_changed.emit()
+
+
+func request_rename(fx: DMXFixture) -> void:
+	if fx:
+		select(fx)
+		rename_requested.emit(fx)
 
 
 ## First address with `count` free channels in a row (1-based), or 1 if full.
@@ -172,7 +217,7 @@ func channel_owner(address: int) -> String:
 	for fx in fixtures():
 		var i := address - fx.start_address
 		if i >= 0 and i < fx.profile.channels.size():
-			return "%s · %s" % [fx.name, fx.profile.channels[i]]
+			return "%s · %s" % [display_name(fx), fx.profile.channels[i]]
 	return ""
 
 
@@ -315,11 +360,14 @@ func load_demo_rig() -> void:
 	var par: FixtureCatalog.Entry = catalog[1]
 	var mover: FixtureCatalog.Entry = catalog[4]
 	var colors: Array[Color] = [Color("ff3b6b"), Color("ffb547"), Color("38c6ff"), Color("8b5cff")]
+	# Hung flush under the two trusses, as the stage view would place them.
+	var par_y := StageRoom.TRUSS_BOTTOM - StageFixture3D.mount_offset(par.body)
+	var mover_y := StageRoom.TRUSS_BOTTOM - StageFixture3D.mount_offset(mover.body)
 	for i in 4:
-		var fx := add_fixture(par, Vector3(-3.0 + i * 2.0, 0.0, 0.5))
+		var fx := add_fixture(par, Vector3(-3.0 + i * 2.0, par_y, StageRoom.TRUSS_Z[0]))
 		fx.color = colors[i]
 	for i in 2:
-		var fx := add_fixture(mover, Vector3(-1.6 + i * 3.2, 0.0, -0.8))
+		var fx := add_fixture(mover, Vector3(-1.6 + i * 3.2, mover_y, StageRoom.TRUSS_Z[1]))
 		fx.color = Color("f5f0ff")
 		fx.dimmer = 0.8
 		fx.pan = 0.5 + (0.06 if i == 0 else -0.06)
