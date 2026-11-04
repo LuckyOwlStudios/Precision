@@ -79,7 +79,7 @@ func _ready() -> void:
 	_bpm.suffix = "BPM"
 	_bpm.custom_minimum_size.x = 104
 	_bpm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_bpm.tooltip_text = "Tempo. Will follow the DJ software once sync is connected."
+	_bpm.tooltip_text = "Tempo of the song's beat grid. With DJ sync on, the lights follow the DJ's playhead and pitch."
 	_bpm.value_changed.connect(func(v: float) -> void:
 		if ctx:
 			ctx.set_bpm(v))

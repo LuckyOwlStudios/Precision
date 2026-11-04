@@ -33,6 +33,7 @@ var rig: Node ## parent of every DMXFixture
 var cue_stack: CueStack
 var library: SongLibrary
 var music_player: AudioStreamPlayer
+var dj: DJSync ## follows the DJ software; off until a source is picked
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
@@ -86,8 +87,19 @@ func _ready() -> void:
 	add_child(music_player)
 	music_player.finished.connect(_on_music_finished)
 
+	dj = DJSync.new()
+	dj.name = "DJSync"
+	dj.ctx = self
+	add_child(dj)
+	library.songs_changed.connect(func() -> void:
+		if dj.source and dj.matched == null:
+			dj.rematch())
+
 
 func _process(delta: float) -> void:
+	if dj and dj.is_following():
+		_follow_dj()
+		return
 	if not playing:
 		return
 	if song and music_player.playing:
@@ -99,6 +111,22 @@ func _process(delta: float) -> void:
 		if position_beats >= length_beats:
 			position_beats = 0.0
 	transport_changed.emit()
+
+
+## While DJ sync is on, the DJ's deck is the clock: their play/pause is our
+## play/pause and their playhead is our playhead. We play no audio.
+func _follow_dj() -> void:
+	var now_playing := dj.source.playing and song != null
+	if now_playing and not playing:
+		show_started.emit(song)
+	var changed := now_playing != playing
+	playing = now_playing
+	if song:
+		var beats := clampf(seconds_to_beats(dj.position_seconds()), 0.0, length_beats)
+		changed = changed or not is_equal_approx(beats, position_beats)
+		position_beats = beats
+	if changed:
+		transport_changed.emit()
 
 
 # ---------------------------------------------------------------- fixtures
@@ -190,7 +218,14 @@ func _clear_universe() -> void:
 
 # ---------------------------------------------------------------- transport
 
+## True while the DJ's software drives the transport (local play/seek are off).
+func following_dj() -> bool:
+	return dj != null and dj.is_following()
+
+
 func toggle_play() -> void:
+	if following_dj():
+		return
 	playing = not playing
 	if song:
 		if playing:
@@ -204,6 +239,8 @@ func toggle_play() -> void:
 
 
 func stop() -> void:
+	if following_dj():
+		return
 	playing = false
 	position_beats = 0.0
 	music_player.stop()
@@ -211,6 +248,8 @@ func stop() -> void:
 
 
 func seek(beats: float) -> void:
+	if following_dj():
+		return
 	position_beats = clampf(beats, 0.0, length_beats)
 	if song and music_player.playing:
 		music_player.seek(beats_to_seconds(position_beats))
@@ -244,8 +283,10 @@ func seconds_to_beats(seconds: float) -> float:
 func load_song(s: Song) -> void:
 	if s == song:
 		return
-	var was_playing := playing
-	stop()
+	var was_playing := playing and not following_dj()
+	playing = false
+	position_beats = 0.0
+	music_player.stop()
 	song = s
 	if s == null:
 		music_player.stream = null

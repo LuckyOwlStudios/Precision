@@ -49,6 +49,15 @@ Each song has a `show_id` / `show_name`. `StudioContext.show_started(song)` fire
 starts playing; the show player will hook in there once shows are saved as files
 (`SongLibrary.show_path_for(song)` is where they'll go).
 
+## Following the DJ (djsync/)
+The **DJ** tab on the right makes the lights follow whoever is DJing: when they start a new
+track, that song's show loads; pause, play, scrubbing and pitch changes move the timeline
+with them. Works today with **VirtualDJ** and with a built-in **Simulator** deck for trying
+it without any DJ software. See [docs/dj_sync.md](docs/dj_sync.md) for how it works, which
+DJ setups can be supported and in what order.
+
+![DJ tab following the simulator](docs/ui/dj.png)
+
 ## Hooking up your light
 1. In `demo/demo.gd`, set `PROFILE_CHANNELS` to your fixture's channel list,
    in order, as shown in its manual for the DMX mode it's set to. Set `START_ADDRESS`
