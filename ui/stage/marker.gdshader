@@ -5,7 +5,9 @@ shader_type spatial;
 // With `billboard` on, the quad turns to face the camera. Its size is
 // `world_size` metres, but never smaller than `min_px` pixels on screen, so
 // it stays readable when you zoom out and hugs the fixture when you zoom in.
-render_mode unshaded, cull_disabled, depth_test_disabled, depth_draw_never, shadows_disabled, blend_mix;
+// Additive, so it can only add light: a mix blend left a faint dark box around
+// each bracket in Forward+ (glow + tonemapping lifted its near-zero alpha).
+render_mode unshaded, cull_disabled, depth_test_disabled, depth_draw_never, shadows_disabled, blend_add, fog_disabled;
 
 uniform vec4 color : source_color = vec4(1.0, 0.71, 0.28, 1.0);
 uniform int style = 0;
@@ -59,11 +61,12 @@ void fragment() {
 		stroke = 0.05;
 	}
 	float line = 1.0 - smoothstep(stroke - aa, stroke + aa, d);
-	float glow = exp(-d * 14.0) * 0.45;
+	// Soft halo that reaches exactly zero well inside the quad, so its edges never show.
+	float glow = pow(1.0 - smoothstep(0.0, 0.18, d), 2.0) * 0.35;
 	float a = clamp(line + glow * (1.0 - line), 0.0, 1.0) * color.a;
 	if (style == 0) {
 		a *= appear;
 	}
-	ALBEDO = mix(color.rgb, vec3(1.0), line * 0.25);
-	ALPHA = a;
+	// blend_add ignores ALPHA in some renderers, so fold it into the colour.
+	ALBEDO = mix(color.rgb, vec3(1.0), line * 0.25) * a;
 }
