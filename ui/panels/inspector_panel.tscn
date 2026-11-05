@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="1_apl61"]
 
 [node name="InspectorPanel" type="ScrollContainer" unique_id=941001158]
-horizontal_scroll_mode = 0
+horizontal_scroll_mode = 3
 script = ExtResource("1_apl61")
 
 [node name="Padding" type="MarginContainer" parent="." unique_id=30049223]
@@ -131,8 +131,9 @@ uppercase = true
 [node name="Rule" type="HSeparator" parent="Padding/Content/PlacementHeading" unique_id=911588926]
 layout_mode = 2
 
-[node name="PositionField" type="HBoxContainer" parent="Padding/Content" unique_id=1259729008]
+[node name="PositionField" type="VBoxContainer" parent="Padding/Content" unique_id=1259729008]
 layout_mode = 2
+theme_override_constants/separation = 4
 
 [node name="Label" type="Label" parent="Padding/Content/PositionField" unique_id=757348831]
 custom_minimum_size = Vector2(72, 0)
@@ -178,8 +179,9 @@ suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
 
-[node name="RotationField" type="HBoxContainer" parent="Padding/Content" unique_id=240559862]
+[node name="RotationField" type="VBoxContainer" parent="Padding/Content" unique_id=240559862]
 layout_mode = 2
+theme_override_constants/separation = 4
 
 [node name="Label" type="Label" parent="Padding/Content/RotationField" unique_id=437297841]
 custom_minimum_size = Vector2(72, 0)
