@@ -18,6 +18,10 @@ extends MeshInstance3D
 ## whole lot is hidden while the fixture stands on the floor or a wall.
 
 const TUBE_RADIUS := 0.024 ## standard 48 mm truss tube
+## How far a clamp reaches past its centre along the tube (half the jaw, plus
+## a little room): a fixture slides until its outermost clamp is this far from
+## the end of the tube.
+const CLAMP_HALF_WIDTH := 0.03
 
 ## Tube centre to the face the clamp bolts onto (the bracket or the fixture's top).
 @export_range(0.04, 0.3, 0.001, "suffix:m") var drop := 0.07:

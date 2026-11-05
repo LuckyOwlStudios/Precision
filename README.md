@@ -26,13 +26,14 @@ long as the unique names stay.
 | `ui/main/studio_context.tscn` | Shared state: Art-Net output (set the target IP here), universe, rig, cues, song library, music player, DJ sync. |
 | `ui/panels/*.tscn` | One scene per panel (library, on stage, songs, inspector, cues, DMX, DJ, timeline, now playing) and `song_row.tscn`. |
 | `ui/stage/stage_view.tscn` | The 3D stage: camera, environment, floor grid, overlay buttons. |
-| `ui/stage/stage_room.tscn` | The club room. `StageSurface` boxes are what fixtures snap to; the truss lattice is built by `TrussLattice`. |
+| `ui/stage/stage_room.tscn` | The club room. `StageSurface` boxes (floor, walls, booth) are what fixtures stick to; its `Set` node is the truss rig, built from structure pieces. |
+| `structure/pieces/*.tscn` | Structure pieces: base plate, truss 0.5 / 1 / 2 / 3 m, corner box. Any scene added here shows up in the library. |
 | `ui/stage/fixtures/*.tscn` | The 3D model of each fixture type (par, spot mover, wash mover, bar, strobe), with its truss clamps as `MountPoint` nodes. |
 | `ui/stage/fixtures/parts/omega_bracket.tscn` | The omega bracket a moving head hangs from; each mover clamp has one under it. |
 
 ### Placing fixtures
-- **Drop from the library** onto a truss and the fixture clamps onto the nearest bottom tube by its own
-  clamps, beam down, facing the audience. Drop it on the back wall, the floor or the DJ booth and it
+- **Drop from the library** near a truss and the fixture clamps onto the nearest bar (any of the four, on
+  any piece) by its own clamps, hanging away from the truss and facing the audience. Drop it on the back wall, the floor or the DJ booth and it
   sticks flush to that surface with its beam pointing into the room (an amber ring shows where it lands).
   Hold **Alt** while dropping to skip snapping and just hang it above that spot.
 - **Drag a fixture** to slide it along the tube or surface it's on; the spot you grabbed stays under the cursor.
@@ -44,6 +45,25 @@ long as the unique names stay.
   Double-click a row in **On stage** to rename it in place. An empty name goes back to "Par 3".
   Your name is display only; cues still find the fixture by its node name.
 
+### Building a set (structure)
+The **Structure** group in the library holds the truss pieces. Drag one onto the stage:
+- **Base plates** go on the floor only (Snap / Ctrl gives 0.25 m steps).
+- **Truss** snaps onto the free connector nearest the cursor: the top of a base plate, the end of another
+  truss, or a face of a corner box.
+- **Corner boxes** snap onto a truss end; their other faces let the next truss go up, down or turn 90°.
+
+In the Stage workspace click a piece to select it, drag it to snap it somewhere else, **R** to give it a
+quarter turn about the joint it hangs from, **Delete** to remove it. Fixtures don't follow a piece you
+move yet, and the set isn't saved with the show yet (nothing is, so far).
+
+Each piece is a scene with the `StructurePiece` script and three kinds of child nodes:
+- `TrussConnector` (a Marker3D): a face that joins another piece. +Y points out of the face, +Z is
+  "outward x up". Its **Accepts** flags say which kinds of piece may join there.
+- `TrussTube`: a bar fixtures can clamp onto, from the node along its +X for `length`. `hang_side`
+  says which side fixtures hang on. Drawn as an orange line in the editor. Tubes that line up end to
+  end across joined trusses count as one run, so fixtures slide across joints.
+- `TrussMesh`: draws the lattice (straight or corner) from its settings; not saved into the scene.
+
 ### Truss clamps
 Each fixture scene has one `MountPoint` node per clamp the real fixture uses: one on a par's or
 strobe's bracket, two on a moving head (one per omega bracket), one at each end of a light bar.
@@ -52,6 +72,11 @@ change where a fixture hangs, move its clamps in the fixture scene. Keep all of 
 one line along its X axis. The clamp model is drawn from the node's settings (`drop`, `width`,
 `screw_side`); anything placed under a `MountPoint` (like the omega bracket) shows only while the
 fixture hangs on a truss, and is hidden once it stands on the floor or a wall or is moved off the tube.
+A hung fixture slides along its tube only until its outermost clamp reaches the end, so a long bar with
+a clamp at each end stops sooner than a par with one clamp in the middle.
+
+Shared materials: `ui/stage/materials/black_metal.tres` (truss, brackets) and `fixture_plastic.tres`
+(fixture bodies).
 
 ![Move gizmo](docs/ui/stage_move.png)
 

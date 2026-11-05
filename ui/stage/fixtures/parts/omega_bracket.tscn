@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Material" path="res://ui/stage/materials/powder_black.tres" id="1_black"]
+[ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="1_black"]
 [ext_resource type="Material" path="res://ui/stage/materials/zinc.tres" id="2_zinc"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_top"]

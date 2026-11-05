@@ -1,11 +1,16 @@
 class_name StageView
 extends Control
 ## The 3D stage in the middle of the window.
-##   Drop a fixture from the library  -> it clamps onto the truss tube under the
+##   Drop a fixture from the library  -> it clamps onto the truss tube nearest the
 ##                                       cursor, or sticks flush to the wall or
 ##                                       floor (hold Alt: no snapping)
+##   Drop a structure piece            -> base plates go on the floor; truss and
+##                                       corner boxes snap onto the nearest free
+##                                       connector (truss end, plate, corner face)
 ##   Left click / double-click / F2    -> select / rename a fixture
 ##   Left drag a fixture               -> slide it along the tube or surface it is on
+##   Stage workspace, a structure piece: click selects, drag re-snaps it,
+##                                       R turns it a quarter turn, Delete removes it
 ##   Shift + left drag                 -> re-stick it onto another surface
 ##   W / E                             -> move / rotate gizmo; Ctrl while dragging snaps
 ##   Right drag / Alt+left drag        -> orbit       Middle drag -> pan
@@ -13,6 +18,8 @@ extends Control
 
 const PICK_RADIUS_PX := 28.0
 const DRAG_THRESHOLD_PX := 4.0
+const PIPE_GRAB_PX := 26.0 ## a fixture snaps to a tube this close to the cursor on screen
+const CONNECTOR_GRAB_PX := 70.0 ## a piece snaps to a free connector this close on screen
 
 var ctx: StudioContext
 
@@ -26,6 +33,13 @@ var _orbiting := false
 var _panning := false
 var _surfaces: Array[StageRoom.Surface] = []
 var _pipes: Array[StageRoom.Pipe] = [] ## truss tubes fixtures clamp onto
+
+# Structure pieces (the truss set).
+var _ghost: StructurePiece ## preview while a piece is dragged in from the library
+var _ghost_path := ""
+var _selected_piece: StructurePiece
+var _piece_drag: StructurePiece
+var _piece_drag_started := false
 
 # Dragging a fixture by its body (not the gizmo).
 var _dragging: DMXFixture
@@ -46,6 +60,7 @@ var _quality_buttons: Array[Button] = []
 @onready var _viewport: SubViewport = %Viewport
 @onready var _env: Environment = (%Environment as WorldEnvironment).environment
 @onready var _room: Node3D = %Room
+@onready var _set: Node3D = _room.get_node("Set") ## the structure pieces
 @onready var _fixtures: Node3D = %Fixtures ## a StageFixture3D per placed fixture goes here
 @onready var _pivot: Node3D = %Pivot
 @onready var _camera: Camera3D = %Camera
@@ -63,14 +78,15 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.fixtures_changed.connect(_sync_fixtures)
 	ctx.selection_changed.connect(_on_selection_changed)
 	ctx.fixture_moved.connect(_on_fixture_moved)
-	ctx.workspace_changed.connect(func(_ws: StudioContext.Workspace) -> void: _update_gizmo())
+	ctx.workspace_changed.connect(_on_workspace_changed)
+	ctx.truss_pipes = _pipes
 	_sync_fixtures()
 
 
 func _ready() -> void:
 	look.load_saved()
 	_surfaces = StageRoom.surfaces_in(_room)
-	_pipes = StageRoom.pipes_of(_surfaces)
+	_rebuild_pipes()
 	(_drop_marker.material_override as ShaderMaterial).set_shader_parameter("color", UIPalette.ACCENT)
 	_gizmo.camera = _camera
 
@@ -157,7 +173,14 @@ func _sync_fixtures() -> void:
 	_update_gizmo()
 
 
+func _on_workspace_changed(_ws: StudioContext.Workspace) -> void:
+	_update_gizmo()
+	_select_piece(null) # pieces are only edited while setting up the stage
+
+
 func _on_selection_changed(fx: DMXFixture) -> void:
+	if fx:
+		_select_piece(null)
 	for key: DMXFixture in _visuals:
 		(_visuals[key] as StageFixture3D).set_selected(key == fx)
 	_update_gizmo()
@@ -224,18 +247,46 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 			return null
 		var fp: Vector3 = p
 		return Transform3D(Basis.IDENTITY, Vector3(clampf(fp.x, -7.5, 7.5), StageFixture3D.MOUNT_HEIGHT, clampf(fp.z, -5.5, 5.5)))
+	if not mounts.is_empty():
+		var grab := _pipe_at(at)
+		if not grab.is_empty():
+			return StageRoom.hang(grab[0], grab[1], mounts)
 	var hit := StageRoom.raycast(_surfaces, origin, dir)
 	if hit == null:
 		return null
-	if hit.pipe and not mounts.is_empty():
-		return StageRoom.hang(hit.pipe, hit.along, mounts)
 	var pos := hit.position
 	if hit.kind == StageRoom.Kind.FLOOR:
 		pos = Vector3(clampf(pos.x, -7.5, 7.5), pos.y, clampf(pos.z, -5.5, 5.5)) # stay in the room
 	return Transform3D(StageRoom.mount_basis(hit.normal), pos + hit.normal * StageFixture3D.mount_offset(body))
 
 
+## The tube nearest the cursor on screen, and where along it: [Pipe, along],
+## or [] if none is within PIPE_GRAB_PX. Of tubes about as near, the one
+## closer to the camera wins.
+func _pipe_at(at: Vector2) -> Array:
+	var origin := _camera.project_ray_origin(at)
+	var dir := _camera.project_ray_normal(at)
+	var best: Array = []
+	var best_score := INF
+	for pipe in _pipes:
+		var r := pipe.closest_to_ray(origin, dir)
+		var p := pipe.point(float(r[0]))
+		if _camera.is_position_behind(p):
+			continue
+		var px := _camera.unproject_position(p).distance_to(at)
+		if px > PIPE_GRAB_PX:
+			continue
+		var score := px + float(r[2]) * 2.0 # pixels, plus a nudge towards the front
+		if score < best_score:
+			best_score = score
+			best = [pipe, float(r[0])]
+	return best
+
+
 func _can_drop_data(at: Vector2, data: Variant) -> bool:
+	if data is Dictionary and (data as Dictionary).get("kind") == "structure":
+		_preview_piece(at, String((data as Dictionary)["path"]))
+		return true
 	var ok: bool = data is Dictionary and (data as Dictionary).get("kind") == "fixture"
 	if ok:
 		var entry: FixtureCatalog.Entry = (data as Dictionary)["entry"]
@@ -251,6 +302,9 @@ func _can_drop_data(at: Vector2, data: Variant) -> bool:
 
 func _drop_data(at: Vector2, data: Variant) -> void:
 	_drop_marker.visible = false
+	if (data as Dictionary).get("kind") == "structure":
+		_drop_piece(at, String((data as Dictionary)["path"]))
+		return
 	var entry: FixtureCatalog.Entry = (data as Dictionary)["entry"]
 	var xf: Variant = _placement(at, entry.body, _entry_mounts(entry), Input.is_key_pressed(KEY_ALT))
 	if xf == null:
@@ -262,6 +316,7 @@ func _drop_data(at: Vector2, data: Variant) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END or what == NOTIFICATION_MOUSE_EXIT:
 		_drop_marker.visible = false
+		_clear_ghost()
 
 
 func _pick(at: Vector2) -> DMXFixture:
@@ -356,6 +411,9 @@ func _gui_input(event: InputEvent) -> void:
 				else:
 					_orbiting = false
 					_dragging = null
+					if _piece_drag:
+						_piece_drag = null
+						_rebuild_pipes()
 					if _gizmo.is_dragging():
 						_gizmo.end_drag()
 						_update_gizmo()
@@ -387,6 +445,8 @@ func _gui_input(event: InputEvent) -> void:
 			ctx.move_fixture(ctx.selected, _gizmo.drag(mm.position, _snapping(mm.ctrl_pressed)))
 		elif _dragging:
 			_update_body_drag(mm.position, mm.ctrl_pressed)
+		elif _piece_drag:
+			_update_piece_drag(mm.position)
 		else:
 			_gizmo.hovered = _gizmo.handle_at(mm.position)
 	elif event is InputEventKey:
@@ -403,9 +463,17 @@ func _gui_input(event: InputEvent) -> void:
 			KEY_E:
 				set_gizmo_mode(TransformGizmo.Mode.ROTATE)
 			KEY_DELETE:
-				if not ctx.selected:
+				if _selected_piece:
+					_delete_piece(_selected_piece)
+				elif ctx.selected:
+					ctx.remove_fixture(ctx.selected)
+				else:
 					return
-				ctx.remove_fixture(ctx.selected)
+			KEY_R:
+				if not _selected_piece:
+					return
+				_selected_piece.global_transform = StructureSnap.turned(_selected_piece, _pieces())
+				_rebuild_pipes()
 			_:
 				return
 		accept_event()
@@ -420,6 +488,12 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 	var fx := _pick(mb.position)
 	ctx.select(fx)
 	if fx == null:
+		var piece: StructurePiece = _pick_piece(mb.position) if ctx.workspace == StudioContext.Workspace.STAGE else null
+		_select_piece(piece)
+		if piece:
+			_piece_drag = piece
+			_piece_drag_started = false
+			_press_pos = mb.position
 		return
 	if mb.double_click:
 		ctx.request_rename(fx)
@@ -440,3 +514,127 @@ func _update_camera() -> void:
 	_camera.position = Vector3(0, 0, _distance)
 	_camera.rotation = Vector3.ZERO
 	_gizmo.queue_redraw()
+
+
+# ---------------------------------------------------------------- structure pieces (the truss set)
+
+func _pieces(ignore: StructurePiece = null) -> Array[StructurePiece]:
+	var list: Array[StructurePiece] = []
+	for c in _set.get_children():
+		if c is StructurePiece and c != ignore and c != _ghost:
+			list.append(c)
+	return list
+
+
+## The set changed: collect its tubes again (joined into runs) and show or hide
+## each fixture's clamps to match.
+func _rebuild_pipes() -> void:
+	_pipes = StageRoom.pipes_in(_set)
+	if ctx:
+		ctx.truss_pipes = _pipes
+	for fx: DMXFixture in _visuals:
+		_update_rigging(fx)
+
+
+## Where `piece` would go for the cursor at `at`: a base plate on the floor
+## under it, anything else joined onto the free connector nearest the cursor.
+## Null if there is nowhere to put it.
+func _piece_placement(at: Vector2, piece: StructurePiece) -> Variant:
+	if piece.kind == StructurePiece.Kind.BASE_PLATE:
+		var hit: Variant = Plane(Vector3.UP, 0.0).intersects_ray(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
+		if hit == null:
+			return null
+		var p: Vector3 = hit
+		if _snapping(Input.is_key_pressed(KEY_CTRL)):
+			p = Vector3(snappedf(p.x, TransformGizmo.MOVE_STEP), 0.0, snappedf(p.z, TransformGizmo.MOVE_STEP))
+		p = Vector3(clampf(p.x, -7.5, 7.5), 0.0, clampf(p.z, -5.5, 5.5))
+		return Transform3D(piece.global_basis.orthonormalized(), p)
+	var best: TrussConnector = null
+	var best_px := CONNECTOR_GRAB_PX
+	for c in StructureSnap.free_connectors(_pieces(piece), piece):
+		if not c.accepts_kind(piece.kind) or _camera.is_position_behind(c.global_position):
+			continue
+		var px := _camera.unproject_position(c.global_position).distance_to(at)
+		if px < best_px:
+			best_px = px
+			best = c
+	if best == null:
+		return null
+	return StructureSnap.attach(piece, best)
+
+
+func _preview_piece(at: Vector2, path: String) -> void:
+	if _ghost == null or _ghost_path != path:
+		_clear_ghost()
+		_ghost = (load(path) as PackedScene).instantiate() as StructurePiece
+		_ghost_path = path
+		_set.add_child(_ghost)
+		_ghost.set_highlight(true)
+	var xf: Variant = _piece_placement(at, _ghost)
+	_ghost.visible = xf != null
+	if xf != null:
+		_ghost.global_transform = xf
+
+
+func _clear_ghost() -> void:
+	if _ghost:
+		_ghost.queue_free()
+		_ghost = null
+		_ghost_path = ""
+
+
+func _drop_piece(at: Vector2, path: String) -> void:
+	_preview_piece(at, path)
+	var placed := _ghost.visible
+	var xf := _ghost.global_transform
+	_clear_ghost()
+	if not placed:
+		return # nothing to join onto there
+	var piece := (load(path) as PackedScene).instantiate() as StructurePiece
+	_set.add_child(piece)
+	piece.global_transform = xf
+	_rebuild_pipes()
+	_select_piece(piece)
+
+
+func _update_piece_drag(at: Vector2) -> void:
+	if not _piece_drag_started:
+		if at.distance_to(_press_pos) < DRAG_THRESHOLD_PX:
+			return
+		_piece_drag_started = true
+	var xf: Variant = _piece_placement(at, _piece_drag)
+	if xf != null:
+		_piece_drag.global_transform = xf
+
+
+func _delete_piece(piece: StructurePiece) -> void:
+	_select_piece(null)
+	_set.remove_child(piece)
+	piece.queue_free()
+	_rebuild_pipes()
+
+
+func _select_piece(piece: StructurePiece) -> void:
+	if _selected_piece == piece:
+		return
+	if _selected_piece and is_instance_valid(_selected_piece):
+		_selected_piece.set_highlight(false)
+	_selected_piece = piece
+	if piece:
+		piece.set_highlight(true)
+		if ctx and ctx.selected:
+			ctx.select(null)
+
+
+## The structure piece under the cursor (nearest its box along the ray), or null.
+func _pick_piece(at: Vector2) -> StructurePiece:
+	var origin := _camera.project_ray_origin(at)
+	var dir := _camera.project_ray_normal(at)
+	var best: StructurePiece = null
+	var best_t := INF
+	for p in _pieces():
+		var r := StageRoom.ray_box(p.world_bounds(), origin, dir)
+		if not r.is_empty() and float(r[0]) < best_t:
+			best_t = r[0]
+			best = p
+	return best

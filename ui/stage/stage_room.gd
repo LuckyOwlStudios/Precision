@@ -1,46 +1,34 @@
 class_name StageRoom
 extends RefCounted
 ## Snapping maths for the room the rig lives in. The room itself is
-## stage_room.tscn: its StageSurface nodes (floor, back wall, trusses, DJ booth)
-## are the boxes fixtures snap flush against when you place or re-stick one.
+## stage_room.tscn: its StageSurface nodes (floor, back wall, DJ booth) are the
+## boxes fixtures stick flush against, and the truss in its Set is built from
+## structure pieces whose TrussTube nodes are the tubes fixtures clamp onto.
 ##
-## Plain box maths (no physics engine), so placement behaves the same in
-## every renderer and can be called from input handlers at any time.
-##
-## The constants below match where stage_room.tscn puts the trusses. They are
-## used to hang the demo rig and double-clicked fixtures, so keep them in step
-## if you move the trusses in the scene.
+## Plain box and line maths (no physics engine), so placement behaves the same
+## in every renderer and can be called from input handlers at any time.
 
-enum Kind { FLOOR, WALL, TRUSS, FURNITURE }
+enum Kind { FLOOR, WALL, TRUSS, FURNITURE } ## TRUSS is unused now: trusses are structure pieces
 
-const TRUSS_Y := 3.7
-const TRUSS_SIZE := 0.29 ## a standard 29 cm box truss
-const TRUSS_LENGTH := 9.0
-const TRUSS_BOTTOM := TRUSS_Y - TRUSS_SIZE * 0.5
-const TRUSS_Z: Array[float] = [0.5, -0.8]
-## The truss's four chords are 48 mm tubes; clamps grip these.
-const CHORD_RADIUS := MountPoint.TUBE_RADIUS
 ## A fixture whose clamps are this close to a tube counts as hung on it.
 const ON_PIPE_TOLERANCE := 0.01
-## Trusses are thin, so aiming this close to one still hangs the fixture on it.
-const TRUSS_GRAB_MARGIN := 0.22
+## Tubes whose ends are this close (and that line up) join into one run.
+const JOIN_TOLERANCE := 0.012
 
 
 class Surface:
 	extends RefCounted
 	var box: AABB
 	var kind: Kind
-	var pipes: Array[Pipe] = [] ## the tubes fixtures clamp onto (trusses only)
 
 	func _init(p_box: AABB, p_kind: Kind) -> void:
 		box = p_box
 		kind = p_kind
-		if kind == Kind.TRUSS:
-			pipes = StageRoom.truss_pipes(box)
 
 
-## One straight tube that clamps can grip, from `a` to `b`. `out` is the side
-## fixtures hang on, pointing away from the truss (down for the bottom chords).
+## One straight run of tube that clamps can grip, from `a` to `b`: a single
+## TrussTube, or several that line up end to end across joined trusses.
+## `out` is the side fixtures hang on, pointing away from the truss.
 class Pipe:
 	extends RefCounted
 	var a: Vector3
@@ -70,8 +58,12 @@ class Pipe:
 		var d := p - a
 		return (d - axis() * d.dot(axis())).length()
 
+	## Distance from a point to the tube itself (its ends included).
+	func distance_to(p: Vector3) -> float:
+		return p.distance_to(point(clampf(along_of(p), 0.0, length())))
+
 	## Where along the tube a ray passes closest, clamped to its ends, and how
-	## close it gets: [along, distance].
+	## close it gets: [along, distance, distance along the ray].
 	func closest_to_ray(origin: Vector3, dir: Vector3) -> Array:
 		var u := axis()
 		var v := dir.normalized()
@@ -84,7 +76,7 @@ class Pipe:
 		s = clampf(s, 0.0, length())
 		var p := point(s)
 		var t := maxf((p - origin).dot(v), 0.0)
-		return [s, p.distance_to(origin + v * t)]
+		return [s, p.distance_to(origin + v * t), t]
 
 
 ## Where a ray met a surface. `normal` points out of the surface, into the room.
@@ -93,8 +85,6 @@ class Hit:
 	var position: Vector3
 	var normal: Vector3
 	var kind: Kind
-	var pipe: Pipe ## the truss tube it grabbed, if it hit a truss
-	var along := 0.0 ## where on that tube
 
 	func _init(p_position: Vector3, p_normal: Vector3, p_kind: Kind) -> void:
 		position = p_position
@@ -111,46 +101,56 @@ static func surfaces_in(root: Node) -> Array[Surface]:
 	return list
 
 
-## The tubes of a box truss that fixtures hang from: its two bottom chords.
-## The truss runs along the box's longest side.
-static func truss_pipes(box: AABB) -> Array[Pipe]:
-	var run := 0
-	for i in 3:
-		if box.size[i] > box.size[run]:
-			run = i
-	var across := 2 if run == 0 else 0 # the other horizontal direction
-	var inset := CHORD_RADIUS
-	var c := box.get_center()
-	var list: Array[Pipe] = []
-	for side: float in [-1.0, 1.0]:
-		var p := c
-		p.y = box.position.y + inset
-		p[across] = c[across] + side * (box.size[across] * 0.5 - inset)
-		var a := p
-		var b := p
-		a[run] = box.position[run]
-		b[run] = box.end[run]
-		list.append(Pipe.new(a, b, Vector3.DOWN))
-	return list
-
-
-## Every tube in the room, from all its trusses.
-static func pipes_of(list: Array[Surface]) -> Array[Pipe]:
+## Every tube of every structure piece under `root`, with tubes that line up
+## end to end joined into one run, so a fixture can slide across a joint.
+static func pipes_in(root: Node) -> Array[Pipe]:
 	var pipes: Array[Pipe] = []
-	for s in list:
-		pipes.append_array(s.pipes)
+	for n in root.find_children("*", "", true, false):
+		if n is TrussTube:
+			var t := n as TrussTube
+			pipes.append(Pipe.new(t.world_start(), t.world_end(), t.world_hang_side()))
+	var merged := true
+	while merged:
+		merged = false
+		for i in pipes.size():
+			for j in range(i + 1, pipes.size()):
+				var joined := _join(pipes[i], pipes[j])
+				if joined:
+					pipes[i] = joined
+					pipes.remove_at(j)
+					merged = true
+					break
+			if merged:
+				break
 	return pipes
 
 
-## The tubes of the trusses where stage_room.tscn puts them, for hanging
-## fixtures from code (the demo rig) without the room in hand.
-static func default_pipes() -> Array[Pipe]:
-	var pipes: Array[Pipe] = []
-	for z in TRUSS_Z:
-		var box := AABB(Vector3(-TRUSS_LENGTH * 0.5, TRUSS_BOTTOM, z - TRUSS_SIZE * 0.5),
-			Vector3(TRUSS_LENGTH, TRUSS_SIZE, TRUSS_SIZE))
-		pipes.append_array(truss_pipes(box))
-	return pipes
+## Two tubes as one run if they line up and touch end to end, else null.
+static func _join(p: Pipe, q: Pipe) -> Pipe:
+	if absf(p.axis().dot(q.axis())) < 0.9995 or p.out.dot(q.out) < 0.9:
+		return null
+	if p.distance_to_line(q.a) > JOIN_TOLERANCE or p.distance_to_line(q.b) > JOIN_TOLERANCE:
+		return null
+	var run := p.length()
+	var qa := p.along_of(q.a)
+	var qb := p.along_of(q.b)
+	var lo := minf(qa, qb)
+	var hi := maxf(qa, qb)
+	if lo > run + JOIN_TOLERANCE or hi < -JOIN_TOLERANCE:
+		return null # same line, but a gap between them
+	return Pipe.new(p.point(minf(0.0, lo)), p.point(maxf(run, hi)), p.out)
+
+
+## The tube nearest a point, or null if there are none.
+static func pipe_near(pipes: Array[Pipe], p: Vector3) -> Pipe:
+	var best: Pipe = null
+	var best_d := INF
+	for pipe in pipes:
+		var d := pipe.distance_to(p)
+		if d < best_d:
+			best_d = d
+			best = pipe
+	return best
 
 
 ## Hang a fixture from a tube by its clamps. `mounts` are the fixture's
@@ -168,30 +168,31 @@ static func hang(pipe: Pipe, along: float, mounts: PackedVector3Array) -> Transf
 
 
 ## Move a fixture along a tube without turning it: the middle of its clamps
-## goes to `along`, kept far enough from the ends for every clamp to fit.
+## goes to `along`, but no further than lets its outermost clamp reach an end.
+## A 1.2 m bar with a clamp at each end stops 0.6 m from the end of the tube.
 static func slide(pipe: Pipe, xform: Transform3D, mounts: PackedVector3Array, along: float) -> Transform3D:
-	var centre := Vector3.ZERO
+	var centre := _centre(mounts)
 	var half_span := 0.0
-	if not mounts.is_empty():
-		for m: Vector3 in mounts:
-			centre += m
-		centre /= mounts.size()
-		for m: Vector3 in mounts:
-			half_span = maxf(half_span, absf(m.x - centre.x))
+	for m: Vector3 in mounts:
+		half_span = maxf(half_span, absf(m.x - centre.x))
 	var run := pipe.length()
-	var margin := half_span + 0.03
+	var margin := half_span + MountPoint.CLAMP_HALF_WIDTH
 	along = clampf(along, minf(margin, run * 0.5), maxf(run - margin, run * 0.5))
 	return Transform3D(xform.basis, pipe.point(along) - xform.basis * centre)
 
 
 ## Where the middle of a fixture's clamps is along a tube.
 static func clamps_along(pipe: Pipe, xform: Transform3D, mounts: PackedVector3Array) -> float:
+	return pipe.along_of(xform * _centre(mounts))
+
+
+static func _centre(mounts: PackedVector3Array) -> Vector3:
 	var centre := Vector3.ZERO
 	for m: Vector3 in mounts:
 		centre += m
 	if not mounts.is_empty():
 		centre /= mounts.size()
-	return pipe.along_of(xform * centre)
+	return centre
 
 
 ## The tube a fixture is hung from: one that every clamp sits on, running along
@@ -216,38 +217,20 @@ static func pipe_holding(pipes: Array[Pipe], xform: Transform3D, mounts: PackedV
 
 
 ## The nearest surface along a ray, or null if it only sees the void.
-## A hit near a truss grabs the closest of its bottom tubes: `pipe` and `along`
-## say which and where, and the fixture hangs underneath it, pointing down.
 static func raycast(list: Array[Surface], origin: Vector3, dir: Vector3) -> Hit:
 	var best: Hit = null
 	var best_t := INF
 	for s in list:
-		var box := s.box.grow(TRUSS_GRAB_MARGIN) if s.kind == Kind.TRUSS else s.box
-		var r := _ray_box(box, origin, dir)
+		var r := ray_box(s.box, origin, dir)
 		if r.is_empty() or float(r[0]) >= best_t:
 			continue
 		best_t = r[0]
-		var p := origin + dir * best_t
-		if s.kind == Kind.TRUSS and not s.pipes.is_empty():
-			var pipe: Pipe = null
-			var along := 0.0
-			var closest := INF
-			for candidate: Pipe in s.pipes:
-				var r2: Array = candidate.closest_to_ray(origin, dir)
-				if float(r2[1]) < closest:
-					closest = r2[1]
-					pipe = candidate
-					along = r2[0]
-			best = Hit.new(pipe.point(along) + pipe.out * CHORD_RADIUS, pipe.out, s.kind)
-			best.pipe = pipe
-			best.along = along
-		else:
-			best = Hit.new(p, r[1], s.kind)
+		best = Hit.new(origin + dir * best_t, r[1], s.kind)
 	return best
 
 
 ## Slab test: [distance, entry face normal], or [] on a miss.
-static func _ray_box(box: AABB, o: Vector3, d: Vector3) -> Array:
+static func ray_box(box: AABB, o: Vector3, d: Vector3) -> Array:
 	var t_near := -INF
 	var t_far := INF
 	var n := Vector3.ZERO

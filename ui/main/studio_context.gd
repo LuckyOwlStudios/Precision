@@ -45,6 +45,9 @@ const META_PROFILE_LABEL := &"profile_label"
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
+## The truss tubes on stage (kept up to date by the stage view), for hanging
+## fixtures from code.
+var truss_pipes: Array[StageRoom.Pipe] = []
 var workspace: Workspace = Workspace.PROGRAM
 
 # Transport
@@ -160,17 +163,20 @@ func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
 	fixture_moved.emit(fx)
 
 
-## Indexes into StageRoom.default_pipes(): each truss has a back and a front bottom tube.
-const FRONT_TRUSS_FRONT_TUBE := 1
-const BACK_TRUSS_FRONT_TUBE := 3
+## Front bottom bars of the two default trusses (stage_room.tscn's Set).
+const FRONT_TRUSS_TUBE := Vector3(0, 3.536, 0.621)
+const BACK_TRUSS_TUBE := Vector3(0, 3.536, -0.679)
 
 
-## Add a fixture clamped onto one of the truss tubes (see StageRoom.default_pipes)
-## with the middle of its clamps at room position `x`.
-func hang_fixture(entry: FixtureCatalog.Entry, tube: int, x: float) -> DMXFixture:
-	var pipe: StageRoom.Pipe = StageRoom.default_pipes()[tube]
+## Add a fixture clamped onto the truss tube nearest `near`, with the middle of
+## its clamps as close to `near` as the tube allows. With no truss on stage it
+## just hangs at `near`.
+func hang_fixture(entry: FixtureCatalog.Entry, near: Vector3) -> DMXFixture:
+	var pipe := StageRoom.pipe_near(truss_pipes, near)
+	if pipe == null:
+		return add_fixture(entry, near)
 	var mounts := StageFixture3D.mounts_of(StageFixture3D.scene_path(entry.body, entry.profile.fixture_name))
-	var xf := StageRoom.hang(pipe, pipe.along_of(Vector3(x, 0, 0)), mounts)
+	var xf := StageRoom.hang(pipe, pipe.along_of(near), mounts)
 	return add_fixture(entry, xf.origin, xf.basis)
 
 
@@ -388,10 +394,10 @@ func load_demo_rig() -> void:
 	var colors: Array[Color] = [Color("ff3b6b"), Color("ffb547"), Color("38c6ff"), Color("8b5cff")]
 	# Clamped onto the front tubes of the two trusses, as the stage view would hang them.
 	for i in 4:
-		var fx := hang_fixture(par, FRONT_TRUSS_FRONT_TUBE, -3.0 + i * 2.0)
+		var fx := hang_fixture(par, FRONT_TRUSS_TUBE + Vector3(-3.0 + i * 2.0, 0, 0))
 		fx.color = colors[i]
 	for i in 2:
-		var fx := hang_fixture(mover, BACK_TRUSS_FRONT_TUBE, -1.6 + i * 3.2)
+		var fx := hang_fixture(mover, BACK_TRUSS_TUBE + Vector3(-1.6 + i * 3.2, 0, 0))
 		fx.color = Color("f5f0ff")
 		fx.dimmer = 0.8
 		fx.pan = 0.5 + (0.06 if i == 0 else -0.06)

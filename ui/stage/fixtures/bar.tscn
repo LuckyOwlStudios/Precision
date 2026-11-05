@@ -6,7 +6,8 @@
 [ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_ognry"]
 [ext_resource type="Script" path="res://ui/stage/mount_point.gd" id="10_mount"]
 [ext_resource type="Material" path="res://ui/stage/materials/clamp.tres" id="11_clamp"]
-[ext_resource type="Material" path="res://ui/stage/materials/powder_black.tres" id="13_black"]
+[ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="13_black"]
+[ext_resource type="Material" path="res://ui/stage/materials/fixture_plastic.tres" id="14_plastic"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_levmg"]
 resource_local_to_scene = true
@@ -40,12 +41,6 @@ shader_parameter/color = Color(1, 0.70980394, 0.2784314, 1)
 shader_parameter/style = 0
 shader_parameter/world_size = 0.62
 shader_parameter/appear = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u4k1c"]
-resource_name = "Shell"
-albedo_color = Color(0.08627451, 0.09411765, 0.10980392, 1)
-metallic = 0.35
-roughness = 0.42
 
 [sub_resource type="BoxMesh" id="BoxMesh_yujcm"]
 size = Vector3(1, 0.1, 0.12)
@@ -98,7 +93,7 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 0.95105654, 0.309017, 0, -0.309017, 0.95105654, 0, 0, 0)
 
 [node name="Shell" type="MeshInstance3D" parent="Yoke/Head" unique_id=1654831664]
-material_override = SubResource("StandardMaterial3D_u4k1c")
+material_override = ExtResource("14_plastic")
 mesh = SubResource("BoxMesh_yujcm")
 
 [node name="Trim" type="MeshInstance3D" parent="Yoke/Head" unique_id=1636653192]

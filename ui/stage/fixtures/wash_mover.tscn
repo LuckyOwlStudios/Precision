@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://ui/stage/mount_point.gd" id="10_mount"]
 [ext_resource type="Material" path="res://ui/stage/materials/clamp.tres" id="11_clamp"]
 [ext_resource type="PackedScene" path="res://ui/stage/fixtures/parts/omega_bracket.tscn" id="12_omega"]
+[ext_resource type="Material" path="res://ui/stage/materials/fixture_plastic.tres" id="14_plastic"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ebxdw"]
 resource_local_to_scene = true
@@ -40,12 +41,6 @@ shader_parameter/color = Color(1, 0.70980394, 0.2784314, 1)
 shader_parameter/style = 0
 shader_parameter/world_size = 0.42
 shader_parameter/appear = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_owjqd"]
-resource_name = "Shell"
-albedo_color = Color(0.08627451, 0.09411765, 0.10980392, 1)
-metallic = 0.35
-roughness = 0.42
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_dbng2"]
 top_radius = 0.12
@@ -118,7 +113,7 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, 0)
 
 [node name="Shell" type="MeshInstance3D" parent="Yoke/Head" unique_id=262041470]
-material_override = SubResource("StandardMaterial3D_owjqd")
+material_override = ExtResource("14_plastic")
 mesh = SubResource("CylinderMesh_dbng2")
 
 [node name="Bezel" type="MeshInstance3D" parent="Yoke/Head" unique_id=1189359538]
@@ -156,22 +151,22 @@ spot_angle_attenuation = 1.4
 
 [node name="ArmLeft" type="MeshInstance3D" parent="Yoke" unique_id=1190932733]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.19, -0.08, 0)
-material_override = SubResource("StandardMaterial3D_owjqd")
+material_override = ExtResource("14_plastic")
 mesh = SubResource("BoxMesh_2cyil")
 
 [node name="ArmRight" type="MeshInstance3D" parent="Yoke" unique_id=1234692218]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.19, -0.08, 0)
-material_override = SubResource("StandardMaterial3D_owjqd")
+material_override = ExtResource("14_plastic")
 mesh = SubResource("BoxMesh_2cyil")
 
 [node name="Bridge" type="MeshInstance3D" parent="Yoke" unique_id=1217404026]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
-material_override = SubResource("StandardMaterial3D_owjqd")
+material_override = ExtResource("14_plastic")
 mesh = SubResource("BoxMesh_qqqwq")
 
 [node name="Base" type="MeshInstance3D" parent="." unique_id=2056437490]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
-material_override = SubResource("StandardMaterial3D_owjqd")
+material_override = ExtResource("14_plastic")
 mesh = SubResource("BoxMesh_tq3pi")
 
 [node name="Display" type="MeshInstance3D" parent="." unique_id=787290071]

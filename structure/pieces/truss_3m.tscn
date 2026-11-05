@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://structure/structure_piece.gd" id="1_piece"]
+[ext_resource type="Script" path="res://structure/truss_connector.gd" id="2_conn"]
+[ext_resource type="Script" path="res://structure/truss_tube.gd" id="3_tube"]
+[ext_resource type="Script" path="res://structure/truss_mesh.gd" id="4_mesh"]
+[ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="5_metal"]
+
+[node name="Truss" type="Node3D"]
+script = ExtResource("1_piece")
+kind = 1
+display_name = "Truss 3 m"
+bounds = AABB(-1.5, -0.145, -0.145, 3, 0.29, 0.29)
+
+[node name="Lattice" type="MeshInstance3D" parent="."]
+material_override = ExtResource("5_metal")
+script = ExtResource("4_mesh")
+length = 3.0
+
+[node name="EndA" type="Marker3D" parent="."]
+transform = Transform3D(0, -1, 0, -1, 0, 0, 0, 0, -1, -1.5, 0, 0)
+gizmo_extents = 0.12
+script = ExtResource("2_conn")
+accepts = 6
+
+[node name="EndB" type="Marker3D" parent="."]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 1.5, 0, 0)
+gizmo_extents = 0.12
+script = ExtResource("2_conn")
+accepts = 6
+
+[node name="BottomFront" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, -0.121, 0.121)
+script = ExtResource("3_tube")
+length = 3.0
+hang_side = Vector3(0, -1, 0)
+
+[node name="BottomBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, -0.121, -0.121)
+script = ExtResource("3_tube")
+length = 3.0
+hang_side = Vector3(0, -1, 0)
+
+[node name="TopFront" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.121, 0.121)
+script = ExtResource("3_tube")
+length = 3.0
+hang_side = Vector3(0, 1, 0)
+
+[node name="TopBack" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.121, -0.121)
+script = ExtResource("3_tube")
+length = 3.0
+hang_side = Vector3(0, 1, 0)

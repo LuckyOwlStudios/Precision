@@ -5,8 +5,10 @@
 [ext_resource type="Material" path="res://ui/stage/materials/wall.tres" id="3_ocj3k"]
 [ext_resource type="Material" path="res://ui/stage/materials/booth.tres" id="4_kf3tl"]
 [ext_resource type="Material" path="res://ui/stage/materials/booth_top.tres" id="5_2224x"]
-[ext_resource type="Material" path="res://ui/stage/materials/aluminium.tres" id="6_dnpj2"]
-[ext_resource type="Script" path="res://ui/stage/truss_lattice.gd" id="7_dxc5a"]
+[ext_resource type="PackedScene" path="res://structure/pieces/base_plate.tscn" id="p_plate"]
+[ext_resource type="PackedScene" path="res://structure/pieces/truss_3m.tscn" id="p_t3"]
+[ext_resource type="PackedScene" path="res://structure/pieces/truss_0_5m.tscn" id="p_t05"]
+[ext_resource type="PackedScene" path="res://structure/pieces/corner_box.tscn" id="p_corner"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_vfd2g"]
 size = Vector3(60, 0.1, 60)
@@ -14,20 +16,11 @@ size = Vector3(60, 0.1, 60)
 [sub_resource type="BoxMesh" id="BoxMesh_sw25e"]
 size = Vector3(16, 6, 0.2)
 
-[sub_resource type="BoxMesh" id="BoxMesh_1iv38"]
-size = Vector3(9, 0.29, 0.29)
-
 [sub_resource type="BoxMesh" id="BoxMesh_81af7"]
 size = Vector3(2, 1, 0.8)
 
 [sub_resource type="BoxMesh" id="BoxMesh_1vbkv"]
 size = Vector3(1.6, 0.06, 0.5)
-
-[sub_resource type="BoxMesh" id="BoxMesh_4li6c"]
-size = Vector3(0.6, 0.02, 0.6)
-
-[sub_resource type="BoxMesh" id="BoxMesh_a4gb1"]
-size = Vector3(0.31, 0.31, 0.31)
 
 [sub_resource type="QuadMesh" id="QuadMesh_b7pus"]
 size = Vector2(12, 6)
@@ -99,20 +92,6 @@ mesh = SubResource("BoxMesh_sw25e")
 script = ExtResource("2_cnp4q")
 kind = 1
 
-[node name="TrussFront" type="MeshInstance3D" parent="." unique_id=308367013]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.7, 0.5)
-visible = false
-mesh = SubResource("BoxMesh_1iv38")
-script = ExtResource("2_cnp4q")
-kind = 2
-
-[node name="TrussBack" type="MeshInstance3D" parent="." unique_id=734552013]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.7, -0.8)
-visible = false
-mesh = SubResource("BoxMesh_1iv38")
-script = ExtResource("2_cnp4q")
-kind = 2
-
 [node name="Booth" type="MeshInstance3D" parent="." unique_id=300036506]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -2.6)
 material_override = ExtResource("4_kf3tl")
@@ -124,52 +103,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.03, -2.6)
 material_override = ExtResource("5_2224x")
 mesh = SubResource("BoxMesh_1vbkv")
 script = ExtResource("2_cnp4q")
-
-[node name="Truss" type="MeshInstance3D" parent="." unique_id=1567738142]
-material_override = ExtResource("6_dnpj2")
-script = ExtResource("7_dxc5a")
-
-[node name="TrussFeet" type="Node3D" parent="." unique_id=1698549320]
-
-[node name="BasePlateFrontLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1159030924]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 0.01, 0.5)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_4li6c")
-
-[node name="CornerFrontLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1529714444]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 3.7, 0.5)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_a4gb1")
-
-[node name="BasePlateFrontRight" type="MeshInstance3D" parent="TrussFeet" unique_id=1668703470]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 0.01, 0.5)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_4li6c")
-
-[node name="CornerFrontRight" type="MeshInstance3D" parent="TrussFeet" unique_id=979456091]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 3.7, 0.5)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_a4gb1")
-
-[node name="BasePlateBackLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1605313330]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 0.01, -0.8)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_4li6c")
-
-[node name="CornerBackLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1998032421]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 3.7, -0.8)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_a4gb1")
-
-[node name="BasePlateBackRight" type="MeshInstance3D" parent="TrussFeet" unique_id=618089244]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 0.01, -0.8)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_4li6c")
-
-[node name="CornerBackRight" type="MeshInstance3D" parent="TrussFeet" unique_id=861533638]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 3.7, -0.8)
-material_override = ExtResource("6_dnpj2")
-mesh = SubResource("BoxMesh_a4gb1")
 
 [node name="LeftWall" type="MeshInstance3D" parent="." unique_id=458969175]
 editor_description = "Faces into the room, so it is see-through when the camera orbits outside."
@@ -275,3 +208,72 @@ mesh = SubResource("BoxMesh_vk8s3")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.96, -2.194)
 material_override = SubResource("StandardMaterial3D_deimv")
 mesh = SubResource("BoxMesh_0bxw3")
+
+[node name="Set" type="Node3D" parent="."]
+editor_description = "The truss rig, built from the pieces in res://structure/pieces. Pieces snap together by their connectors; fixtures clamp onto their tubes. You can also build sets in the app by dragging pieces from the library."
+
+[node name="PlateFrontLeft" parent="Set" instance=ExtResource("p_plate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.645, 0, 0.5)
+
+[node name="TowerFrontLeft" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4.645, 1.512, 0.5)
+
+[node name="RiserFrontLeft" parent="Set" instance=ExtResource("p_t05")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4.645, 3.262, 0.5)
+
+[node name="CornerFrontLeft" parent="Set" instance=ExtResource("p_corner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.645, 3.657, 0.5)
+
+[node name="PlateFrontRight" parent="Set" instance=ExtResource("p_plate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.645, 0, 0.5)
+
+[node name="TowerFrontRight" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, 4.645, 1.512, 0.5)
+
+[node name="RiserFrontRight" parent="Set" instance=ExtResource("p_t05")]
+transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, 4.645, 3.262, 0.5)
+
+[node name="CornerFrontRight" parent="Set" instance=ExtResource("p_corner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.645, 3.657, 0.5)
+
+[node name="SpanFront1" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3.657, 0.5)
+
+[node name="SpanFront2" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.657, 0.5)
+
+[node name="SpanFront3" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 3.657, 0.5)
+
+[node name="PlateBackLeft" parent="Set" instance=ExtResource("p_plate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.645, 0, -0.8)
+
+[node name="TowerBackLeft" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4.645, 1.512, -0.8)
+
+[node name="RiserBackLeft" parent="Set" instance=ExtResource("p_t05")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4.645, 3.262, -0.8)
+
+[node name="CornerBackLeft" parent="Set" instance=ExtResource("p_corner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.645, 3.657, -0.8)
+
+[node name="PlateBackRight" parent="Set" instance=ExtResource("p_plate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.645, 0, -0.8)
+
+[node name="TowerBackRight" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, 4.645, 1.512, -0.8)
+
+[node name="RiserBackRight" parent="Set" instance=ExtResource("p_t05")]
+transform = Transform3D(0, 1, 0, 1, 0, 0, 0, 0, -1, 4.645, 3.262, -0.8)
+
+[node name="CornerBackRight" parent="Set" instance=ExtResource("p_corner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.645, 3.657, -0.8)
+
+[node name="SpanBack1" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 3.657, -0.8)
+
+[node name="SpanBack2" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.657, -0.8)
+
+[node name="SpanBack3" parent="Set" instance=ExtResource("p_t3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 3.657, -0.8)

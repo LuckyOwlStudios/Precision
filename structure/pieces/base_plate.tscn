@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://structure/structure_piece.gd" id="1_piece"]
+[ext_resource type="Script" path="res://structure/truss_connector.gd" id="2_conn"]
+[ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="5_metal"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_plate"]
+size = Vector3(0.6, 0.012, 0.6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_spigot"]
+size = Vector3(0.12, 0.03, 0.12)
+
+[node name="BasePlate" type="Node3D"]
+script = ExtResource("1_piece")
+kind = 0
+display_name = "Base plate"
+bounds = AABB(-0.3, 0, -0.3, 0.6, 0.04, 0.6)
+
+[node name="Plate" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.006, 0)
+material_override = ExtResource("5_metal")
+mesh = SubResource("BoxMesh_plate")
+
+[node name="Spigot" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
+material_override = ExtResource("5_metal")
+mesh = SubResource("BoxMesh_spigot")
+
+[node name="Top" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
+gizmo_extents = 0.12
+script = ExtResource("2_conn")
+accepts = 2
