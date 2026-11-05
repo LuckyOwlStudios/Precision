@@ -1,0 +1,70 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/rig_panel.gd" id="1_wdhlq"]
+
+[node name="RigPanel" type="MarginContainer" unique_id=846589053]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+script = ExtResource("1_wdhlq")
+
+[node name="Column" type="VBoxContainer" parent="." unique_id=811883917]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Heading" type="VBoxContainer" parent="Column" unique_id=1395903923]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Column/Heading" unique_id=369837717]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column/Heading/Row" unique_id=2029638055]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "On stage"
+uppercase = true
+
+[node name="RemoveButton" type="Button" parent="Column/Heading/Row" unique_id=1063867425]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Remove the selected fixture (Delete)"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "−"
+
+[node name="Rule" type="HSeparator" parent="Column/Heading" unique_id=599705823]
+layout_mode = 2
+
+[node name="List" type="ItemList" parent="Column" unique_id=763420825]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NameEditor" type="LineEdit" parent="Column/List" unique_id=15910669]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+placeholder_text = "Fixture name"
+
+[node name="Empty" type="VBoxContainer" parent="Column" unique_id=1936235103]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="Title" type="Label" parent="Column/Empty" unique_id=1942814476]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "Nothing patched"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="Column/Empty" unique_id=2137738552]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Fixtures you place on the stage appear here with their DMX address."
+horizontal_alignment = 1
+autowrap_mode = 3

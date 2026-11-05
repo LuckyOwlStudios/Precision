@@ -1,0 +1,156 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/now_playing_bar.gd" id="1_c0cv1"]
+[ext_resource type="Script" path="res://ui/panels/transport_button.gd" id="2_odwjs"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5na6e"]
+bg_color = Color(1, 1, 1, 0.15)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bu5dg"]
+bg_color = Color(1, 1, 1, 0.15)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lpkr6"]
+bg_color = Color(1, 1, 1, 0.15)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_146li"]
+bg_color = Color(1, 1, 1, 0.15)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="NowPlayingBar" type="PanelContainer" unique_id=1735439331]
+custom_minimum_size = Vector2(0, 76)
+theme_type_variation = &"HeroBar"
+script = ExtResource("1_c0cv1")
+
+[node name="Row" type="HBoxContainer" parent="." unique_id=526221808]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Prev" type="Button" parent="Row" unique_id=34807380]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Back to start"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+flat = true
+script = ExtResource("2_odwjs")
+icon_kind = 3
+
+[node name="Play" type="Button" parent="Row" unique_id=304744705]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Play / pause (Space)"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+flat = true
+script = ExtResource("2_odwjs")
+ring = true
+
+[node name="Stop" type="Button" parent="Row" unique_id=1598955461]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Stop"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+flat = true
+script = ExtResource("2_odwjs")
+icon_kind = 2
+
+[node name="Titles" type="VBoxContainer" parent="Row" unique_id=1916000902]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="SongTitle" type="Label" parent="Row/Titles" unique_id=453765249]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BigTitle"
+text = "No song loaded"
+text_overrun_behavior = 3
+
+[node name="ShowName" type="Label" parent="Row/Titles" unique_id=1146931368]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "Untitled show"
+text_overrun_behavior = 3
+
+[node name="Progress" type="HSlider" parent="Row" unique_id=1477867024]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_mode = 0
+step = 0.0
+
+[node name="BeatDots" type="HBoxContainer" parent="Row" unique_id=1431235618]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 5
+
+[node name="Beat1" type="Panel" parent="Row/BeatDots" unique_id=74607494]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_5na6e")
+
+[node name="Beat2" type="Panel" parent="Row/BeatDots" unique_id=2056175967]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bu5dg")
+
+[node name="Beat3" type="Panel" parent="Row/BeatDots" unique_id=1091258163]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_lpkr6")
+
+[node name="Beat4" type="Panel" parent="Row/BeatDots" unique_id=324910782]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_146li")
+
+[node name="Bpm" type="SpinBox" parent="Row" unique_id=1473170052]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Tempo of the song's beat grid. With DJ sync on, the lights follow the DJ's playhead and pitch."
+min_value = 40.0
+max_value = 220.0
+step = 0.5
+value = 128.0
+suffix = "BPM"
+
+[node name="Blackout" type="Button" parent="Row" unique_id=1858308539]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Send zeros to every channel while held on (Esc)"
+focus_mode = 0
+theme_type_variation = &"DangerButton"
+toggle_mode = true
+text = "BLACKOUT"

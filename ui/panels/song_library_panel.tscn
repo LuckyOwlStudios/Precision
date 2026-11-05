@@ -1,0 +1,120 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/song_library_panel.gd" id="1_s6a7s"]
+
+[node name="SongLibraryPanel" type="MarginContainer" unique_id=2041112696]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+script = ExtResource("1_s6a7s")
+
+[node name="Column" type="VBoxContainer" parent="." unique_id=1713013198]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Heading" type="VBoxContainer" parent="Column" unique_id=812398899]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Column/Heading" unique_id=329417200]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column/Heading/Row" unique_id=1589897483]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Songs"
+uppercase = true
+
+[node name="ImportButton" type="Button" parent="Column/Heading/Row" unique_id=6627433]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Import songs (or drag files onto the window)"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "+"
+
+[node name="Rule" type="HSeparator" parent="Column/Heading" unique_id=1471639626]
+layout_mode = 2
+
+[node name="Search" type="LineEdit" parent="Column" unique_id=1167641669]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Search songs"
+clear_button_enabled = true
+
+[node name="Count" type="Label" parent="Column" unique_id=1227395306]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+
+[node name="Scroll" type="ScrollContainer" parent="Column" unique_id=1243668502]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Column/Scroll" unique_id=1073796641]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Empty" type="VBoxContainer" parent="Column" unique_id=605441869]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="Title" type="Label" parent="Column/Empty" unique_id=1047332282]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "No songs yet"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="Column/Empty" unique_id=952646433]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Drag MP3, WAV or OGG files onto the window, or press +. Each song gets its own light show that plays with it."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Status" type="Label" parent="Column" unique_id=197261447]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="Hint" type="Label" parent="Column" unique_id=1463170336]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Drop audio files anywhere on the window to import."
+autowrap_mode = 3
+
+[node name="SongMenu" type="PopupMenu" parent="." unique_id=623182242]
+unique_name_in_owner = true
+item_count = 3
+item_0/text = "Rename show…"
+item_0/id = 0
+item_1/id = -1
+item_1/separator = true
+item_2/text = "Remove from library"
+item_2/id = 1
+
+[node name="RenameDialog" type="ConfirmationDialog" parent="." unique_id=1096469978]
+unique_name_in_owner = true
+title = "Rename show"
+
+[node name="RenameEdit" type="LineEdit" parent="RenameDialog" unique_id=1811887575]
+unique_name_in_owner = true
+
+[node name="ImportDialog" type="FileDialog" parent="." unique_id=594860547]
+unique_name_in_owner = true
+title = "Import songs"
+file_mode = 1
+access = 2
+filters = PackedStringArray("*.mp3, *.wav, *.ogg ; Audio files")
+use_native_dialog = true

@@ -9,26 +9,29 @@ extends ScrollContainer
 
 var ctx: StudioContext
 
-var _kind := OptionButton.new()
-var _dot := Panel.new()
-var _status := Label.new()
-var _deck: VBoxContainer
-var _match := Label.new()
-var _offset := SpinBox.new()
-
-var _vdj_box := VBoxContainer.new()
-var _host := LineEdit.new()
-var _port := SpinBox.new()
-var _password := LineEdit.new()
-var _os2l := CheckBox.new()
-
-var _sim_box := VBoxContainer.new()
-var _sim_song := OptionButton.new()
-var _sim_play := Button.new()
-var _sim_seek := HSlider.new()
-var _sim_pitch := SpinBox.new()
-var _sim_time := Label.new()
 var _sim_songs: Array[Song] = []
+
+@onready var _kind: OptionButton = %Source
+@onready var _dot: Panel = %Dot
+@onready var _status: Label = %Status
+@onready var _deck: Control = %Deck
+@onready var _deck_title: Label = %DeckTitle
+@onready var _deck_detail: Label = %DeckDetail
+@onready var _match: Label = %Match
+@onready var _offset: SpinBox = %Offset
+
+@onready var _vdj_box: Control = %VirtualDJ
+@onready var _host: LineEdit = %Host
+@onready var _port: SpinBox = %Port
+@onready var _password: LineEdit = %Password
+@onready var _os2l: CheckBox = %OS2L
+
+@onready var _sim_box: Control = %Simulator
+@onready var _sim_song: OptionButton = %SimTrack
+@onready var _sim_play: Button = %SimPlay
+@onready var _sim_seek: HSlider = %SimSeek
+@onready var _sim_pitch: SpinBox = %SimPitch
+@onready var _sim_time: Label = %SimTime
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -41,121 +44,22 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(UIKit.padded(col))
-	(get_child(0) as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	col.add_child(UIKit.section("Follow the DJ"))
-	for t: String in ["Off", "Simulator", "VirtualDJ"]:
-		_kind.add_item(t)
-	_kind.tooltip_text = "What the lights follow. Off = the timeline plays on its own."
 	_kind.item_selected.connect(func(i: int) -> void: _switch(i as DJSync.Kind))
-	col.add_child(UIKit.field("Source", _kind))
-
-	var status_row := HBoxContainer.new()
-	status_row.add_theme_constant_override("separation", 8)
-	_dot.custom_minimum_size = Vector2(8, 8)
-	_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var sb := StyleBoxFlat.new()
-	sb.set_corner_radius_all(4)
-	_dot.add_theme_stylebox_override("panel", sb)
-	status_row.add_child(_dot)
-	_status.theme_type_variation = &"Subtitle"
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_row.add_child(_status)
-	col.add_child(status_row)
-
-	_deck = UIKit.title_pair("", "")
-	col.add_child(_deck)
-	_match.theme_type_variation = &"Subtitle"
-	_match.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(_match)
-
-	_offset.min_value = -500
-	_offset.max_value = 500
-	_offset.step = 5
-	_offset.suffix = "ms"
-	_offset.tooltip_text = "Fire the lights this much earlier (+) or later (-) than the DJ's playhead, to make up for interface or fixture delay."
 	_offset.value_changed.connect(func(v: float) -> void: ctx.dj.light_offset_ms = v)
-	col.add_child(UIKit.field("Light offset", _offset))
-
-	# VirtualDJ settings
-	_vdj_box.add_theme_constant_override("separation", 8)
-	_vdj_box.add_child(UIKit.section("VirtualDJ"))
-	_host.text = "127.0.0.1"
-	_host.tooltip_text = "Computer running VirtualDJ. 127.0.0.1 = this one."
-	_vdj_box.add_child(UIKit.field("Address", _host))
-	_port.min_value = 1
-	_port.max_value = 65535
-	_port.value = 80
-	_port.tooltip_text = "The port set in VirtualDJ's Network Control plugin."
-	_vdj_box.add_child(UIKit.field("Port", _port))
-	_password.secret = true
-	_password.placeholder_text = "none"
-	_password.tooltip_text = "The password set in the Network Control plugin, if any."
-	_vdj_box.add_child(UIKit.field("Password", _password))
-	_os2l.text = "Beat messages (OS2L, port 9996)"
-	_os2l.button_pressed = true
-	_os2l.tooltip_text = "In VirtualDJ set the option os2lDirectIp to 127.0.0.1:9996 for beat-exact timing."
-	_vdj_box.add_child(_os2l)
-	var reconnect := Button.new()
-	reconnect.text = "Reconnect"
-	reconnect.pressed.connect(func() -> void: _switch(DJSync.Kind.VIRTUALDJ))
-	_vdj_box.add_child(reconnect)
-	var help := Label.new()
-	help.theme_type_variation = &"Subtitle"
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.text = "In VirtualDJ (Pro): Settings > Extensions > Effects > Other > Network Control. Turn it on as an Auto-Start master effect and set its port here."
-	_vdj_box.add_child(help)
-	col.add_child(_vdj_box)
-
-	# Simulator deck
-	_sim_box.add_theme_constant_override("separation", 8)
-	_sim_box.add_child(UIKit.section("Simulated deck"))
-	_sim_song.tooltip_text = "The track the pretend DJ loads"
-	_sim_song.fit_to_longest_item = false
-	_sim_box.add_child(UIKit.field("Track", _sim_song))
-	var row := HBoxContainer.new()
-	var load_btn := Button.new()
-	load_btn.text = "Load"
-	load_btn.tooltip_text = "Put this track on the deck, like a DJ loading the next song"
-	load_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	load_btn.pressed.connect(_sim_load)
-	row.add_child(load_btn)
-	_sim_play.text = "Play"
-	_sim_play.theme_type_variation = &"AccentButton"
-	_sim_play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	%Reconnect.pressed.connect(func() -> void: _switch(DJSync.Kind.VIRTUALDJ))
+	%SimLoad.pressed.connect(_sim_load)
 	_sim_play.pressed.connect(func() -> void:
 		var sim := _sim()
 		if sim:
 			sim.toggle())
-	row.add_child(_sim_play)
-	_sim_box.add_child(row)
-	_sim_seek.step = 0.0
-	_sim_seek.focus_mode = Control.FOCUS_NONE
-	_sim_seek.tooltip_text = "Scrub the deck: the lights jump with it"
 	_sim_seek.value_changed.connect(func(v: float) -> void:
 		var sim := _sim()
 		if sim and absf(v - sim.true_position()) > 0.2:
 			sim.seek(v))
-	_sim_box.add_child(_sim_seek)
-	_sim_time.theme_type_variation = &"Subtitle"
-	_sim_box.add_child(_sim_time)
-	_sim_pitch.min_value = -16
-	_sim_pitch.max_value = 16
-	_sim_pitch.step = 0.5
-	_sim_pitch.suffix = "%"
-	_sim_pitch.tooltip_text = "Pitch fader: the track and the lights speed up together"
 	_sim_pitch.value_changed.connect(func(v: float) -> void:
 		var sim := _sim()
 		if sim:
 			sim.pitch_percent = v)
-	_sim_box.add_child(UIKit.field("Pitch", _sim_pitch))
-	col.add_child(_sim_box)
 
 
 func _switch(k: DJSync.Kind) -> void:
@@ -207,8 +111,8 @@ func _sync() -> void:
 	_vdj_box.visible = dj.kind == DJSync.Kind.VIRTUALDJ
 	_sim_box.visible = dj.kind == DJSync.Kind.SIMULATOR
 
-	var title := _deck.get_meta("title") as Label
-	var detail := _deck.get_meta("detail") as Label
+	var title := _deck_title
+	var detail := _deck_detail
 	_deck.visible = src != null
 	_match.visible = src != null
 	if src == null:

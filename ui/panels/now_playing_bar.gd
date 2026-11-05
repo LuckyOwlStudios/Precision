@@ -6,13 +6,15 @@ extends PanelContainer
 
 var ctx: StudioContext
 
-var _play := TransportButton.new(TransportButton.Icon.PLAY, true)
-var _titles: VBoxContainer
-var _progress := HSlider.new()
-var _bpm := SpinBox.new()
-var _beats: Array[Panel] = []
-var _blackout := Button.new()
 var _colors: PackedColorArray = []
+
+@onready var _play: TransportButton = %Play
+@onready var _title: Label = %SongTitle
+@onready var _show: Label = %ShowName
+@onready var _progress: HSlider = %Progress
+@onready var _bpm: SpinBox = %Bpm
+@onready var _beats: Array[Panel] = [%Beat1, %Beat2, %Beat3, %Beat4]
+@onready var _blackout: Button = %Blackout
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -24,83 +26,24 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	theme_type_variation = &"HeroBar"
-	custom_minimum_size.y = 76
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	add_child(row)
-
-	var prev := TransportButton.new(TransportButton.Icon.PREV)
-	prev.tooltip_text = "Back to start"
-	prev.pressed.connect(func() -> void: ctx.seek(0.0))
-	var stop := TransportButton.new(TransportButton.Icon.STOP)
-	stop.tooltip_text = "Stop"
-	stop.pressed.connect(func() -> void: ctx.stop())
-	_play.tooltip_text = "Play / pause (Space)"
+	%Prev.pressed.connect(func() -> void: ctx.seek(0.0))
+	%Stop.pressed.connect(func() -> void: ctx.stop())
 	_play.pressed.connect(func() -> void: ctx.toggle_play())
-	for b: Control in [prev, _play, stop]:
-		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(b)
-
-	_titles = UIKit.title_pair("", "")
-	_titles.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_titles.custom_minimum_size.x = 260
-	(_titles.get_meta("title") as Label).theme_type_variation = &"BigTitle"
-	(_titles.get_meta("detail") as Label).theme_type_variation = &"TitleLabel"
-	row.add_child(_titles)
-
-	_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_progress.step = 0.0
-	_progress.focus_mode = Control.FOCUS_NONE
 	_progress.value_changed.connect(func(v: float) -> void:
 		if ctx and absf(v - ctx.position_beats) > 0.01:
 			ctx.seek(v))
-	row.add_child(_progress)
-
-	# Beat dots: four, the current beat lit.
-	var dots := HBoxContainer.new()
-	dots.add_theme_constant_override("separation", 5)
-	dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	for i in 4:
-		var p := Panel.new()
-		p.custom_minimum_size = Vector2(8, 8)
-		var sb := StyleBoxFlat.new()
-		sb.set_corner_radius_all(4)
-		sb.bg_color = Color(1, 1, 1, 0.15)
-		p.add_theme_stylebox_override("panel", sb)
-		dots.add_child(p)
-		_beats.append(p)
-	row.add_child(dots)
-
-	_bpm.min_value = 40
-	_bpm.max_value = 220
-	_bpm.step = 0.5
-	_bpm.suffix = "BPM"
-	_bpm.custom_minimum_size.x = 104
-	_bpm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_bpm.tooltip_text = "Tempo of the song's beat grid. With DJ sync on, the lights follow the DJ's playhead and pitch."
 	_bpm.value_changed.connect(func(v: float) -> void:
 		if ctx:
 			ctx.set_bpm(v))
-	row.add_child(_bpm)
-
-	_blackout.text = "BLACKOUT"
-	_blackout.theme_type_variation = &"DangerButton"
-	_blackout.toggle_mode = true
-	_blackout.tooltip_text = "Send zeros to every channel while held on (Esc)"
-	_blackout.focus_mode = Control.FOCUS_NONE
-	_blackout.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_blackout.toggled.connect(func(on: bool) -> void: ctx.blackout = on)
-	row.add_child(_blackout)
 
 
 func _sync() -> void:
 	if ctx == null:
 		return
 	_play.icon_kind = TransportButton.Icon.PAUSE if ctx.playing else TransportButton.Icon.PLAY
-	(_titles.get_meta("title") as Label).text = ctx.song_title if not ctx.song_title.is_empty() else "No song loaded"
-	(_titles.get_meta("detail") as Label).text = ctx.show_name
+	_title.text = ctx.song_title if not ctx.song_title.is_empty() else "No song loaded"
+	_show.text = ctx.show_name
 	_progress.max_value = ctx.length_beats
 	_progress.set_value_no_signal(ctx.position_beats)
 	var beat := int(ctx.position_beats) % 4

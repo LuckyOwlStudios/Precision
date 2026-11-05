@@ -6,7 +6,7 @@ config_version=5
 
 config/name="Lucky DMX"
 run/main_scene="res://ui/main/main_window.tscn"
-config/features=PackedStringArray("4.4")
+config/features=PackedStringArray("4.7")
 
 [display]
 

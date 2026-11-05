@@ -1,6 +1,132 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://demo/demo.gd" id="1"]
+[ext_resource type="Script" path="res://demo/demo.gd" id="1_s1s6j"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/artnet_output.gd" id="2_onvmd"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/dmx_universe.gd" id="3_oeqrt"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/dmx_fixture.gd" id="4_ykvhj"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/fixture_profile.gd" id="5_1rqa4"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/cue_stack.gd" id="6_xm42s"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/light_cue.gd" id="7_tdg64"]
 
-[node name="Demo" type="Node2D"]
-script = ExtResource("1")
+[sub_resource type="Resource" id="Resource_nk31j"]
+script = ExtResource("5_1rqa4")
+fixture_name = "Generic RGBW Par (7ch)"
+channels = PackedStringArray("dimmer", "red", "green", "blue", "white", "strobe", "mode")
+defaults = {
+"mode": 0
+}
+
+[sub_resource type="Animation" id="Animation_fy1p0"]
+resource_name = "show"
+length = 8.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Par1:color")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 2, 4, 6, 8),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Color(1, 0, 0, 1), Color(1, 0.64705884, 0, 1), Color(1, 0, 1, 1), Color(0, 1, 1, 1), Color(1, 0, 0, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Par1:dimmer")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [1.0, 0.25, 1.0, 0.25, 1.0, 0.25, 1.0, 0.25, 1.0, 0.25, 1.0, 0.25, 1.0, 0.25, 1.0, 0.25, 1.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_svvho"]
+_data = {
+&"show": SubResource("Animation_fy1p0")
+}
+
+[sub_resource type="Resource" id="Resource_x31ta"]
+script = ExtResource("7_tdg64")
+cue_name = "Warm wash"
+fade_time = 2.0
+values = {
+"Par1": {
+"color": Color(1, 0.55, 0.2, 1),
+"dimmer": 1.0
+}
+}
+
+[sub_resource type="Resource" id="Resource_d1m6b"]
+script = ExtResource("7_tdg64")
+cue_name = "Deep blue"
+fade_time = 3.0
+values = {
+"Par1": {
+"color": Color(0.05, 0.1, 1, 1),
+"dimmer": 0.8
+}
+}
+
+[sub_resource type="Resource" id="Resource_k1rqu"]
+script = ExtResource("7_tdg64")
+cue_name = "Snap to white"
+fade_time = 0.0
+values = {
+"Par1": {
+"color": Color(1, 1, 1, 1),
+"dimmer": 1.0
+}
+}
+
+[sub_resource type="Resource" id="Resource_wwhtr"]
+script = ExtResource("7_tdg64")
+cue_name = "Fade out"
+fade_time = 4.0
+values = {
+"Par1": {
+"color": Color(1, 1, 1, 1),
+"dimmer": 0.0
+}
+}
+
+[node name="Demo" type="Node2D" unique_id=1756366548]
+script = ExtResource("1_s1s6j")
+
+[node name="ArtNet" type="Node" parent="." unique_id=1144812330]
+script = ExtResource("2_onvmd")
+
+[node name="Universe0" type="Node" parent="." unique_id=1136017367 node_paths=PackedStringArray("output")]
+process_priority = 100
+script = ExtResource("3_oeqrt")
+output = NodePath("../ArtNet")
+
+[node name="Par1" type="Node" parent="." unique_id=104956227 node_paths=PackedStringArray("universe")]
+script = ExtResource("4_ykvhj")
+universe = NodePath("../Universe0")
+profile = SubResource("Resource_nk31j")
+
+[node name="Preview" type="ColorRect" parent="." unique_id=237621993]
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 240.0
+offset_bottom = 240.0
+
+[node name="Status" type="Label" parent="." unique_id=554768437]
+offset_left = 40.0
+offset_top = 260.0
+offset_right = 40.0
+offset_bottom = 260.0
+text = "SPACE = GO   B = back   P = timeline   ESC = blackout"
+
+[node name="Timeline" type="AnimationPlayer" parent="." unique_id=80267029]
+libraries/ = SubResource("AnimationLibrary_svvho")
+
+[node name="Cues" type="Node" parent="." unique_id=1807421179 node_paths=PackedStringArray("fixtures_root")]
+script = ExtResource("6_xm42s")
+fixtures_root = NodePath("..")
+cues = Array[ExtResource("7_tdg64")]([SubResource("Resource_x31ta"), SubResource("Resource_d1m6b"), SubResource("Resource_k1rqu"), SubResource("Resource_wwhtr")])

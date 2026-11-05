@@ -5,86 +5,22 @@ extends MarginContainer
 ## right-click to rename its show or remove it.
 ## The library itself is SongLibrary (music/); this panel only shows it.
 
+const SONG_ROW := preload("res://ui/panels/song_row.tscn")
+
 var ctx: StudioContext
 
-var _search := LineEdit.new()
-var _rows := VBoxContainer.new()
-var _scroll := ScrollContainer.new()
-var _empty: Control
-var _status := Label.new()
-var _count := Label.new()
-var _dialog: FileDialog
-var _menu := PopupMenu.new()
 var _menu_song: Song
-var _rename: ConfirmationDialog
-var _rename_edit := LineEdit.new()
 
-
-class SongRow:
-	extends PanelContainer
-	signal activated(song: Song)
-	signal context_requested(song: Song, at: Vector2)
-	var song: Song
-	var current := false:
-		set(v):
-			current = v
-			_restyle()
-	var _hover := false
-	var _pair: VBoxContainer
-	var _show := Label.new()
-
-	func _init(s: Song) -> void:
-		song = s
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		add_child(row)
-		_pair = UIKit.title_pair("", "")
-		_pair.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_pair.add_child(_show)
-		_show.theme_type_variation = &"Caption"
-		_show.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		row.add_child(_pair)
-		mouse_entered.connect(_set_hover.bind(true))
-		mouse_exited.connect(_set_hover.bind(false))
-		refresh()
-
-	func refresh() -> void:
-		(_pair.get_meta("title") as Label).text = song.display_title()
-		(_pair.get_meta("detail") as Label).text = song.detail_line()
-		_show.text = "◆ " + song.show_name + ("   · reading waveform…" if song.analysing else "")
-		tooltip_text = "%s\nImported from %s" % [song.display_title(), song.source_path]
-		_restyle()
-
-	func _set_hover(on: bool) -> void:
-		_hover = on
-		_restyle()
-
-	func _restyle() -> void:
-		var sb := StyleBoxFlat.new()
-		sb.content_margin_left = 10
-		sb.content_margin_right = 10
-		sb.content_margin_top = 8
-		sb.content_margin_bottom = 8
-		sb.set_corner_radius_all(UIPalette.RADIUS)
-		sb.bg_color = UIPalette.SELECTED_ROW if current else (UIPalette.HOVER if _hover else Color(0, 0, 0, 0))
-		if current:
-			sb.border_color = UIPalette.BEAT
-			sb.border_width_left = 2
-		add_theme_stylebox_override("panel", sb)
-		_show.add_theme_color_override("font_color", UIPalette.BEAT if current else UIPalette.TEXT_FAINT)
-
-	func _gui_input(event: InputEvent) -> void:
-		var mb := event as InputEventMouseButton
-		if mb == null or not mb.pressed:
-			return
-		if mb.button_index == MOUSE_BUTTON_LEFT:
-			activated.emit(song)
-			accept_event()
-		elif mb.button_index == MOUSE_BUTTON_RIGHT:
-			context_requested.emit(song, mb.global_position)
-			accept_event()
+@onready var _search: LineEdit = %Search
+@onready var _rows: VBoxContainer = %Rows
+@onready var _scroll: ScrollContainer = %Scroll
+@onready var _empty: Control = %Empty
+@onready var _status: Label = %Status
+@onready var _count: Label = %Count
+@onready var _dialog: FileDialog = %ImportDialog
+@onready var _menu: PopupMenu = %SongMenu
+@onready var _rename: ConfirmationDialog = %RenameDialog
+@onready var _rename_edit: LineEdit = %RenameEdit
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -97,71 +33,15 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	add_theme_constant_override("margin_left", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_right", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_top", 16)
-	add_theme_constant_override("margin_bottom", 8)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	add_child(col)
-
-	var head := UIKit.section("Songs", "+", "Import songs (or drag files onto the window)")
-	(head.get_meta("action") as Button).pressed.connect(_open_dialog)
-	col.add_child(head)
-
-	_search.placeholder_text = "Search songs"
-	_search.clear_button_enabled = true
+	%ImportButton.pressed.connect(_open_dialog)
 	_search.text_changed.connect(func(_t: String) -> void: _rebuild())
-	col.add_child(_search)
-
-	_count.theme_type_variation = &"Caption"
-	col.add_child(_count)
-
-	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rows.add_theme_constant_override("separation", 2)
-	_scroll.add_child(_rows)
-	col.add_child(_scroll)
-
-	_empty = UIKit.empty_state("No songs yet", "Drag MP3, WAV or OGG files onto the window, or press +. Each song gets its own light show that plays with it.")
-	col.add_child(_empty)
-
-	_status.theme_type_variation = &"Caption"
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.visible = false
-	col.add_child(_status)
-
-	var hint := Label.new()
-	hint.text = "Drop audio files anywhere on the window to import."
-	hint.theme_type_variation = &"Caption"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(hint)
-
-	_menu.add_item("Rename show…", 0)
-	_menu.add_separator()
-	_menu.add_item("Remove from library", 1)
 	_menu.id_pressed.connect(_on_menu)
-	add_child(_menu)
-
-	_rename = ConfirmationDialog.new()
-	_rename.title = "Rename show"
-	_rename.add_child(_rename_edit)
 	_rename.register_text_enter(_rename_edit)
 	_rename.confirmed.connect(_on_rename_confirmed)
-	add_child(_rename)
+	_dialog.files_selected.connect(func(paths: PackedStringArray) -> void: ctx.import_songs(paths))
 
 
 func _open_dialog() -> void:
-	if _dialog == null:
-		_dialog = FileDialog.new()
-		_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILES
-		_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		_dialog.use_native_dialog = true
-		_dialog.title = "Import songs"
-		_dialog.filters = PackedStringArray(["*.mp3, *.wav, *.ogg ; Audio files"])
-		_dialog.files_selected.connect(func(paths: PackedStringArray) -> void: ctx.import_songs(paths))
-		add_child(_dialog)
 	_dialog.popup_centered_ratio(0.6)
 
 
@@ -172,7 +52,8 @@ func _rebuild() -> void:
 		c.queue_free()
 	var list := ctx.library.search(_search.text)
 	for s in list:
-		var row := SongRow.new(s)
+		var row: SongRow = SONG_ROW.instantiate()
+		row.song = s
 		row.activated.connect(func(song: Song) -> void: ctx.load_song(song))
 		row.context_requested.connect(_on_context)
 		_rows.add_child(row)

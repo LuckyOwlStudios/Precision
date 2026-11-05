@@ -5,9 +5,10 @@ extends MarginContainer
 
 var ctx: StudioContext
 
-var _search := LineEdit.new()
-var _tree := Tree.new()
 var _entries: Array[FixtureCatalog.Entry] = []
+
+@onready var _search: LineEdit = %Search
+@onready var _tree: Tree = %Tree
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -15,37 +16,9 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	add_theme_constant_override("margin_left", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_right", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_top", 16)
-	add_theme_constant_override("margin_bottom", 8)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	add_child(col)
-
-	var head := UIKit.section("Fixtures", "+", "Add a fixture profile (coming soon)")
-	(head.get_meta("action") as Button).disabled = true
-	col.add_child(head)
-
-	_search.placeholder_text = "Search fixtures"
-	_search.clear_button_enabled = true
 	_search.text_changed.connect(func(_t: String) -> void: _rebuild())
-	col.add_child(_search)
-
-	_tree.hide_root = true
-	_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_tree.select_mode = Tree.SELECT_ROW
 	_tree.set_drag_forwarding(_get_drag, Callable(), Callable())
 	_tree.item_activated.connect(_on_activated)
-	col.add_child(_tree)
-
-	var hint := Label.new()
-	hint.text = "Drag onto the stage, or double-click to hang centre stage."
-	hint.theme_type_variation = &"Caption"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(hint)
-
 	_entries = FixtureCatalog.entries()
 	_rebuild()
 

@@ -1,3 +1,4 @@
+@tool
 class_name TransportButton
 extends Button
 ## Flat button that draws its own transport icon, so no icon font or image
@@ -5,20 +6,16 @@ extends Button
 
 enum Icon { PLAY, PAUSE, STOP, PREV, NEXT }
 
-var icon_kind: Icon = Icon.PLAY:
+## Size, flat style and cursor are set on the node in the scene.
+@export var icon_kind: Icon = Icon.PLAY:
 	set(v):
 		icon_kind = v
 		queue_redraw()
-var ring := false
-
-
-func _init(kind: Icon = Icon.PLAY, with_ring: bool = false) -> void:
-	icon_kind = kind
-	ring = with_ring
-	flat = true
-	focus_mode = Control.FOCUS_NONE
-	custom_minimum_size = Vector2(40, 40) if with_ring else Vector2(30, 30)
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+## Draw a circle around the icon (the main play button).
+@export var ring := false:
+	set(v):
+		ring = v
+		queue_redraw()
 
 
 func _draw() -> void:

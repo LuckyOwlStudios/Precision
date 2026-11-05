@@ -25,8 +25,6 @@ var quality: Quality = Quality.HIGH:
 ## Forward+ has volumetric fog, SSR, SSAO and glow that behaves; the
 ## Compatibility renderer gets a simpler look (beam cones still carry the haze).
 var forward_plus: bool = RenderingServer.get_current_rendering_method() == "forward_plus"
-## AreaLight3D arrived in Godot 4.7. Older editors fall back to spot lights.
-var has_area_lights: bool = ClassDB.class_exists("AreaLight3D")
 
 
 func load_saved() -> void:

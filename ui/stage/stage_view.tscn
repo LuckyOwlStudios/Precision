@@ -1,0 +1,329 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://ui/stage/stage_view.gd" id="1_oap3a"]
+[ext_resource type="PackedScene" path="res://ui/stage/stage_room.tscn" id="2_eb1qn"]
+[ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="3_2mcbt"]
+[ext_resource type="Script" path="res://ui/stage/transform_gizmo.gd" id="4_1eond"]
+
+[sub_resource type="Environment" id="Environment_onnio"]
+background_mode = 1
+background_color = Color(0.019607844, 0.023529412, 0.03137255, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.16470589, 0.19215687, 0.2509804, 1)
+ambient_light_energy = 0.35
+reflected_light_source = 1
+tonemap_mode = 4
+tonemap_white = 6.0
+ssr_enabled = true
+ssr_max_steps = 48
+ssao_enabled = true
+ssao_radius = 1.2
+ssao_light_affect = 0.15
+ssil_intensity = 0.8
+glow_enabled = true
+glow_levels/2 = 0.6
+glow_levels/3 = 0.8
+glow_levels/4 = 1.0
+glow_levels/5 = 0.7
+glow_levels/6 = 0.5
+glow_intensity = 0.8
+glow_bloom = 0.02
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.0146
+volumetric_fog_albedo = Color(0.9, 0.92, 1, 1)
+volumetric_fog_gi_inject = 0.0
+volumetric_fog_anisotropy = 0.55
+volumetric_fog_length = 28.0
+volumetric_fog_sky_affect = 0.0
+volumetric_fog_temporal_reprojection_amount = 0.85
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uxt18"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 1, 1, 0.05)
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_b7v1m"]
+_surfaces = [{
+"aabb": AABB(-8, 0.002, -6, 16, 1e-05, 12),
+"format": 34359738369,
+"primitive": 1,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 60,
+"vertex_data": PackedByteArray("AAAAwW8SAzsAAMDAAAAAwW8SAzsAAMBAAADgwG8SAzsAAMDAAADgwG8SAzsAAMBAAADAwG8SAzsAAMDAAADAwG8SAzsAAMBAAACgwG8SAzsAAMDAAACgwG8SAzsAAMBAAACAwG8SAzsAAMDAAACAwG8SAzsAAMBAAABAwG8SAzsAAMDAAABAwG8SAzsAAMBAAAAAwG8SAzsAAMDAAAAAwG8SAzsAAMBAAACAv28SAzsAAMDAAACAv28SAzsAAMBAAAAAAG8SAzsAAMDAAAAAAG8SAzsAAMBAAACAP28SAzsAAMDAAACAP28SAzsAAMBAAAAAQG8SAzsAAMDAAAAAQG8SAzsAAMBAAABAQG8SAzsAAMDAAABAQG8SAzsAAMBAAACAQG8SAzsAAMDAAACAQG8SAzsAAMBAAACgQG8SAzsAAMDAAACgQG8SAzsAAMBAAADAQG8SAzsAAMDAAADAQG8SAzsAAMBAAADgQG8SAzsAAMDAAADgQG8SAzsAAMBAAAAAQW8SAzsAAMDAAAAAQW8SAzsAAMBAAAAAwW8SAzsAAMDAAAAAQW8SAzsAAMDAAAAAwW8SAzsAAKDAAAAAQW8SAzsAAKDAAAAAwW8SAzsAAIDAAAAAQW8SAzsAAIDAAAAAwW8SAzsAAEDAAAAAQW8SAzsAAEDAAAAAwW8SAzsAAADAAAAAQW8SAzsAAADAAAAAwW8SAzsAAIC/AAAAQW8SAzsAAIC/AAAAwW8SAzsAAAAAAAAAQW8SAzsAAAAAAAAAwW8SAzsAAIA/AAAAQW8SAzsAAIA/AAAAwW8SAzsAAABAAAAAQW8SAzsAAABAAAAAwW8SAzsAAEBAAAAAQW8SAzsAAEBAAAAAwW8SAzsAAIBAAAAAQW8SAzsAAIBAAAAAwW8SAzsAAKBAAAAAQW8SAzsAAKBAAAAAwW8SAzsAAMBAAAAAQW8SAzsAAMBA")
+}]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_72e72"]
+render_priority = 10
+shader = ExtResource("3_2mcbt")
+shader_parameter/color = Color(1, 0.70980394, 0.2784314, 1)
+shader_parameter/style = 1
+shader_parameter/billboard = false
+shader_parameter/world_size = 0.28
+shader_parameter/min_px = 16.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_nb8rb"]
+size = Vector2(2, 2)
+
+[node name="StageView" type="Control" unique_id=1526728156]
+clip_contents = true
+layout_mode = 3
+anchors_preset = 0
+focus_mode = 1
+script = ExtResource("1_oap3a")
+
+[node name="ViewportContainer" type="SubViewportContainer" parent="." unique_id=1686579526]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+stretch = true
+
+[node name="Viewport" type="SubViewport" parent="ViewportContainer" unique_id=522441787]
+unique_name_in_owner = true
+own_world_3d = true
+handle_input_locally = false
+
+[node name="World" type="Node3D" parent="ViewportContainer/Viewport" unique_id=1055264608]
+
+[node name="Environment" type="WorldEnvironment" parent="ViewportContainer/Viewport/World" unique_id=557139697]
+unique_name_in_owner = true
+environment = SubResource("Environment_onnio")
+
+[node name="Room" type="Node3D" parent="ViewportContainer/Viewport/World" unique_id=1963531261 instance=ExtResource("2_eb1qn")]
+unique_name_in_owner = true
+
+[node name="Grid" type="MeshInstance3D" parent="ViewportContainer/Viewport/World" unique_id=1543877927]
+unique_name_in_owner = true
+material_override = SubResource("StandardMaterial3D_uxt18")
+cast_shadow = 0
+mesh = SubResource("ArrayMesh_b7v1m")
+
+[node name="DropMarker" type="MeshInstance3D" parent="ViewportContainer/Viewport/World" unique_id=1815916667]
+unique_name_in_owner = true
+editor_description = "Amber ring showing where a fixture dragged in from the library will land."
+visible = false
+material_override = SubResource("ShaderMaterial_72e72")
+extra_cull_margin = 4.0
+mesh = SubResource("QuadMesh_nb8rb")
+
+[node name="Fixtures" type="Node3D" parent="ViewportContainer/Viewport/World" unique_id=462440812]
+unique_name_in_owner = true
+
+[node name="Pivot" type="Node3D" parent="ViewportContainer/Viewport/World" unique_id=813404599]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.9702957, 0.2419219, 0, -0.2419219, 0.9702957, 0, 1.4, -0.5)
+
+[node name="Camera" type="Camera3D" parent="ViewportContainer/Viewport/World/Pivot" unique_id=208040064]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12.5)
+fov = 50.0
+
+[node name="Overlay" type="Control" parent="." unique_id=31798538]
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Gizmo" type="Control" parent="Overlay" unique_id=1637879360]
+unique_name_in_owner = true
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("4_1eond")
+
+[node name="ViewButtons" type="HBoxContainer" parent="Overlay" unique_id=461902371]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 16.0
+offset_bottom = 14.0
+theme_override_constants/separation = 2
+
+[node name="Perspective" type="Button" parent="Overlay/ViewButtons" unique_id=376449287]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+button_pressed = true
+text = "Perspective"
+
+[node name="Front" type="Button" parent="Overlay/ViewButtons" unique_id=434094859]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Front"
+
+[node name="Top" type="Button" parent="Overlay/ViewButtons" unique_id=725362222]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Top"
+
+[node name="Tools" type="HBoxContainer" parent="Overlay" unique_id=1209258975]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -16.0
+offset_top = 14.0
+offset_right = -16.0
+grow_horizontal = 0
+theme_override_constants/separation = 2
+
+[node name="Move" type="Button" parent="Overlay/Tools" unique_id=215642330]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Drag the arrows to move along one axis, the squares to move in a plane"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+button_pressed = true
+text = "Move  W"
+
+[node name="Rotate" type="Button" parent="Overlay/Tools" unique_id=746648570]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Drag a ring to turn the fixture around that axis"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Rotate  E"
+
+[node name="Gap" type="Control" parent="Overlay/Tools" unique_id=745719272]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+
+[node name="Snap" type="Button" parent="Overlay/Tools" unique_id=1422249062]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Snap"
+
+[node name="LookControls" type="HBoxContainer" parent="Overlay" unique_id=1006845961]
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -16.0
+offset_top = -14.0
+offset_right = -16.0
+offset_bottom = -14.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="HazeLabel" type="Label" parent="Overlay/LookControls" unique_id=794720736]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Haze"
+
+[node name="Haze" type="HSlider" parent="Overlay/LookControls" unique_id=1277716040]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "How much haze is in the room. Beams and light shafts show up more in haze."
+focus_mode = 0
+max_value = 1.0
+step = 0.01
+value = 0.45
+
+[node name="Gap" type="Control" parent="Overlay/LookControls" unique_id=984644216]
+custom_minimum_size = Vector2(6, 0)
+layout_mode = 2
+
+[node name="Low" type="Button" parent="Overlay/LookControls" unique_id=1595457844]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Fastest: beam cones only, no shadows or volumetric haze"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Low"
+
+[node name="Medium" type="Button" parent="Overlay/LookControls" unique_id=132788527]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Volumetric haze, moving head shadows, ambient occlusion"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Medium"
+
+[node name="High" type="Button" parent="Overlay/LookControls" unique_id=300121373]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Every light casts shadows, floor reflections, smoother haze"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+button_pressed = true
+text = "High"
+
+[node name="Ultra" type="Button" parent="Overlay/LookControls" unique_id=514387932]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Highest detail haze, soft shadows, light bounce. Needs a strong GPU"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Ultra"
+
+[node name="ForwardPlusNote" type="Label" parent="Overlay/LookControls" unique_id=1476330128]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Haze and shadows need the Forward+ renderer"
+
+[node name="Help" type="Label" parent="Overlay" unique_id=1128013438]
+layout_mode = 0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -30.0
+offset_right = 16.0
+offset_bottom = -30.0
+grow_vertical = 0
+theme_type_variation = &"Caption"
+text = "Right drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename"
+
+[node name="EmptyHint" type="VBoxContainer" parent="Overlay" unique_id=14525423]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="Overlay/EmptyHint" unique_id=891063850]
+layout_mode = 2
+theme_type_variation = &"BigTitle"
+text = "Your stage is empty"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="Overlay/EmptyHint" unique_id=1219605556]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Drag a fixture from the library onto a truss, wall or the floor. It sticks to what you drop it on."
+horizontal_alignment = 1
+
+[node name="LoadDemo" type="Button" parent="Overlay/EmptyHint" unique_id=1675836158]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Load demo rig"

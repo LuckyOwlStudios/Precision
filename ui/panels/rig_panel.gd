@@ -6,11 +6,12 @@ extends MarginContainer
 
 var ctx: StudioContext
 
-var _list := ItemList.new()
-var _empty: Control
 var _syncing := false
-var _editor := LineEdit.new()
 var _editing: DMXFixture
+
+@onready var _list: ItemList = %List
+@onready var _editor: LineEdit = %NameEditor ## floats over the row being renamed
+@onready var _empty: Control = %Empty
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -21,36 +22,16 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	add_theme_constant_override("margin_left", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_right", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_top", 16)
-	add_theme_constant_override("margin_bottom", 8)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	add_child(col)
-
-	var head := UIKit.section("On stage", "−", "Remove the selected fixture (Delete)")
-	(head.get_meta("action") as Button).pressed.connect(func() -> void: ctx.remove_fixture(ctx.selected))
-	col.add_child(head)
-
-	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	%RemoveButton.pressed.connect(func() -> void: ctx.remove_fixture(ctx.selected))
 	_list.item_selected.connect(_on_item_selected)
 	_list.item_activated.connect(_start_rename) # double-click or Enter
 	_list.gui_input.connect(_on_list_input)
-	col.add_child(_list)
-
-	_editor.visible = false
-	_editor.placeholder_text = "Fixture name"
 	_editor.text_submitted.connect(func(_t: String) -> void: _finish_rename(true))
 	_editor.focus_exited.connect(func() -> void: _finish_rename(true))
 	_editor.gui_input.connect(func(e: InputEvent) -> void:
 		if e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
 			_finish_rename(false)
 			_editor.accept_event())
-	_list.add_child(_editor)
-
-	_empty = UIKit.empty_state("Nothing patched", "Fixtures you place on the stage appear here with their DMX address.")
-	col.add_child(_empty)
 
 
 func _rebuild() -> void:

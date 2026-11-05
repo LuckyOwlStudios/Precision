@@ -1,0 +1,36 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[sub_resource type="Gradient" id="Gradient_rpny6"]
+colors = PackedColorArray(0.865, 0.865, 0.865, 1, 0.935, 0.935, 0.935, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_dgroy"]
+seed = 7
+frequency = 0.02
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_5i3hg"]
+noise = SubResource("FastNoiseLite_dgroy")
+color_ramp = SubResource("Gradient_rpny6")
+seamless = true
+
+[sub_resource type="Gradient" id="Gradient_27cu1"]
+colors = PackedColorArray(0.75, 0.75, 0.75, 1, 1, 1, 1, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_83vta"]
+seed = 3
+frequency = 0.02
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_63c5q"]
+noise = SubResource("FastNoiseLite_83vta")
+color_ramp = SubResource("Gradient_27cu1")
+seamless = true
+
+[resource]
+albedo_color = Color(0.3529412, 0.36862746, 0.4, 1)
+albedo_texture = SubResource("NoiseTexture2D_5i3hg")
+metallic_specular = 0.6
+roughness = 0.22
+roughness_texture = SubResource("NoiseTexture2D_63c5q")
+uv1_scale = Vector3(0.12, 0.12, 0.12)
+uv1_triplanar = true

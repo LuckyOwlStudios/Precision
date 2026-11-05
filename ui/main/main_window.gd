@@ -22,19 +22,12 @@ extends Control
 
 
 func _ready() -> void:
-	# The DJ tab is built in code so the scene file stays as it was.
-	var dj_panel := DJPanel.new()
-	dj_panel.name = "DJ"
-	right_tabs.add_child(dj_panel)
-
-	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Cues, %DMX, dj_panel]:
+	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Cues, %DMX, %DJ]:
 		panel.call("setup", ctx)
 
 	_title_tabs(left_tabs, ["Library", "On stage", "Songs"])
 	_title_tabs(right_tabs, ["Inspector", "Cues", "DMX", "DJ"])
 
-	for t: String in ["Stage", "Program", "Live"]:
-		workspace_tabs.add_tab(t.to_upper())
 	workspace_tabs.current_tab = ctx.workspace
 	workspace_tabs.tab_changed.connect(func(i: int) -> void: ctx.set_workspace(i as StudioContext.Workspace))
 	ctx.workspace_changed.connect(_apply_workspace)

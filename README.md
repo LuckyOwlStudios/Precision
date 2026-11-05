@@ -1,6 +1,6 @@
 # Lucky DMX: fixture control from Godot 4
 
-Open `project.godot` in Godot 4.4+ and press Play. The editor UI opens (see below).
+Open `project.godot` in Godot 4.7+ and press Play. The editor UI opens (see below).
 The original one-light test is still at `demo/demo.tscn` (open it and press F6).
 Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline, **ESC** = blackout.
 
@@ -15,6 +15,19 @@ Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline
 | Centre | 3D stage. Right drag orbit, middle drag pan, wheel zoom, F frame, left click select, Delete to remove. See **Placing fixtures** below. |
 | Bottom | Beat-grid timeline: the song's waveform, a lane per fixture, red playhead (Space plays the song). Clips come next. |
 | Right dock | **Inspector** (patch, colour, dimmer, pan/tilt), **Cues** (Record / GO), **DMX** (live 512-channel monitor). |
+
+Every part is a scene you can open and edit in the Godot editor; scripts only add behaviour
+and find their nodes by unique name (`%Name`), so you can move and restyle nodes freely as
+long as the unique names stay.
+
+| Scene | What's in it |
+|---|---|
+| `ui/main/main_window.tscn` | The window layout, with each panel below instanced into it. |
+| `ui/main/studio_context.tscn` | Shared state: Art-Net output (set the target IP here), universe, rig, cues, song library, music player, DJ sync. |
+| `ui/panels/*.tscn` | One scene per panel (library, on stage, songs, inspector, cues, DMX, DJ, timeline, now playing) and `song_row.tscn`. |
+| `ui/stage/stage_view.tscn` | The 3D stage: camera, environment, floor grid, overlay buttons. |
+| `ui/stage/stage_room.tscn` | The club room. `StageSurface` boxes are what fixtures snap to; the truss lattice is built by `TrussLattice`. |
+| `ui/stage/fixtures/*.tscn` | The 3D model of each fixture type (par, spot mover, wash mover, bar, strobe). |
 
 ### Placing fixtures
 - **Drop from the library** onto a truss, the back wall, the floor or the DJ booth: the fixture sticks
@@ -97,10 +110,11 @@ DJ setups can be supported and in what order.
 ![DJ tab following the simulator](docs/ui/dj.png)
 
 ## Hooking up your light
-1. In `demo/demo.gd`, set `PROFILE_CHANNELS` to your fixture's channel list,
-   in order, as shown in its manual for the DMX mode it's set to. Set `START_ADDRESS`
-   to the address shown on the fixture.
-2. Set `TARGET_IP` to your Art-Net node's IP. Broadcast (255.255.255.255) works for a first test.
+1. Open `demo/demo.tscn` and select **Par1**. In the Inspector, open its **Profile** and set
+   **Channels** to your fixture's channel list, in order, as shown in its manual for the DMX
+   mode it's set to. Set **Start Address** to the address shown on the fixture.
+2. Select **ArtNet** and set **Target Ip** to your Art-Net node's IP. Broadcast
+   (255.255.255.255) works for a first test.
 3. No hardware yet? Point it at 127.0.0.1 and use a visualizer such as QLC+ (free)
    with an Art-Net input to check the values.
 

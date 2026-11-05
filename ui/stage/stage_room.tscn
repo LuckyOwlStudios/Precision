@@ -1,0 +1,277 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://ui/stage/materials/floor.tres" id="1_1rpdm"]
+[ext_resource type="Script" path="res://ui/stage/stage_surface.gd" id="2_cnp4q"]
+[ext_resource type="Material" path="res://ui/stage/materials/wall.tres" id="3_ocj3k"]
+[ext_resource type="Material" path="res://ui/stage/materials/booth.tres" id="4_kf3tl"]
+[ext_resource type="Material" path="res://ui/stage/materials/booth_top.tres" id="5_2224x"]
+[ext_resource type="Material" path="res://ui/stage/materials/aluminium.tres" id="6_dnpj2"]
+[ext_resource type="Script" path="res://ui/stage/truss_lattice.gd" id="7_dxc5a"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_vfd2g"]
+size = Vector3(60, 0.1, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_sw25e"]
+size = Vector3(16, 6, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1iv38"]
+size = Vector3(9, 0.29, 0.29)
+
+[sub_resource type="BoxMesh" id="BoxMesh_81af7"]
+size = Vector3(2, 1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1vbkv"]
+size = Vector3(1.6, 0.06, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4li6c"]
+size = Vector3(0.6, 0.02, 0.6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a4gb1"]
+size = Vector3(0.31, 0.31, 0.31)
+
+[sub_resource type="QuadMesh" id="QuadMesh_b7pus"]
+size = Vector2(12, 6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yvoum"]
+albedo_color = Color(0.0627451, 0.06666667, 0.078431375, 1)
+metallic = 0.4
+roughness = 0.35
+
+[sub_resource type="BoxMesh" id="BoxMesh_fs0a1"]
+size = Vector3(0.36, 0.06, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_b8bm3"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(0.30980393, 0.5529412, 1, 1)
+emission_energy_multiplier = 1.6
+
+[sub_resource type="BoxMesh" id="BoxMesh_4a27h"]
+size = Vector3(0.16, 0.012, 0.09)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_2ashe"]
+top_radius = 0.1
+bottom_radius = 0.1
+height = 0.015
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5tsoo"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.23137255, 0.41960785, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_yquoy"]
+size = Vector3(0.05, 0.008, 0.03)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_bnt6v"]
+top_radius = 0.1
+bottom_radius = 0.1
+height = 0.015
+
+[sub_resource type="BoxMesh" id="BoxMesh_8a2rh"]
+size = Vector3(0.3, 0.07, 0.38)
+
+[sub_resource type="BoxMesh" id="BoxMesh_vk8s3"]
+size = Vector3(0.2, 0.01, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_deimv"]
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.70980394, 0.2784314, 1)
+emission_energy_multiplier = 2.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_0bxw3"]
+size = Vector3(1.96, 0.012, 0.012)
+
+[node name="StageRoom" type="Node3D" unique_id=1963531261]
+
+[node name="Floor" type="MeshInstance3D" parent="." unique_id=1234638688]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+material_override = ExtResource("1_1rpdm")
+mesh = SubResource("BoxMesh_vfd2g")
+script = ExtResource("2_cnp4q")
+kind = 0
+
+[node name="BackWall" type="MeshInstance3D" parent="." unique_id=1243691223]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -6)
+material_override = ExtResource("3_ocj3k")
+mesh = SubResource("BoxMesh_sw25e")
+script = ExtResource("2_cnp4q")
+kind = 1
+
+[node name="TrussFront" type="MeshInstance3D" parent="." unique_id=308367013]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.7, 0.5)
+visible = false
+mesh = SubResource("BoxMesh_1iv38")
+script = ExtResource("2_cnp4q")
+kind = 2
+
+[node name="TrussBack" type="MeshInstance3D" parent="." unique_id=734552013]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.7, -0.8)
+visible = false
+mesh = SubResource("BoxMesh_1iv38")
+script = ExtResource("2_cnp4q")
+kind = 2
+
+[node name="Booth" type="MeshInstance3D" parent="." unique_id=300036506]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -2.6)
+material_override = ExtResource("4_kf3tl")
+mesh = SubResource("BoxMesh_81af7")
+script = ExtResource("2_cnp4q")
+
+[node name="BoothTop" type="MeshInstance3D" parent="." unique_id=2133928455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.03, -2.6)
+material_override = ExtResource("5_2224x")
+mesh = SubResource("BoxMesh_1vbkv")
+script = ExtResource("2_cnp4q")
+
+[node name="Truss" type="MeshInstance3D" parent="." unique_id=1567738142]
+material_override = ExtResource("6_dnpj2")
+script = ExtResource("7_dxc5a")
+
+[node name="TrussFeet" type="Node3D" parent="." unique_id=1698549320]
+
+[node name="BasePlateFrontLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1159030924]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 0.01, 0.5)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_4li6c")
+
+[node name="CornerFrontLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1529714444]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 3.7, 0.5)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_a4gb1")
+
+[node name="BasePlateFrontRight" type="MeshInstance3D" parent="TrussFeet" unique_id=1668703470]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 0.01, 0.5)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_4li6c")
+
+[node name="CornerFrontRight" type="MeshInstance3D" parent="TrussFeet" unique_id=979456091]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 3.7, 0.5)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_a4gb1")
+
+[node name="BasePlateBackLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1605313330]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 0.01, -0.8)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_4li6c")
+
+[node name="CornerBackLeft" type="MeshInstance3D" parent="TrussFeet" unique_id=1998032421]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.65, 3.7, -0.8)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_a4gb1")
+
+[node name="BasePlateBackRight" type="MeshInstance3D" parent="TrussFeet" unique_id=618089244]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 0.01, -0.8)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_4li6c")
+
+[node name="CornerBackRight" type="MeshInstance3D" parent="TrussFeet" unique_id=861533638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.65, 3.7, -0.8)
+material_override = ExtResource("6_dnpj2")
+mesh = SubResource("BoxMesh_a4gb1")
+
+[node name="LeftWall" type="MeshInstance3D" parent="." unique_id=458969175]
+editor_description = "Faces into the room, so it is see-through when the camera orbits outside."
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -8, 3, 0)
+material_override = ExtResource("3_ocj3k")
+mesh = SubResource("QuadMesh_b7pus")
+
+[node name="RightWall" type="MeshInstance3D" parent="." unique_id=125779431]
+editor_description = "Faces into the room, so it is see-through when the camera orbits outside."
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 8, 3, 0)
+material_override = ExtResource("3_ocj3k")
+mesh = SubResource("QuadMesh_b7pus")
+
+[node name="BoothGear" type="Node3D" parent="." unique_id=327154243]
+
+[node name="PlayerLeft" type="Node3D" parent="BoothGear" unique_id=753060638]
+
+[node name="Body" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=1255282856]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 1.09, -2.6)
+material_override = SubResource("StandardMaterial3D_yvoum")
+mesh = SubResource("BoxMesh_fs0a1")
+
+[node name="Screen" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=323910614]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 1.126, -2.74)
+material_override = SubResource("StandardMaterial3D_b8bm3")
+mesh = SubResource("BoxMesh_4a27h")
+
+[node name="JogWheel" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=2124627186]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 1.127, -2.55)
+material_override = SubResource("StandardMaterial3D_yvoum")
+mesh = SubResource("CylinderMesh_2ashe")
+
+[node name="Pad1" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=549696112]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.63, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Pad2" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=1294570618]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.555, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Pad3" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=1730394406]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.48, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Pad4" type="MeshInstance3D" parent="BoothGear/PlayerLeft" unique_id=1448801108]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.405, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="PlayerRight" type="Node3D" parent="BoothGear" unique_id=1613227914]
+
+[node name="Body" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=933445455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 1.09, -2.6)
+material_override = SubResource("StandardMaterial3D_yvoum")
+mesh = SubResource("BoxMesh_fs0a1")
+
+[node name="Screen" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=327834356]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 1.126, -2.74)
+material_override = SubResource("StandardMaterial3D_b8bm3")
+mesh = SubResource("BoxMesh_4a27h")
+
+[node name="JogWheel" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=794373994]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 1.127, -2.55)
+material_override = SubResource("StandardMaterial3D_yvoum")
+mesh = SubResource("CylinderMesh_bnt6v")
+
+[node name="Pad1" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=992336406]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.41, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Pad2" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=854854438]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.485, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Pad3" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=1581540050]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.56, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Pad4" type="MeshInstance3D" parent="BoothGear/PlayerRight" unique_id=1793008940]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.635, 1.124, -2.44)
+material_override = SubResource("StandardMaterial3D_5tsoo")
+mesh = SubResource("BoxMesh_yquoy")
+
+[node name="Mixer" type="Node3D" parent="BoothGear" unique_id=1691109362]
+
+[node name="Body" type="MeshInstance3D" parent="BoothGear/Mixer" unique_id=888343849]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.095, -2.6)
+material_override = SubResource("StandardMaterial3D_yvoum")
+mesh = SubResource("BoxMesh_8a2rh")
+
+[node name="Screen" type="MeshInstance3D" parent="BoothGear/Mixer" unique_id=352207713]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.135, -2.72)
+material_override = SubResource("StandardMaterial3D_b8bm3")
+mesh = SubResource("BoxMesh_vk8s3")
+
+[node name="LightStrip" type="MeshInstance3D" parent="BoothGear" unique_id=1977357376]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.96, -2.194)
+material_override = SubResource("StandardMaterial3D_deimv")
+mesh = SubResource("BoxMesh_0bxw3")

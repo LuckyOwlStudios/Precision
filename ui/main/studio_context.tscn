@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/main/studio_context.gd" id="1_ctx"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/artnet_output.gd" id="2_artnet"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/dmx_universe.gd" id="3_universe"]
+[ext_resource type="Script" path="res://addons/lucky_dmx/cue_stack.gd" id="4_cues"]
+[ext_resource type="Script" path="res://music/song_library.gd" id="5_songs"]
+[ext_resource type="Script" path="res://djsync/dj_sync.gd" id="6_dj"]
+
+[node name="Studio" type="Node"]
+script = ExtResource("1_ctx")
+
+[node name="ArtNet" type="Node" parent="."]
+script = ExtResource("2_artnet")
+target_ip = "127.0.0.1"
+editor_description = "Art-Net target. 127.0.0.1 keeps packets on this computer until you have an interface; set Target Ip to the node's IP (or a broadcast address) for real lights."
+
+[node name="Universe1" type="Node" parent="." node_paths=PackedStringArray("output")]
+process_priority = 100
+script = ExtResource("3_universe")
+output = NodePath("../ArtNet")
+
+[node name="Rig" type="Node" parent="."]
+editor_description = "Placed fixtures (DMXFixture nodes) are added here at runtime."
+
+[node name="Cues" type="Node" parent="." node_paths=PackedStringArray("fixtures_root")]
+script = ExtResource("4_cues")
+fixtures_root = NodePath("../Rig")
+
+[node name="Songs" type="Node" parent="."]
+script = ExtResource("5_songs")
+
+[node name="Music" type="AudioStreamPlayer" parent="."]
+
+[node name="DJSync" type="Node" parent="."]
+script = ExtResource("6_dj")

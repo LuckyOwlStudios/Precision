@@ -15,14 +15,8 @@ const DRAG_THRESHOLD_PX := 4.0
 
 var ctx: StudioContext
 
-var _container := SubViewportContainer.new()
-var _viewport := SubViewport.new()
-var _world := Node3D.new()
-var _pivot := Node3D.new()
-var _camera := Camera3D.new()
-var _visuals: Dictionary = {} ## DMXFixture -> StageFixture3D
 var look := StageLook.new() ## haze and render quality (visual only)
-var _env: Environment
+var _visuals: Dictionary = {} ## DMXFixture -> StageFixture3D
 
 var _yaw := 0.0
 var _pitch := -14.0
@@ -41,14 +35,23 @@ var _drag_offset := Vector3.ZERO ## fixture origin minus the grab point on the p
 var _drag_screen_offset := Vector2.ZERO ## fixture on screen minus the cursor
 var _drag_start := Transform3D.IDENTITY
 
-var _empty_hint: Control
-var _overlay: Control
-var _gizmo := TransformGizmo.new()
 var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
-var _snap_button := Button.new()
-var _tools: HBoxContainer
-var _drop_marker := MeshInstance3D.new()
-var _grid: MeshInstance3D
+var _view_buttons: Dictionary = {} ## preset name -> Button
+var _quality_buttons: Array[Button] = []
+
+@onready var _viewport: SubViewport = %Viewport
+@onready var _env: Environment = (%Environment as WorldEnvironment).environment
+@onready var _room: Node3D = %Room
+@onready var _fixtures: Node3D = %Fixtures ## a StageFixture3D per placed fixture goes here
+@onready var _pivot: Node3D = %Pivot
+@onready var _camera: Camera3D = %Camera
+@onready var _grid: MeshInstance3D = %Grid
+@onready var _drop_marker: MeshInstance3D = %DropMarker
+@onready var _gizmo: TransformGizmo = %Gizmo
+@onready var _tools: Control = %Tools
+@onready var _snap_button: Button = %Snap
+@onready var _haze: HSlider = %Haze
+@onready var _empty_hint: Control = %EmptyHint
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -61,48 +64,38 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	focus_mode = Control.FOCUS_CLICK
-	clip_contents = true
-	# The container only displays the 3D image; this Control handles input.
-	_container.stretch = true
-	_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_container.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(_container)
-	_viewport.own_world_3d = true
 	look.load_saved()
+	_surfaces = StageRoom.surfaces_in(_room)
+	(_drop_marker.material_override as ShaderMaterial).set_shader_parameter("color", UIPalette.ACCENT)
+	_gizmo.camera = _camera
+
+	# View presets, top left.
+	_view_buttons = {"Perspective": %Perspective, "Front": %Front, "Top": %Top}
+	for preset: String in _view_buttons:
+		(_view_buttons[preset] as Button).pressed.connect(_set_view.bind(preset))
+
+	# Gizmo mode and snapping, top right.
+	_mode_buttons = {TransformGizmo.Mode.MOVE: %Move, TransformGizmo.Mode.ROTATE: %Rotate}
+	for m: TransformGizmo.Mode in _mode_buttons:
+		(_mode_buttons[m] as Button).pressed.connect(set_gizmo_mode.bind(m))
+	_snap_button.tooltip_text = "Move in %.2f m steps and rotate in %d° steps. Hold Ctrl while dragging to flip this." % [TransformGizmo.MOVE_STEP, int(TransformGizmo.ROTATE_STEP)]
+	set_gizmo_mode(TransformGizmo.Mode.MOVE)
+
+	# Haze and quality, bottom right: how the stage is drawn, not the show.
+	_haze.value = look.haze
+	_haze.value_changed.connect(func(v: float) -> void: look.haze = v)
+	_quality_buttons = [%Low, %Medium, %High, %Ultra]
+	for q in _quality_buttons.size():
+		_quality_buttons[q].pressed.connect(func() -> void: look.quality = q as StageLook.Quality)
+	%ForwardPlusNote.visible = not look.forward_plus
+	look.changed.connect(_sync_look_controls)
+	_sync_look_controls()
+
+	%LoadDemo.pressed.connect(func() -> void: ctx.load_demo_rig())
+
 	look.changed.connect(_apply_look)
-	_container.add_child(_viewport)
-	_viewport.add_child(_world)
-	_build_world()
-	_build_overlay()
-	_update_camera()
-
-
-# ---------------------------------------------------------------- world
-
-func _build_world() -> void:
-	_env = look.build_environment()
-	var we := WorldEnvironment.new()
-	we.environment = _env
-	_world.add_child(we)
 	_apply_look()
-
-	_surfaces = StageRoom.surfaces()
-	for surf in _surfaces:
-		if surf.kind == StageRoom.Kind.TRUSS:
-			continue # drawn as a lattice by StageSet
-		var mesh := BoxMesh.new()
-		mesh.size = surf.box.size
-		_add_static(mesh, surf.material, surf.box.get_center())
-	StageSet.build(_world)
-	_add_grid(16, 12)
-	_build_drop_marker()
-
-	_world.add_child(_pivot)
-	_pivot.add_child(_camera)
-	_camera.fov = 50.0
-	_pivot.position = Vector3(0, 1.4, -0.5)
+	_update_camera()
 
 
 ## Haze or quality changed: retune the environment and the viewport.
@@ -116,217 +109,15 @@ func _apply_look() -> void:
 	look.save()
 
 
-func _add_static(mesh: Mesh, mat: Material, pos: Vector3) -> void:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	_world.add_child(mi)
+func _sync_look_controls() -> void:
+	_haze.set_value_no_signal(look.haze)
+	for i in _quality_buttons.size():
+		_quality_buttons[i].button_pressed = i == look.quality
 
 
-## Amber ring that shows where a dragged-in fixture will land, lying flat on
-## the surface (same look as the selection brackets).
-func _build_drop_marker() -> void:
-	var quad := QuadMesh.new()
-	quad.size = Vector2(2, 2)
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://ui/stage/marker.gdshader")
-	mat.set_shader_parameter("color", UIPalette.ACCENT)
-	mat.set_shader_parameter("style", 1)
-	mat.set_shader_parameter("billboard", false)
-	mat.set_shader_parameter("world_size", 0.28)
-	mat.set_shader_parameter("min_px", 16.0)
-	mat.render_priority = 10
-	_drop_marker.mesh = quad
-	_drop_marker.material_override = mat
-	_drop_marker.extra_cull_margin = 4.0
-	_drop_marker.visible = false
-	_world.add_child(_drop_marker)
-
-
-func _add_grid(w: int, d: int) -> void:
-	var im := ImmediateMesh.new()
-	im.surface_begin(Mesh.PRIMITIVE_LINES)
-	for x in range(-w / 2, w / 2 + 1):
-		im.surface_add_vertex(Vector3(x, 0.002, -d / 2.0))
-		im.surface_add_vertex(Vector3(x, 0.002, d / 2.0))
-	for z in range(-d / 2, d / 2 + 1):
-		im.surface_add_vertex(Vector3(-w / 2.0, 0.002, z))
-		im.surface_add_vertex(Vector3(w / 2.0, 0.002, z))
-	im.surface_end()
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(1, 1, 1, 0.05)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_grid = MeshInstance3D.new()
-	_grid.mesh = im
-	_grid.material_override = mat
-	_grid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_world.add_child(_grid)
-
-
-# ---------------------------------------------------------------- overlay (2D on top of 3D)
-
-func _build_overlay() -> void:
-	_overlay = Control.new()
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_overlay)
-	_gizmo.camera = _camera
-	_overlay.add_child(_gizmo)
-
-	# View presets, top left.
-	var bar := HBoxContainer.new()
-	bar.position = Vector2(16, 14)
-	bar.add_theme_constant_override("separation", 2)
-	_overlay.add_child(bar)
-	for preset: String in ["Perspective", "Front", "Top"]:
-		var b := Button.new()
-		b.text = preset
-		b.theme_type_variation = &"PillButton"
-		b.toggle_mode = true
-		b.button_pressed = preset == "Perspective"
-		b.focus_mode = Control.FOCUS_NONE
-		b.mouse_filter = Control.MOUSE_FILTER_STOP
-		b.pressed.connect(_set_view.bind(preset, bar))
-		bar.add_child(b)
-
-	# Gizmo mode and snapping, top right.
-	var tools := HBoxContainer.new()
-	tools.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	tools.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	tools.offset_left = -16
-	tools.offset_right = -16
-	tools.offset_top = 14
-	tools.add_theme_constant_override("separation", 2)
-	_overlay.add_child(tools)
-	_tools = tools
-	for m: TransformGizmo.Mode in [TransformGizmo.Mode.MOVE, TransformGizmo.Mode.ROTATE]:
-		var b := Button.new()
-		b.text = "Move  W" if m == TransformGizmo.Mode.MOVE else "Rotate  E"
-		b.tooltip_text = "Drag the arrows to move along one axis, the squares to move in a plane" if m == TransformGizmo.Mode.MOVE else "Drag a ring to turn the fixture around that axis"
-		b.theme_type_variation = &"PillButton"
-		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.mouse_filter = Control.MOUSE_FILTER_STOP
-		b.pressed.connect(set_gizmo_mode.bind(m))
-		tools.add_child(b)
-		_mode_buttons[m] = b
-	var gap := Control.new()
-	gap.custom_minimum_size.x = 10
-	tools.add_child(gap)
-	_snap_button.text = "Snap"
-	_snap_button.tooltip_text = "Move in %.2f m steps and rotate in %d° steps. Hold Ctrl while dragging to flip this." % [TransformGizmo.MOVE_STEP, int(TransformGizmo.ROTATE_STEP)]
-	_snap_button.theme_type_variation = &"PillButton"
-	_snap_button.toggle_mode = true
-	_snap_button.focus_mode = Control.FOCUS_NONE
-	_snap_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	tools.add_child(_snap_button)
-	set_gizmo_mode(TransformGizmo.Mode.MOVE)
-
-	_build_look_controls()
-
-	var help := Label.new()
-	help.text = "Right drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename"
-	help.theme_type_variation = &"Caption"
-	help.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	help.position = Vector2(16, -30)
-	help.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_overlay.add_child(help)
-
-	# Empty state, centred.
-	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	box.grow_vertical = Control.GROW_DIRECTION_BOTH
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var title := Label.new()
-	title.text = "Your stage is empty"
-	title.theme_type_variation = &"BigTitle"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var sub := Label.new()
-	sub.text = "Drag a fixture from the library onto a truss, wall or the floor. It sticks to what you drop it on."
-	sub.theme_type_variation = &"Subtitle"
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var demo := Button.new()
-	demo.text = "Load demo rig"
-	demo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	demo.mouse_filter = Control.MOUSE_FILTER_STOP
-	demo.pressed.connect(func() -> void: ctx.load_demo_rig())
-	box.add_child(title)
-	box.add_child(sub)
-	box.add_child(demo)
-	_empty_hint = box
-	_overlay.add_child(box)
-
-
-## Haze and quality, bottom right: how the stage is drawn, not the show.
-func _build_look_controls() -> void:
-	var row := HBoxContainer.new()
-	row.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	row.offset_left = -16
-	row.offset_right = -16
-	row.offset_top = -14
-	row.offset_bottom = -14
-	row.add_theme_constant_override("separation", 8)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(row)
-
-	var haze_label := Label.new()
-	haze_label.text = "Haze"
-	haze_label.theme_type_variation = &"Caption"
-	row.add_child(haze_label)
-	var haze := HSlider.new()
-	haze.custom_minimum_size = Vector2(110, 0)
-	haze.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	haze.min_value = 0.0
-	haze.max_value = 1.0
-	haze.step = 0.01
-	haze.value = look.haze
-	haze.focus_mode = Control.FOCUS_NONE
-	haze.mouse_filter = Control.MOUSE_FILTER_STOP
-	haze.tooltip_text = "How much haze is in the room. Beams and light shafts show up more in haze."
-	haze.value_changed.connect(func(v: float) -> void: look.haze = v)
-	row.add_child(haze)
-	var quality_buttons: Array[Button] = []
-
-	var gap := Control.new()
-	gap.custom_minimum_size.x = 6
-	row.add_child(gap)
-	for q in StageLook.Quality.size():
-		var b := Button.new()
-		b.text = StageLook.QUALITY_NAMES[q]
-		b.theme_type_variation = &"PillButton"
-		b.toggle_mode = true
-		b.button_pressed = q == look.quality
-		b.focus_mode = Control.FOCUS_NONE
-		b.mouse_filter = Control.MOUSE_FILTER_STOP
-		b.tooltip_text = [
-			"Fastest: beam cones only, no shadows or volumetric haze",
-			"Volumetric haze, moving head shadows, ambient occlusion",
-			"Every light casts shadows, floor reflections, smoother haze",
-			"Highest detail haze, soft shadows, light bounce. Needs a strong GPU",
-		][q]
-		b.pressed.connect(func() -> void: look.quality = q as StageLook.Quality)
-		row.add_child(b)
-		quality_buttons.append(b)
-	look.changed.connect(func() -> void:
-		haze.set_value_no_signal(look.haze)
-		for i in quality_buttons.size():
-			quality_buttons[i].button_pressed = i == look.quality)
-	if not look.forward_plus:
-		var note := Label.new()
-		note.text = "Haze and shadows need the Forward+ renderer"
-		note.theme_type_variation = &"Caption"
-		row.add_child(note)
-
-
-func _set_view(preset: String, bar: HBoxContainer) -> void:
-	for b in bar.get_children():
-		(b as Button).button_pressed = (b as Button).text == preset
+func _set_view(preset: String) -> void:
+	for key: String in _view_buttons:
+		(_view_buttons[key] as Button).button_pressed = key == preset
 	match preset:
 		"Perspective":
 			_yaw = 0.0
@@ -352,8 +143,8 @@ func _sync_fixtures() -> void:
 			_visuals.erase(fx)
 	for fx in live:
 		if not _visuals.has(fx):
-			var v := StageFixture3D.new()
-			_world.add_child(v)
+			var v := StageFixture3D.create(fx)
+			_fixtures.add_child(v)
 			v.setup(fx, ctx, look)
 			_visuals[fx] = v
 	_empty_hint.visible = live.is_empty()

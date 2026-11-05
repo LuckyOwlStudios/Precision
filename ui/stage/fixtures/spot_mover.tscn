@@ -1,0 +1,186 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/stage/stage_fixture_3d.gd" id="1_l8xea"]
+[ext_resource type="Shader" path="res://ui/stage/lens_glow.gdshader" id="2_c1ork"]
+[ext_resource type="Shader" path="res://ui/stage/beam.gdshader" id="3_h6r62"]
+[ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_tr227"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1od8b"]
+resource_local_to_scene = true
+resource_name = "Lens"
+albedo_color = Color(0.02745098, 0.03137255, 0.039215688, 1)
+metallic = 0.2
+roughness = 0.08
+emission_enabled = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6a1dv"]
+resource_local_to_scene = true
+resource_name = "LensGlow"
+render_priority = 2
+shader = ExtResource("2_c1ork")
+shader_parameter/size = 0.6
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u2d8k"]
+resource_local_to_scene = true
+resource_name = "Beam"
+render_priority = 1
+shader = ExtResource("3_h6r62")
+shader_parameter/beam_length = 10.0
+shader_parameter/edge_softness = 2.4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_o6tlr"]
+resource_local_to_scene = true
+resource_name = "SelectionMarker"
+render_priority = 10
+shader = ExtResource("4_tr227")
+shader_parameter/color = Color(1, 0.70980394, 0.2784314, 1)
+shader_parameter/style = 0
+shader_parameter/world_size = 0.42
+shader_parameter/appear = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_sj5fg"]
+resource_name = "Shell"
+albedo_color = Color(0.08627451, 0.09411765, 0.10980392, 1)
+metallic = 0.35
+roughness = 0.42
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_q6i7a"]
+top_radius = 0.12
+bottom_radius = 0.14
+height = 0.32
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ybuye"]
+resource_name = "Trim"
+albedo_color = Color(0.16862746, 0.18431373, 0.21176471, 1)
+metallic = 0.8
+roughness = 0.3
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_nlav7"]
+top_radius = 0.145
+bottom_radius = 0.145
+height = 0.03
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_818bg"]
+top_radius = 0.11
+bottom_radius = 0.11
+height = 0.012
+
+[sub_resource type="QuadMesh" id="QuadMesh_kbg5s"]
+size = Vector2(2, 2)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_xmtb5"]
+top_radius = 0.088
+bottom_radius = 1.1390424
+height = 10.0
+radial_segments = 48
+rings = 6
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="BoxMesh" id="BoxMesh_qlyfb"]
+size = Vector3(0.05, 0.3, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gp4py"]
+size = Vector3(0.43, 0.04, 0.14)
+
+[sub_resource type="BoxMesh" id="BoxMesh_mpyg5"]
+size = Vector3(0.36, 0.14, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xtayr"]
+resource_name = "Display"
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(0.23921569, 0.48235294, 1, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_j3qr0"]
+size = Vector3(0.12, 0.012, 0.06)
+
+[sub_resource type="QuadMesh" id="QuadMesh_4qbny"]
+size = Vector2(2, 2)
+
+[node name="SpotMover" type="Node3D" unique_id=1236797389]
+script = ExtResource("1_l8xea")
+body = 1
+lens_material = SubResource("StandardMaterial3D_1od8b")
+glow_material = SubResource("ShaderMaterial_6a1dv")
+beam_material = SubResource("ShaderMaterial_u2d8k")
+marker_material = SubResource("ShaderMaterial_o6tlr")
+
+[node name="Yoke" type="Node3D" parent="." unique_id=55736272]
+unique_name_in_owner = true
+
+[node name="Head" type="Node3D" parent="Yoke" unique_id=848955994]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, 0)
+
+[node name="Shell" type="MeshInstance3D" parent="Yoke/Head" unique_id=1505088433]
+material_override = SubResource("StandardMaterial3D_sj5fg")
+mesh = SubResource("CylinderMesh_q6i7a")
+
+[node name="Bezel" type="MeshInstance3D" parent="Yoke/Head" unique_id=152080123]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.155, 0)
+material_override = SubResource("StandardMaterial3D_ybuye")
+mesh = SubResource("CylinderMesh_nlav7")
+
+[node name="Lens" type="MeshInstance3D" parent="Yoke/Head" unique_id=90169243]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.17, 0)
+material_override = SubResource("StandardMaterial3D_1od8b")
+mesh = SubResource("CylinderMesh_818bg")
+
+[node name="Glow" type="MeshInstance3D" parent="Yoke/Head" unique_id=2118005124]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, 0)
+material_override = SubResource("ShaderMaterial_6a1dv")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_kbg5s")
+
+[node name="Beam" type="MeshInstance3D" parent="Yoke/Head" unique_id=2129394221]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.18, 0)
+material_override = SubResource("ShaderMaterial_u2d8k")
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_xmtb5")
+
+[node name="Light" type="SpotLight3D" parent="Yoke/Head" unique_id=802966017]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, -0.182, 0)
+visible = false
+light_specular = 0.6
+shadow_bias = 0.04
+spot_range = 14.0
+spot_attenuation = 0.8
+spot_angle = 6.6
+spot_angle_attenuation = 0.35
+
+[node name="ArmLeft" type="MeshInstance3D" parent="Yoke" unique_id=1611468746]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.19, -0.08, 0)
+material_override = SubResource("StandardMaterial3D_sj5fg")
+mesh = SubResource("BoxMesh_qlyfb")
+
+[node name="ArmRight" type="MeshInstance3D" parent="Yoke" unique_id=663942506]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.19, -0.08, 0)
+material_override = SubResource("StandardMaterial3D_sj5fg")
+mesh = SubResource("BoxMesh_qlyfb")
+
+[node name="Bridge" type="MeshInstance3D" parent="Yoke" unique_id=1681763257]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+material_override = SubResource("StandardMaterial3D_sj5fg")
+mesh = SubResource("BoxMesh_gp4py")
+
+[node name="Base" type="MeshInstance3D" parent="." unique_id=381669487]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
+material_override = SubResource("StandardMaterial3D_sj5fg")
+mesh = SubResource("BoxMesh_mpyg5")
+
+[node name="Display" type="MeshInstance3D" parent="." unique_id=721710708]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0.151)
+material_override = SubResource("StandardMaterial3D_xtayr")
+mesh = SubResource("BoxMesh_j3qr0")
+
+[node name="Marker" type="MeshInstance3D" parent="." unique_id=733442731]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, 0)
+visible = false
+material_override = SubResource("ShaderMaterial_o6tlr")
+cast_shadow = 0
+extra_cull_margin = 4.0
+mesh = SubResource("QuadMesh_4qbny")

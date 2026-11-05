@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/fixture_library_panel.gd" id="1_uv6v4"]
+
+[node name="FixtureLibraryPanel" type="MarginContainer" unique_id=1271215408]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+script = ExtResource("1_uv6v4")
+
+[node name="Column" type="VBoxContainer" parent="." unique_id=553236544]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Heading" type="VBoxContainer" parent="Column" unique_id=189836308]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Column/Heading" unique_id=1291855095]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column/Heading/Row" unique_id=1495634750]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Fixtures"
+uppercase = true
+
+[node name="AddButton" type="Button" parent="Column/Heading/Row" unique_id=192116327]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Add a fixture profile (coming soon)"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+disabled = true
+text = "+"
+
+[node name="Rule" type="HSeparator" parent="Column/Heading" unique_id=368185605]
+layout_mode = 2
+
+[node name="Search" type="LineEdit" parent="Column" unique_id=170318904]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Search fixtures"
+clear_button_enabled = true
+
+[node name="Tree" type="Tree" parent="Column" unique_id=1721596160]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
+select_mode = 1
+
+[node name="@Timer@14" type="Timer" parent="Column/Tree" unique_id=628259839]
+one_shot = true
+
+[node name="Hint" type="Label" parent="Column" unique_id=120525756]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Drag onto the stage, or double-click to hang centre stage."
+autowrap_mode = 3

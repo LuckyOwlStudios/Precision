@@ -5,9 +5,9 @@ extends MarginContainer
 
 var ctx: StudioContext
 
-var _list := ItemList.new()
-var _empty: Control
-var _go := Button.new()
+@onready var _list: ItemList = %List
+@onready var _empty: Control = %Empty
+@onready var _go: Button = %Go
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -18,36 +18,9 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	add_theme_constant_override("margin_left", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_right", UIPalette.COLUMN_PAD)
-	add_theme_constant_override("margin_top", 16)
-	add_theme_constant_override("margin_bottom", 16)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	add_child(col)
-
-	col.add_child(UIKit.section("Cue list"))
-
-	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_list.item_activated.connect(func(i: int) -> void: ctx.go_cue(i))
-	col.add_child(_list)
-	_empty = UIKit.empty_state("No cues", "Set a look on the stage, then press Record to store it as a cue.")
-	col.add_child(_empty)
-
-	var row := HBoxContainer.new()
-	var rec := Button.new()
-	rec.text = "Record"
-	rec.tooltip_text = "Store the current look of every fixture as a new cue"
-	rec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rec.pressed.connect(func() -> void: ctx.record_cue())
-	row.add_child(rec)
-	_go.text = "GO"
-	_go.theme_type_variation = &"AccentButton"
-	_go.tooltip_text = "Fade to the next cue"
-	_go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	%Record.pressed.connect(func() -> void: ctx.record_cue())
 	_go.pressed.connect(func() -> void: ctx.go_cue())
-	row.add_child(_go)
-	col.add_child(row)
 
 
 func _rebuild() -> void:

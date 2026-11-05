@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/cue_panel.gd" id="1_ad5ud"]
+
+[node name="CuePanel" type="MarginContainer" unique_id=810433962]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+script = ExtResource("1_ad5ud")
+
+[node name="Column" type="VBoxContainer" parent="." unique_id=13728897]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Heading" type="VBoxContainer" parent="Column" unique_id=1706396097]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Column/Heading" unique_id=43577376]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column/Heading/Row" unique_id=1989744398]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Cue list"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Column/Heading" unique_id=1072265744]
+layout_mode = 2
+
+[node name="List" type="ItemList" parent="Column" unique_id=1053841012]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Empty" type="VBoxContainer" parent="Column" unique_id=320217542]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="Title" type="Label" parent="Column/Empty" unique_id=583087105]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "No cues"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="Column/Empty" unique_id=1081034811]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Set a look on the stage, then press Record to store it as a cue."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="Column" unique_id=2103849740]
+layout_mode = 2
+
+[node name="Record" type="Button" parent="Column/Buttons" unique_id=102316477]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Store the current look of every fixture as a new cue"
+text = "Record"
+
+[node name="Go" type="Button" parent="Column/Buttons" unique_id=1206124182]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Fade to the next cue"
+theme_type_variation = &"AccentButton"
+text = "GO"

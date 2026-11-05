@@ -131,7 +131,7 @@ func test_vdj_parsing() -> void:
 
 
 func make_studio() -> StudioContext:
-	var ctx := StudioContext.new()
+	var ctx: StudioContext = (load("res://ui/main/studio_context.tscn") as PackedScene).instantiate()
 	var dir := "user://test_djsync_%d" % Time.get_ticks_usec()
 	ctx.ready.connect(func() -> void: ctx.library.root_dir = dir, CONNECT_ONE_SHOT)
 	root.add_child(ctx)

@@ -1,0 +1,224 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/stage/stage_fixture_3d.gd" id="1_luydv"]
+[ext_resource type="Shader" path="res://ui/stage/lens_glow.gdshader" id="2_d55ax"]
+[ext_resource type="Shader" path="res://ui/stage/beam.gdshader" id="3_m2ilq"]
+[ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_ognry"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_levmg"]
+resource_local_to_scene = true
+resource_name = "Lens"
+albedo_color = Color(0.02745098, 0.03137255, 0.039215688, 1)
+metallic = 0.2
+roughness = 0.08
+emission_enabled = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fevgs"]
+resource_local_to_scene = true
+resource_name = "LensGlow"
+render_priority = 2
+shader = ExtResource("2_d55ax")
+shader_parameter/size = 0.32
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0yj5p"]
+resource_local_to_scene = true
+resource_name = "Beam"
+render_priority = 1
+shader = ExtResource("3_m2ilq")
+shader_parameter/beam_length = 4.5
+shader_parameter/edge_softness = 1.4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_57i1o"]
+resource_local_to_scene = true
+resource_name = "SelectionMarker"
+render_priority = 10
+shader = ExtResource("4_ognry")
+shader_parameter/color = Color(1, 0.70980394, 0.2784314, 1)
+shader_parameter/style = 0
+shader_parameter/world_size = 0.62
+shader_parameter/appear = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u4k1c"]
+resource_name = "Shell"
+albedo_color = Color(0.08627451, 0.09411765, 0.10980392, 1)
+metallic = 0.35
+roughness = 0.42
+
+[sub_resource type="BoxMesh" id="BoxMesh_yujcm"]
+size = Vector3(1, 0.1, 0.12)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jalyg"]
+resource_name = "Trim"
+albedo_color = Color(0.16862746, 0.18431373, 0.21176471, 1)
+metallic = 0.8
+roughness = 0.3
+
+[sub_resource type="BoxMesh" id="BoxMesh_5dcfb"]
+size = Vector3(1.04, 0.03, 0.14)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_a3d53"]
+top_radius = 0.05
+bottom_radius = 0.05
+height = 0.012
+
+[sub_resource type="QuadMesh" id="QuadMesh_15s47"]
+size = Vector2(2, 2)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_gl22f"]
+top_radius = 0.45
+bottom_radius = 2.8426924
+height = 4.5
+radial_segments = 48
+rings = 6
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_cqs0m"]
+size = Vector2(2, 2)
+
+[node name="Bar" type="Node3D" unique_id=996515571]
+script = ExtResource("1_luydv")
+body = 2
+lens_material = SubResource("StandardMaterial3D_levmg")
+glow_material = SubResource("ShaderMaterial_fevgs")
+beam_material = SubResource("ShaderMaterial_0yj5p")
+marker_material = SubResource("ShaderMaterial_57i1o")
+
+[node name="Yoke" type="Node3D" parent="." unique_id=1504226408]
+unique_name_in_owner = true
+
+[node name="Head" type="Node3D" parent="Yoke" unique_id=844028122]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.95105654, 0.309017, 0, -0.309017, 0.95105654, 0, 0, 0)
+
+[node name="Shell" type="MeshInstance3D" parent="Yoke/Head" unique_id=1654831664]
+material_override = SubResource("StandardMaterial3D_u4k1c")
+mesh = SubResource("BoxMesh_yujcm")
+
+[node name="Trim" type="MeshInstance3D" parent="Yoke/Head" unique_id=1636653192]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, 0)
+material_override = SubResource("StandardMaterial3D_jalyg")
+mesh = SubResource("BoxMesh_5dcfb")
+
+[node name="Lenses" type="Node3D" parent="Yoke/Head" unique_id=1404979015]
+
+[node name="Lens1" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=631116831]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.42, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens2" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=266106749]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens3" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=1995222010]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens4" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=1868286286]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens5" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=2016859426]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens6" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=760885540]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens7" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=738602663]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Lens8" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=1950529749]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.42, -0.06, 0)
+material_override = SubResource("StandardMaterial3D_levmg")
+mesh = SubResource("CylinderMesh_a3d53")
+
+[node name="Glows" type="Node3D" parent="Yoke/Head" unique_id=131340699]
+
+[node name="Glow1" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=50573415]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.42, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow2" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=1732371940]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow3" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=1579166374]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow4" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=429578215]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow5" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=657062571]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow6" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=767704633]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow7" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=1945624802]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Glow8" type="MeshInstance3D" parent="Yoke/Head/Glows" unique_id=668059303]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.42, -0.07, 0)
+material_override = SubResource("ShaderMaterial_fevgs")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("QuadMesh_15s47")
+
+[node name="Beam" type="MeshInstance3D" parent="Yoke/Head" unique_id=266486017]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.32, 0)
+material_override = SubResource("ShaderMaterial_0yj5p")
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_gl22f")
+
+[node name="Light" type="AreaLight3D" parent="Yoke/Head" unique_id=1849900338]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, -0.072, 0)
+visible = false
+light_specular = 0.6
+shadow_bias = 0.04
+area_range = 9.0
+area_size = Vector2(0.96, 0.06)
+
+[node name="Marker" type="MeshInstance3D" parent="." unique_id=233524476]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+visible = false
+material_override = SubResource("ShaderMaterial_57i1o")
+cast_shadow = 0
+extra_cull_margin = 4.0
+mesh = SubResource("QuadMesh_cqs0m")

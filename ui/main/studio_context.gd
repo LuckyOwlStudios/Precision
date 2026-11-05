@@ -31,17 +31,17 @@ const META_LABEL := &"display_name"
 const META_BODY := &"stage_body"
 const META_PROFILE_LABEL := &"profile_label"
 
-## Art-Net target. 127.0.0.1 keeps packets on this computer until you have an
-## interface; set it to the node's IP (or a broadcast address) for real lights.
-@export var artnet_target: String = "127.0.0.1"
+# The rig's nodes live in studio_context.tscn. Set the Art-Net target on the
+# ArtNet node: 127.0.0.1 keeps packets on this computer until you have an
+# interface; use the node's IP (or a broadcast address) for real lights.
+@onready var output: ArtNetOutput = $ArtNet
+@onready var universe: DMXUniverse = $Universe1
+@onready var rig: Node = $Rig ## parent of every DMXFixture
+@onready var cue_stack: CueStack = $Cues
+@onready var library: SongLibrary = $Songs
+@onready var music_player: AudioStreamPlayer = $Music
+@onready var dj: DJSync = $DJSync ## follows the DJ software; off until a source is picked
 
-var output: ArtNetOutput
-var universe: DMXUniverse
-var rig: Node ## parent of every DMXFixture
-var cue_stack: CueStack
-var library: SongLibrary
-var music_player: AudioStreamPlayer
-var dj: DJSync ## follows the DJ software; off until a source is picked
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
@@ -66,39 +66,10 @@ var _counters: Dictionary = {} ## short name -> last number used
 
 
 func _ready() -> void:
-	output = ArtNetOutput.new()
-	output.name = "ArtNet"
-	output.target_ip = artnet_target
-	add_child(output)
-
-	universe = DMXUniverse.new()
-	universe.name = "Universe1"
-	universe.output = output
-	add_child(universe)
-
-	rig = Node.new()
-	rig.name = "Rig"
-	add_child(rig)
-
-	cue_stack = CueStack.new()
-	cue_stack.name = "Cues"
-	cue_stack.fixtures_root = rig
-	add_child(cue_stack)
-
-	library = SongLibrary.new()
-	library.name = "Songs"
-	add_child(library)
 	library.songs_changed.connect(_on_library_changed)
 
-	music_player = AudioStreamPlayer.new()
-	music_player.name = "Music"
-	add_child(music_player)
 	music_player.finished.connect(_on_music_finished)
-
-	dj = DJSync.new()
-	dj.name = "DJSync"
 	dj.ctx = self
-	add_child(dj)
 	library.songs_changed.connect(func() -> void:
 		if dj.source and dj.matched == null:
 			dj.rematch())

@@ -1,0 +1,378 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="1_apl61"]
+
+[node name="InspectorPanel" type="ScrollContainer" unique_id=941001158]
+horizontal_scroll_mode = 0
+script = ExtResource("1_apl61")
+
+[node name="Padding" type="MarginContainer" parent="." unique_id=30049223]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="Content" type="VBoxContainer" parent="Padding" unique_id=309435613]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Empty" type="VBoxContainer" parent="Padding/Content" unique_id=1914506498]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="Title" type="Label" parent="Padding/Content/Empty" unique_id=457074779]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "Nothing selected"
+horizontal_alignment = 1
+
+[node name="Body" type="Label" parent="Padding/Content/Empty" unique_id=891758690]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Click a fixture on the stage to edit it here."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Title" type="VBoxContainer" parent="Padding/Content" unique_id=818247655]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="FixtureTitle" type="Label" parent="Padding/Content/Title" unique_id=1905955382]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text_overrun_behavior = 3
+
+[node name="FixtureDetail" type="Label" parent="Padding/Content/Title" unique_id=32146947]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text_overrun_behavior = 3
+
+[node name="NameField" type="HBoxContainer" parent="Padding/Content" unique_id=1314780155]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/NameField" unique_id=1784260814]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Name"
+
+[node name="NameEdit" type="LineEdit" parent="Padding/Content/NameField" unique_id=198100395]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Your own name, shown on the stage list and timeline (F2). Leave empty for the default."
+placeholder_text = "Name this fixture"
+
+[node name="PatchHeading" type="VBoxContainer" parent="Padding/Content" unique_id=721014464]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Content/PatchHeading" unique_id=1576334330]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Content/PatchHeading/Row" unique_id=270746474]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Patch"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Content/PatchHeading" unique_id=1570528715]
+layout_mode = 2
+
+[node name="AddressField" type="HBoxContainer" parent="Padding/Content" unique_id=683000812]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/AddressField" unique_id=1720492912]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Address"
+
+[node name="Address" type="SpinBox" parent="Padding/Content/AddressField" unique_id=95725781]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 512.0
+value = 1.0
+
+[node name="Channels" type="Label" parent="Padding/Content" unique_id=12216784]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="PlacementHeading" type="VBoxContainer" parent="Padding/Content" unique_id=1191951104]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Content/PlacementHeading" unique_id=746060405]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Content/PlacementHeading/Row" unique_id=1313119368]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Placement"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Content/PlacementHeading" unique_id=911588926]
+layout_mode = 2
+
+[node name="PositionField" type="HBoxContainer" parent="Padding/Content" unique_id=1259729008]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/PositionField" unique_id=757348831]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Position"
+
+[node name="Axes" type="HBoxContainer" parent="Padding/Content/PositionField" unique_id=2073310629]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PositionX" type="SpinBox" parent="Padding/Content/PositionField/Axes" unique_id=2133234292]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="PositionY" type="SpinBox" parent="Padding/Content/PositionField/Axes" unique_id=682806130]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="PositionZ" type="SpinBox" parent="Padding/Content/PositionField/Axes" unique_id=1327057552]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="RotationField" type="HBoxContainer" parent="Padding/Content" unique_id=240559862]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/RotationField" unique_id=437297841]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Rotation"
+
+[node name="Axes" type="HBoxContainer" parent="Padding/Content/RotationField" unique_id=598029172]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="RotationX" type="SpinBox" parent="Padding/Content/RotationField/Axes" unique_id=855299435]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -180.0
+max_value = 180.0
+step = 0.5
+suffix = "°"
+custom_arrow_step = 15.0
+select_all_on_focus = true
+
+[node name="RotationY" type="SpinBox" parent="Padding/Content/RotationField/Axes" unique_id=1096771473]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -180.0
+max_value = 180.0
+step = 0.5
+suffix = "°"
+custom_arrow_step = 15.0
+select_all_on_focus = true
+
+[node name="RotationZ" type="SpinBox" parent="Padding/Content/RotationField/Axes" unique_id=20098361]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -180.0
+max_value = 180.0
+step = 0.5
+suffix = "°"
+custom_arrow_step = 15.0
+select_all_on_focus = true
+
+[node name="LookHeading" type="VBoxContainer" parent="Padding/Content" unique_id=968646542]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Content/LookHeading" unique_id=1322844642]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Content/LookHeading/Row" unique_id=1308377005]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Look"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Content/LookHeading" unique_id=1558188501]
+layout_mode = 2
+
+[node name="DimmerField" type="HBoxContainer" parent="Padding/Content" unique_id=1192490301]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/DimmerField" unique_id=396310648]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Dimmer"
+
+[node name="Row" type="HBoxContainer" parent="Padding/Content/DimmerField" unique_id=709896026]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Dimmer" type="HSlider" parent="Padding/Content/DimmerField/Row" unique_id=104409014]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+
+[node name="DimmerValue" type="Label" parent="Padding/Content/DimmerField/Row" unique_id=1700529188]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+horizontal_alignment = 2
+
+[node name="ColourField" type="HBoxContainer" parent="Padding/Content" unique_id=931039494]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/ColourField" unique_id=238024400]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Colour"
+
+[node name="Colour" type="ColorPickerButton" parent="Padding/Content/ColourField" unique_id=301971386]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+edit_alpha = false
+
+[node name="WhiteRow" type="HBoxContainer" parent="Padding/Content" unique_id=351207695]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/WhiteRow" unique_id=475432452]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "White"
+
+[node name="White" type="HSlider" parent="Padding/Content/WhiteRow" unique_id=1155445740]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+
+[node name="StrobeRow" type="HBoxContainer" parent="Padding/Content" unique_id=1792286844]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/StrobeRow" unique_id=1035469950]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Strobe"
+
+[node name="Strobe" type="HSlider" parent="Padding/Content/StrobeRow" unique_id=600100036]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 255.0
+
+[node name="AimSection" type="VBoxContainer" parent="Padding/Content" unique_id=1633651425]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="AimHeading" type="VBoxContainer" parent="Padding/Content/AimSection" unique_id=1250002917]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Content/AimSection/AimHeading" unique_id=1127971409]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Content/AimSection/AimHeading/Row" unique_id=1647317019]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Aim"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Content/AimSection/AimHeading" unique_id=1283224511]
+layout_mode = 2
+
+[node name="PanField" type="HBoxContainer" parent="Padding/Content/AimSection" unique_id=287607688]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/AimSection/PanField" unique_id=1403054615]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Pan"
+
+[node name="Pan" type="HSlider" parent="Padding/Content/AimSection/PanField" unique_id=941695275]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.001
+
+[node name="TiltField" type="HBoxContainer" parent="Padding/Content/AimSection" unique_id=449329919]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/AimSection/TiltField" unique_id=1623252364]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Tilt"
+
+[node name="Tilt" type="HSlider" parent="Padding/Content/AimSection/TiltField" unique_id=1066569716]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.001

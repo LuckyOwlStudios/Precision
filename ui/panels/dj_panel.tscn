@@ -1,0 +1,303 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/dj_panel.gd" id="1_sfsyk"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_47h04"]
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="DJPanel" type="ScrollContainer" unique_id=1238719443]
+horizontal_scroll_mode = 0
+script = ExtResource("1_sfsyk")
+
+[node name="Padding" type="MarginContainer" parent="." unique_id=232939252]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="Column" type="VBoxContainer" parent="Padding" unique_id=1168248596]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Heading" type="VBoxContainer" parent="Padding/Column" unique_id=1630244088]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Column/Heading" unique_id=1834234160]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Column/Heading/Row" unique_id=259515051]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Follow the DJ"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Column/Heading" unique_id=981680224]
+layout_mode = 2
+
+[node name="SourceField" type="HBoxContainer" parent="Padding/Column" unique_id=371290700]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/SourceField" unique_id=1080226964]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Source"
+
+[node name="Source" type="OptionButton" parent="Padding/Column/SourceField" unique_id=1192095159]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "What the lights follow. Off = the timeline plays on its own."
+selected = 0
+item_count = 3
+popup/item_0/text = "Off"
+popup/item_0/id = 0
+popup/item_1/text = "Simulator"
+popup/item_1/id = 1
+popup/item_2/text = "VirtualDJ"
+popup/item_2/id = 2
+
+[node name="StatusRow" type="HBoxContainer" parent="Padding/Column" unique_id=158115437]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Dot" type="Panel" parent="Padding/Column/StatusRow" unique_id=1103450615]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_47h04")
+
+[node name="Status" type="Label" parent="Padding/Column/StatusRow" unique_id=345590965]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3
+
+[node name="Deck" type="VBoxContainer" parent="Padding/Column" unique_id=669415866]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="DeckTitle" type="Label" parent="Padding/Column/Deck" unique_id=1037749857]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text_overrun_behavior = 3
+
+[node name="DeckDetail" type="Label" parent="Padding/Column/Deck" unique_id=1811844327]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text_overrun_behavior = 3
+
+[node name="Match" type="Label" parent="Padding/Column" unique_id=820633114]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3
+
+[node name="OffsetField" type="HBoxContainer" parent="Padding/Column" unique_id=719540415]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/OffsetField" unique_id=89547626]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Light offset"
+
+[node name="Offset" type="SpinBox" parent="Padding/Column/OffsetField" unique_id=1856463601]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Fire the lights this much earlier (+) or later (-) than the DJ's playhead, to make up for interface or fixture delay."
+min_value = -500.0
+max_value = 500.0
+step = 5.0
+suffix = "ms"
+
+[node name="VirtualDJ" type="VBoxContainer" parent="Padding/Column" unique_id=1314674895]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="VBoxContainer" parent="Padding/Column/VirtualDJ" unique_id=1789655588]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Column/VirtualDJ/Heading" unique_id=219741589]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Column/VirtualDJ/Heading/Row" unique_id=1154907579]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "VirtualDJ"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Column/VirtualDJ/Heading" unique_id=166220202]
+layout_mode = 2
+
+[node name="AddressField" type="HBoxContainer" parent="Padding/Column/VirtualDJ" unique_id=204721196]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/VirtualDJ/AddressField" unique_id=1016928607]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Address"
+
+[node name="Host" type="LineEdit" parent="Padding/Column/VirtualDJ/AddressField" unique_id=2111584675]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Computer running VirtualDJ. 127.0.0.1 = this one."
+text = "127.0.0.1"
+
+[node name="PortField" type="HBoxContainer" parent="Padding/Column/VirtualDJ" unique_id=1549858703]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/VirtualDJ/PortField" unique_id=1593373676]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Port"
+
+[node name="Port" type="SpinBox" parent="Padding/Column/VirtualDJ/PortField" unique_id=1251680236]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The port set in VirtualDJ's Network Control plugin."
+min_value = 1.0
+max_value = 65535.0
+value = 80.0
+
+[node name="PasswordField" type="HBoxContainer" parent="Padding/Column/VirtualDJ" unique_id=954972117]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/VirtualDJ/PasswordField" unique_id=1646047272]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Password"
+
+[node name="Password" type="LineEdit" parent="Padding/Column/VirtualDJ/PasswordField" unique_id=1205449174]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The password set in the Network Control plugin, if any."
+placeholder_text = "none"
+secret = true
+
+[node name="OS2L" type="CheckBox" parent="Padding/Column/VirtualDJ" unique_id=957033557]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "In VirtualDJ set the option os2lDirectIp to 127.0.0.1:9996 for beat-exact timing."
+button_pressed = true
+text = "Beat messages (OS2L, port 9996)"
+
+[node name="Reconnect" type="Button" parent="Padding/Column/VirtualDJ" unique_id=1600621954]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Reconnect"
+
+[node name="Help" type="Label" parent="Padding/Column/VirtualDJ" unique_id=1193495317]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "In VirtualDJ (Pro): Settings > Extensions > Effects > Other > Network Control. Turn it on as an Auto-Start master effect and set its port here."
+autowrap_mode = 3
+
+[node name="Simulator" type="VBoxContainer" parent="Padding/Column" unique_id=1178737823]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="VBoxContainer" parent="Padding/Column/Simulator" unique_id=1398489512]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="HBoxContainer" parent="Padding/Column/Simulator/Heading" unique_id=1574410024]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Padding/Column/Simulator/Heading/Row" unique_id=652535550]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Simulated deck"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Padding/Column/Simulator/Heading" unique_id=1866812168]
+layout_mode = 2
+
+[node name="TrackField" type="HBoxContainer" parent="Padding/Column/Simulator" unique_id=11198730]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/Simulator/TrackField" unique_id=1567191328]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Track"
+
+[node name="SimTrack" type="OptionButton" parent="Padding/Column/Simulator/TrackField" unique_id=743369474]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The track the pretend DJ loads"
+fit_to_longest_item = false
+
+[node name="Buttons" type="HBoxContainer" parent="Padding/Column/Simulator" unique_id=913084460]
+layout_mode = 2
+
+[node name="SimLoad" type="Button" parent="Padding/Column/Simulator/Buttons" unique_id=1375120432]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Put this track on the deck, like a DJ loading the next song"
+text = "Load"
+
+[node name="SimPlay" type="Button" parent="Padding/Column/Simulator/Buttons" unique_id=980938504]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"AccentButton"
+text = "Play"
+
+[node name="SimSeek" type="HSlider" parent="Padding/Column/Simulator" unique_id=1762887261]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Scrub the deck: the lights jump with it"
+focus_mode = 0
+step = 0.0
+
+[node name="SimTime" type="Label" parent="Padding/Column/Simulator" unique_id=1621945904]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+
+[node name="PitchField" type="HBoxContainer" parent="Padding/Column/Simulator" unique_id=1738177176]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Column/Simulator/PitchField" unique_id=712422665]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Pitch"
+
+[node name="SimPitch" type="SpinBox" parent="Padding/Column/Simulator/PitchField" unique_id=1706921743]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Pitch fader: the track and the lights speed up together"
+min_value = -16.0
+max_value = 16.0
+step = 0.5
+suffix = "%"

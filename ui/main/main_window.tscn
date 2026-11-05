@@ -1,16 +1,17 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://ui/main/main_window.gd" id="1_main"]
-[ext_resource type="Script" path="res://ui/main/studio_context.gd" id="2_ctx"]
-[ext_resource type="Script" path="res://ui/panels/now_playing_bar.gd" id="3_now"]
-[ext_resource type="Script" path="res://ui/panels/fixture_library_panel.gd" id="4_lib"]
-[ext_resource type="Script" path="res://ui/panels/rig_panel.gd" id="5_rig"]
-[ext_resource type="Script" path="res://ui/panels/song_library_panel.gd" id="6_songs"]
-[ext_resource type="Script" path="res://ui/stage/stage_view.gd" id="7_stage"]
-[ext_resource type="Script" path="res://ui/panels/timeline_panel.gd" id="8_timeline"]
-[ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="9_inspector"]
-[ext_resource type="Script" path="res://ui/panels/cue_panel.gd" id="10_cues"]
-[ext_resource type="Script" path="res://ui/panels/dmx_monitor_panel.gd" id="11_dmx"]
+[ext_resource type="PackedScene" path="res://ui/main/studio_context.tscn" id="2_ctx"]
+[ext_resource type="PackedScene" path="res://ui/panels/now_playing_bar.tscn" id="3_now"]
+[ext_resource type="PackedScene" path="res://ui/panels/fixture_library_panel.tscn" id="4_lib"]
+[ext_resource type="PackedScene" path="res://ui/panels/rig_panel.tscn" id="5_rig"]
+[ext_resource type="PackedScene" path="res://ui/panels/song_library_panel.tscn" id="6_songs"]
+[ext_resource type="PackedScene" path="res://ui/stage/stage_view.tscn" id="7_stage"]
+[ext_resource type="PackedScene" path="res://ui/panels/timeline_panel.tscn" id="8_timeline"]
+[ext_resource type="PackedScene" path="res://ui/panels/inspector_panel.tscn" id="9_inspector"]
+[ext_resource type="PackedScene" path="res://ui/panels/cue_panel.tscn" id="10_cues"]
+[ext_resource type="PackedScene" path="res://ui/panels/dmx_monitor_panel.tscn" id="11_dmx"]
+[ext_resource type="PackedScene" path="res://ui/panels/dj_panel.tscn" id="12_dj"]
 
 [sub_resource type="StyleBoxFlat" id="Dot"]
 bg_color = Color(0.239, 0.863, 0.592, 1)
@@ -31,9 +32,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Studio" type="Node" parent="."]
+[node name="Studio" parent="." instance=ExtResource("2_ctx")]
 unique_name_in_owner = true
-script = ExtResource("2_ctx")
 
 [node name="Background" type="Panel" parent="."]
 layout_mode = 1
@@ -77,8 +77,13 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 8
-theme_type_variation = &"WorkspaceTabs"
 focus_mode = 0
+theme_type_variation = &"WorkspaceTabs"
+current_tab = 1
+tab_count = 3
+tab_0/title = "STAGE"
+tab_1/title = "PROGRAM"
+tab_2/title = "LIVE"
 
 [node name="Search" type="LineEdit" parent="Layout/Header/Row"]
 custom_minimum_size = Vector2(260, 0)
@@ -87,10 +92,9 @@ size_flags_vertical = 4
 placeholder_text = "Search fixtures and songs"
 clear_button_enabled = true
 
-[node name="NowPlaying" type="PanelContainer" parent="Layout"]
+[node name="NowPlaying" parent="Layout" instance=ExtResource("3_now")]
 unique_name_in_owner = true
 layout_mode = 2
-script = ExtResource("3_now")
 
 [node name="Body" type="HSplitContainer" parent="Layout"]
 layout_mode = 2
@@ -113,24 +117,21 @@ layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Library" type="MarginContainer" parent="Layout/Body/LeftDock/Column/LeftTabs"]
+[node name="Library" parent="Layout/Body/LeftDock/Column/LeftTabs" instance=ExtResource("4_lib")]
 unique_name_in_owner = true
 layout_mode = 2
-script = ExtResource("4_lib")
 metadata/_tab_index = 0
 
-[node name="OnStage" type="MarginContainer" parent="Layout/Body/LeftDock/Column/LeftTabs"]
+[node name="OnStage" parent="Layout/Body/LeftDock/Column/LeftTabs" instance=ExtResource("5_rig")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-script = ExtResource("5_rig")
 metadata/_tab_index = 1
 
-[node name="Songs" type="MarginContainer" parent="Layout/Body/LeftDock/Column/LeftTabs"]
+[node name="Songs" parent="Layout/Body/LeftDock/Column/LeftTabs" instance=ExtResource("6_songs")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-script = ExtResource("6_songs")
 metadata/_tab_index = 2
 
 [node name="LeftFooter" type="PanelContainer" parent="Layout/Body/LeftDock/Column"]
@@ -169,16 +170,14 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_type_variation = &"StagePanel"
 
-[node name="StageView" type="Control" parent="Layout/Body/RightSplit/CenterSplit/StageFrame"]
+[node name="StageView" parent="Layout/Body/RightSplit/CenterSplit/StageFrame" instance=ExtResource("7_stage")]
 unique_name_in_owner = true
 layout_mode = 2
-script = ExtResource("7_stage")
 
-[node name="Timeline" type="VBoxContainer" parent="Layout/Body/RightSplit/CenterSplit"]
+[node name="Timeline" parent="Layout/Body/RightSplit/CenterSplit" instance=ExtResource("8_timeline")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 240)
 layout_mode = 2
-script = ExtResource("8_timeline")
 
 [node name="RightDock" type="PanelContainer" parent="Layout/Body/RightSplit"]
 custom_minimum_size = Vector2(300, 0)
@@ -195,25 +194,28 @@ layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Inspector" type="ScrollContainer" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs"]
+[node name="Inspector" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("9_inspector")]
 unique_name_in_owner = true
 layout_mode = 2
-script = ExtResource("9_inspector")
 metadata/_tab_index = 0
 
-[node name="Cues" type="MarginContainer" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs"]
+[node name="Cues" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("10_cues")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-script = ExtResource("10_cues")
 metadata/_tab_index = 1
 
-[node name="DMX" type="MarginContainer" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs"]
+[node name="DMX" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("11_dmx")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-script = ExtResource("11_dmx")
 metadata/_tab_index = 2
+
+[node name="DJ" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("12_dj")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
 
 [node name="RightFooter" type="PanelContainer" parent="Layout/Body/RightSplit/RightDock/Column"]
 custom_minimum_size = Vector2(0, 40)
