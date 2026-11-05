@@ -88,17 +88,22 @@ Best in **Godot 4.7+ with the Forward+ renderer**. Visual only: none of this cha
   of their LED face (Godot 4.7+; older versions fall back to a row of spot lights).
 - Every fixture also draws a soft beam cone, a glowing lens and a halo, and follows
   colour, dimmer, strobe, pan and tilt.
+- **Work / Show** (top left of the stage, or press **Z**): like a 3D app's solid vs
+  rendered view. **Work** turns the house lights on: an evenly lit grey room with a key
+  and fill light, so you can see the truss and fixture bodies while you build and aim.
+  Fixtures still light up and draw (softer) beams. **Show** is the dark club room where
+  only the fixtures and the haze light the stage.
 - **Haze** slider (bottom right of the stage): how much smoke is in the room. Beams and
   volumetric light shafts read more in haze.
 - **Low / Medium / High / Ultra**: Low is beam cones only; Medium adds volumetric haze,
   mover shadows and ambient occlusion; High adds shadows on every light and floor
   reflections; Ultra adds finer haze, soft shadows and light bounce.
-  Haze and quality are saved per computer in `user://stage_look.cfg`.
+  Shading, haze and quality are saved per computer in `user://stage_look.cfg`.
 - The floor grid only shows in the **Stage** workspace.
 
 Code: `ui/stage/stage_look.gd` (environment and quality), `stage_fixture_3d.gd` (fixtures),
 `stage_set.gd` (truss, walls, booth gear), `beam.gdshader`, `lens_glow.gdshader`.
-`godot --path . --script res://ui/stage/stage_shot_cli.gd -- out.png [haze] [quality] [yaw pitch distance]`
+`godot --path . --script res://ui/stage/stage_shot_cli.gd -- out.png [haze] [quality] [yaw pitch distance] [work|show]`
 renders the stage alone for checking the look.
 
 ![Stage lighting](docs/ui/stage_look.png)
