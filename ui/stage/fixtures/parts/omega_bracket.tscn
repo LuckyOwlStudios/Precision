@@ -1,0 +1,69 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://ui/stage/materials/powder_black.tres" id="1_black"]
+[ext_resource type="Material" path="res://ui/stage/materials/zinc.tres" id="2_zinc"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_top"]
+size = Vector3(0.045, 0.005, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_leg"]
+size = Vector3(0.045, 0.005, 0.0566)
+
+[sub_resource type="BoxMesh" id="BoxMesh_foot"]
+size = Vector3(0.045, 0.005, 0.05)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_washer"]
+top_radius = 0.011
+bottom_radius = 0.011
+height = 0.004
+
+[sub_resource type="BoxMesh" id="BoxMesh_wing"]
+size = Vector3(0.006, 0.014, 0.026)
+
+[node name="OmegaBracket" type="Node3D"]
+editor_description = "The omega bracket a moving head hangs from: bolted to its base by two quarter-turn wing screws, with a truss clamp bolted through the raised middle. Origin = top of the raised middle; the bracket runs along Z."
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0025, 0)
+material_override = ExtResource("1_black")
+mesh = SubResource("BoxMesh_top")
+
+[node name="LegFront" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, -0.70710677, 0, 0.70710677, 0.70710677, 0, -0.0225, 0.07)
+material_override = ExtResource("1_black")
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegBack" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, -0.0225, -0.07)
+material_override = ExtResource("1_black")
+mesh = SubResource("BoxMesh_leg")
+
+[node name="FootFront" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0425, 0.114)
+material_override = ExtResource("1_black")
+mesh = SubResource("BoxMesh_foot")
+
+[node name="FootBack" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0425, -0.114)
+material_override = ExtResource("1_black")
+mesh = SubResource("BoxMesh_foot")
+
+[node name="ScrewFront" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.038, 0.12)
+material_override = ExtResource("2_zinc")
+mesh = SubResource("CylinderMesh_washer")
+
+[node name="WingFront" type="MeshInstance3D" parent="ScrewFront"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
+material_override = ExtResource("2_zinc")
+mesh = SubResource("BoxMesh_wing")
+
+[node name="ScrewBack" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.038, -0.12)
+material_override = ExtResource("2_zinc")
+mesh = SubResource("CylinderMesh_washer")
+
+[node name="WingBack" type="MeshInstance3D" parent="ScrewBack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
+material_override = ExtResource("2_zinc")
+mesh = SubResource("BoxMesh_wing")

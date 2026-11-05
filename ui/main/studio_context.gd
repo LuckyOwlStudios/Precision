@@ -160,6 +160,20 @@ func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
 	fixture_moved.emit(fx)
 
 
+## Indexes into StageRoom.default_pipes(): each truss has a back and a front bottom tube.
+const FRONT_TRUSS_FRONT_TUBE := 1
+const BACK_TRUSS_FRONT_TUBE := 3
+
+
+## Add a fixture clamped onto one of the truss tubes (see StageRoom.default_pipes)
+## with the middle of its clamps at room position `x`.
+func hang_fixture(entry: FixtureCatalog.Entry, tube: int, x: float) -> DMXFixture:
+	var pipe: StageRoom.Pipe = StageRoom.default_pipes()[tube]
+	var mounts := StageFixture3D.mounts_of(StageFixture3D.scene_path(entry.body, entry.profile.fixture_name))
+	var xf := StageRoom.hang(pipe, pipe.along_of(Vector3(x, 0, 0)), mounts)
+	return add_fixture(entry, xf.origin, xf.basis)
+
+
 ## Where a fixture sits on the stage and which way it faces.
 static func fixture_transform(fx: DMXFixture) -> Transform3D:
 	var b: Basis = fx.get_meta(META_BASIS, Basis.IDENTITY)
@@ -372,14 +386,12 @@ func load_demo_rig() -> void:
 	var par: FixtureCatalog.Entry = catalog[1]
 	var mover: FixtureCatalog.Entry = catalog[4]
 	var colors: Array[Color] = [Color("ff3b6b"), Color("ffb547"), Color("38c6ff"), Color("8b5cff")]
-	# Hung flush under the two trusses, as the stage view would place them.
-	var par_y := StageRoom.TRUSS_BOTTOM - StageFixture3D.mount_offset(par.body)
-	var mover_y := StageRoom.TRUSS_BOTTOM - StageFixture3D.mount_offset(mover.body)
+	# Clamped onto the front tubes of the two trusses, as the stage view would hang them.
 	for i in 4:
-		var fx := add_fixture(par, Vector3(-3.0 + i * 2.0, par_y, StageRoom.TRUSS_Z[0]))
+		var fx := hang_fixture(par, FRONT_TRUSS_FRONT_TUBE, -3.0 + i * 2.0)
 		fx.color = colors[i]
 	for i in 2:
-		var fx := add_fixture(mover, Vector3(-1.6 + i * 3.2, mover_y, StageRoom.TRUSS_Z[1]))
+		var fx := hang_fixture(mover, BACK_TRUSS_FRONT_TUBE, -1.6 + i * 3.2)
 		fx.color = Color("f5f0ff")
 		fx.dimmer = 0.8
 		fx.pan = 0.5 + (0.06 if i == 0 else -0.06)

@@ -12,6 +12,8 @@ extends Node3D
 ## -Y) with the lights inside it, and a Marker for the selection brackets.
 ## The lens, halo, beam and marker materials are "local to scene", so every
 ## fixture on stage gets its own copies to colour.
+## Its MountPoint nodes are the truss clamps: they say where the fixture grips
+## a tube when hung, and show only while it is (see set_rigged).
 
 const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
 const BAR_PIXELS := 8
@@ -29,6 +31,7 @@ const SPOT_MOVER_SCENE := "res://ui/stage/fixtures/spot_mover.tscn"
 const WASH_MOVER_SCENE := "res://ui/stage/fixtures/wash_mover.tscn"
 
 static var _iris: Texture2D
+static var _mounts_cache: Dictionary = {} ## scene path -> PackedVector3Array
 
 @export var body: FixtureCatalog.Body = FixtureCatalog.Body.PAR
 @export var lens_material: StandardMaterial3D ## glass that glows in the fixture's colour
@@ -51,11 +54,47 @@ var _marker_tween: Tween
 
 ## The visual for a fixture, not yet set up: the scene for its body.
 static func create(p_fixture: DMXFixture) -> StageFixture3D:
-	var b: FixtureCatalog.Body = p_fixture.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
-	var path: String = SCENES.get(b, SCENES[FixtureCatalog.Body.PAR])
-	if b == FixtureCatalog.Body.MOVING_HEAD:
-		path = SPOT_MOVER_SCENE if is_spot_profile(p_fixture) else WASH_MOVER_SCENE
-	return (load(path) as PackedScene).instantiate()
+	return (load(scene_path_of(p_fixture)) as PackedScene).instantiate()
+
+
+## The body scene for a kind of fixture. `profile_label` tells spot movers from washes.
+static func scene_path(p_body: FixtureCatalog.Body, profile_label: String) -> String:
+	if p_body == FixtureCatalog.Body.MOVING_HEAD:
+		return WASH_MOVER_SCENE if profile_label.to_lower().contains("wash") else SPOT_MOVER_SCENE
+	return SCENES.get(p_body, SCENES[FixtureCatalog.Body.PAR])
+
+
+static func scene_path_of(fx: DMXFixture) -> String:
+	return scene_path(fx.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR),
+		String(fx.get_meta(StudioContext.META_PROFILE_LABEL, "")))
+
+
+## Where a body scene's clamps grip the tube, in the fixture's own space: one
+## position per MountPoint. Read from the scene once and remembered.
+static func mounts_of(path: String) -> PackedVector3Array:
+	if _mounts_cache.has(path):
+		return _mounts_cache[path]
+	var list := PackedVector3Array()
+	var root := (load(path) as PackedScene).instantiate()
+	for n in root.find_children("*", "", true, false):
+		if n is MountPoint:
+			var t := (n as Node3D).transform
+			var p := n.get_parent()
+			while p != root:
+				t = (p as Node3D).transform * t
+				p = p.get_parent()
+			list.append(t.origin)
+	root.free()
+	_mounts_cache[path] = list
+	return list
+
+
+## Show the clamps (and brackets under them) while the fixture hangs on a
+## truss; hide them while it stands on the floor, a wall or the booth.
+func set_rigged(on: bool) -> void:
+	for n in find_children("*", "", true, false):
+		if n is MountPoint:
+			(n as MountPoint).visible = on
 
 
 ## Call once it is in the tree.

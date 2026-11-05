@@ -27,13 +27,15 @@ long as the unique names stay.
 | `ui/panels/*.tscn` | One scene per panel (library, on stage, songs, inspector, cues, DMX, DJ, timeline, now playing) and `song_row.tscn`. |
 | `ui/stage/stage_view.tscn` | The 3D stage: camera, environment, floor grid, overlay buttons. |
 | `ui/stage/stage_room.tscn` | The club room. `StageSurface` boxes are what fixtures snap to; the truss lattice is built by `TrussLattice`. |
-| `ui/stage/fixtures/*.tscn` | The 3D model of each fixture type (par, spot mover, wash mover, bar, strobe). |
+| `ui/stage/fixtures/*.tscn` | The 3D model of each fixture type (par, spot mover, wash mover, bar, strobe), with its truss clamps as `MountPoint` nodes. |
+| `ui/stage/fixtures/parts/omega_bracket.tscn` | The omega bracket a moving head hangs from; each mover clamp has one under it. |
 
 ### Placing fixtures
-- **Drop from the library** onto a truss, the back wall, the floor or the DJ booth: the fixture sticks
-  flush to that surface with its beam pointing into the room (an amber ring shows where it lands).
+- **Drop from the library** onto a truss and the fixture clamps onto the nearest bottom tube by its own
+  clamps, beam down, facing the audience. Drop it on the back wall, the floor or the DJ booth and it
+  sticks flush to that surface with its beam pointing into the room (an amber ring shows where it lands).
   Hold **Alt** while dropping to skip snapping and just hang it above that spot.
-- **Drag a fixture** to slide it along the surface it's on; the spot you grabbed stays under the cursor.
+- **Drag a fixture** to slide it along the tube or surface it's on; the spot you grabbed stays under the cursor.
   **Shift + drag** re-sticks it onto whatever surface is under the cursor.
 - **Gizmo** (Stage workspace): **W** move (arrows = one axis, squares = a plane), **E** rotate (rings).
   Turn on **Snap**, or hold **Ctrl** while dragging, for 0.25 m / 15° steps.
@@ -41,6 +43,15 @@ long as the unique names stay.
 - **Rename**: F2, double-click the fixture, or type in the inspector's **Name** field.
   Double-click a row in **On stage** to rename it in place. An empty name goes back to "Par 3".
   Your name is display only; cues still find the fixture by its node name.
+
+### Truss clamps
+Each fixture scene has one `MountPoint` node per clamp the real fixture uses: one on a par's or
+strobe's bracket, two on a moving head (one per omega bracket), one at each end of a light bar.
+A `MountPoint`'s origin is the centre of the tube it grips and the tube runs along its X axis, so to
+change where a fixture hangs, move its clamps in the fixture scene. Keep all of a fixture's clamps on
+one line along its X axis. The clamp model is drawn from the node's settings (`drop`, `width`,
+`screw_side`); anything placed under a `MountPoint` (like the omega bracket) shows only while the
+fixture hangs on a truss, and is hidden once it stands on the floor or a wall or is moved off the tube.
 
 ![Move gizmo](docs/ui/stage_move.png)
 

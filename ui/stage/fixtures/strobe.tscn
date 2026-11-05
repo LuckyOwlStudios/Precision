@@ -4,6 +4,9 @@
 [ext_resource type="Shader" path="res://ui/stage/lens_glow.gdshader" id="2_rankg"]
 [ext_resource type="Shader" path="res://ui/stage/beam.gdshader" id="3_elpt6"]
 [ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_qyumd"]
+[ext_resource type="Script" path="res://ui/stage/mount_point.gd" id="10_mount"]
+[ext_resource type="Material" path="res://ui/stage/materials/clamp.tres" id="11_clamp"]
+[ext_resource type="Material" path="res://ui/stage/materials/powder_black.tres" id="13_black"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_72rmh"]
 resource_local_to_scene = true
@@ -65,6 +68,9 @@ cap_bottom = false
 [sub_resource type="QuadMesh" id="QuadMesh_f0oin"]
 size = Vector2(2, 2)
 
+[sub_resource type="BoxMesh" id="BoxMesh_strobebracket"]
+size = Vector3(0.06, 0.04, 0.05)
+
 [node name="Strobe" type="Node3D" unique_id=2060293765]
 script = ExtResource("1_w7sql")
 body = 3
@@ -118,3 +124,14 @@ material_override = SubResource("ShaderMaterial_cblqo")
 cast_shadow = 0
 extra_cull_margin = 4.0
 mesh = SubResource("QuadMesh_f0oin")
+
+[node name="Clamp" type="MeshInstance3D" parent="."]
+editor_description = "Truss clamp (MountPoint): its origin is the centre of the tube it grips; the tube runs along X. Shown only while the fixture hangs on a truss."
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0)
+material_override = ExtResource("11_clamp")
+script = ExtResource("10_mount")
+
+[node name="Bracket" type="MeshInstance3D" parent="Clamp"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("BoxMesh_strobebracket")

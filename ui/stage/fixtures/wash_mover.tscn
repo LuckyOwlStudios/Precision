@@ -4,6 +4,9 @@
 [ext_resource type="Shader" path="res://ui/stage/lens_glow.gdshader" id="2_yfkdo"]
 [ext_resource type="Shader" path="res://ui/stage/beam.gdshader" id="3_58nd2"]
 [ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_1u40n"]
+[ext_resource type="Script" path="res://ui/stage/mount_point.gd" id="10_mount"]
+[ext_resource type="Material" path="res://ui/stage/materials/clamp.tres" id="11_clamp"]
+[ext_resource type="PackedScene" path="res://ui/stage/fixtures/parts/omega_bracket.tscn" id="12_omega"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ebxdw"]
 resource_local_to_scene = true
@@ -184,3 +187,21 @@ material_override = SubResource("ShaderMaterial_v0vg7")
 cast_shadow = 0
 extra_cull_margin = 4.0
 mesh = SubResource("QuadMesh_aegti")
+
+[node name="ClampLeft" type="MeshInstance3D" parent="."]
+editor_description = "Truss clamp (MountPoint): its origin is the centre of the tube it grips; the tube runs along X. Shown only while the fixture hangs on a truss."
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.305, 0)
+material_override = ExtResource("11_clamp")
+script = ExtResource("10_mount")
+
+[node name="Omega" parent="ClampLeft" instance=ExtResource("12_omega")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.07, 0)
+
+[node name="ClampRight" type="MeshInstance3D" parent="."]
+editor_description = "Truss clamp (MountPoint): its origin is the centre of the tube it grips; the tube runs along X. Shown only while the fixture hangs on a truss."
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.305, 0)
+material_override = ExtResource("11_clamp")
+script = ExtResource("10_mount")
+
+[node name="Omega" parent="ClampRight" instance=ExtResource("12_omega")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.07, 0)

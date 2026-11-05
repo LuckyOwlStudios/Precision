@@ -9,7 +9,7 @@ extends MeshInstance3D
 ## Snapping uses the hidden StageSurface boxes next to this node in
 ## stage_room.tscn, so move those too if you move a truss.
 
-const CHORD_RADIUS := 0.024
+const CHORD_RADIUS := StageRoom.CHORD_RADIUS ## clamps grip these tubes, so keep them in step
 const LACE_RADIUS := 0.011
 
 ## Z position of each truss run.
