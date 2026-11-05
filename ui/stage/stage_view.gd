@@ -15,6 +15,7 @@ extends Control
 ##   W / E                             -> move / rotate gizmo; Ctrl while dragging snaps
 ##   Right drag / Alt+left drag        -> orbit       Middle drag -> pan
 ##   Mouse wheel                       -> zoom        F -> frame the rig
+##   Z / Work, Show buttons            -> work lights on (evenly lit room) / dark show room
 
 const PICK_RADIUS_PX := 28.0
 const DRAG_THRESHOLD_PX := 4.0
@@ -56,9 +57,11 @@ var _drag_along_offset := 0.0 ## clamps' place on the tube minus the grab point'
 var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
 var _view_buttons: Dictionary = {} ## preset name -> Button
 var _quality_buttons: Array[Button] = []
+var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 
 @onready var _viewport: SubViewport = %Viewport
 @onready var _env: Environment = (%Environment as WorldEnvironment).environment
+@onready var _work_lights: Node3D = %WorkLights ## key + fill, on in Work shading only
 @onready var _room: Node3D = %Room
 @onready var _set: Node3D = _room.get_node("Set") ## the structure pieces
 @onready var _fixtures: Node3D = %Fixtures ## a StageFixture3D per placed fixture goes here
@@ -102,6 +105,11 @@ func _ready() -> void:
 	_snap_button.tooltip_text = "Move in %.2f m steps and rotate in %d° steps. Hold Ctrl while dragging to flip this." % [TransformGizmo.MOVE_STEP, int(TransformGizmo.ROTATE_STEP)]
 	set_gizmo_mode(TransformGizmo.Mode.MOVE)
 
+	# Work / Show shading, top left beside the view presets.
+	_shading_buttons = [%Work, %Show]
+	for sh in _shading_buttons.size():
+		_shading_buttons[sh].pressed.connect(func() -> void: look.shading = sh as StageLook.Shading)
+
 	# Haze and quality, bottom right: how the stage is drawn, not the show.
 	_haze.value = look.haze
 	_haze.value_changed.connect(func(v: float) -> void: look.haze = v)
@@ -119,10 +127,11 @@ func _ready() -> void:
 	_update_camera()
 
 
-## Haze or quality changed: retune the environment and the viewport.
+## Shading, haze or quality changed: retune the environment and the viewport.
 ## (Each fixture listens to `look` itself for its shadows and beams.)
 func _apply_look() -> void:
 	look.apply(_env)
+	_work_lights.visible = look.work_lights()
 	_viewport.msaa_3d = look.msaa()
 	_viewport.positional_shadow_atlas_size = look.shadow_atlas_size()
 	_viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
@@ -134,6 +143,8 @@ func _sync_look_controls() -> void:
 	_haze.set_value_no_signal(look.haze)
 	for i in _quality_buttons.size():
 		_quality_buttons[i].button_pressed = i == look.quality
+	for i in _shading_buttons.size():
+		_shading_buttons[i].button_pressed = i == look.shading
 
 
 func _set_view(preset: String) -> void:
@@ -462,6 +473,10 @@ func _gui_input(event: InputEvent) -> void:
 				set_gizmo_mode(TransformGizmo.Mode.MOVE)
 			KEY_E:
 				set_gizmo_mode(TransformGizmo.Mode.ROTATE)
+			KEY_Z:
+				if k.ctrl_pressed or k.meta_pressed:
+					return # leave Ctrl+Z / Cmd+Z for undo
+				look.shading = StageLook.Shading.SHOW if look.work_lights() else StageLook.Shading.WORK
 			KEY_DELETE:
 				if _selected_piece:
 					_delete_piece(_selected_piece)

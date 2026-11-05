@@ -89,6 +89,26 @@ handle_input_locally = false
 unique_name_in_owner = true
 environment = SubResource("Environment_onnio")
 
+[node name="WorkLights" type="Node3D" parent="ViewportContainer/Viewport/World" unique_id=1874423301]
+unique_name_in_owner = true
+editor_description = "House lights for the Work shading mode: an even key and fill so the room and rig read. Hidden in Show mode."
+visible = false
+
+[node name="Key" type="DirectionalLight3D" parent="ViewportContainer/Viewport/World/WorkLights" unique_id=1874423302]
+transform = Transform3D(0.882948, 0, 0.469472, 0.369949, 0.615661, -0.695772, -0.289036, 0.788011, 0.543597, 0, 6, 0)
+light_color = Color(1, 0.97, 0.93, 1)
+light_energy = 1.1
+light_specular = 0.25
+shadow_enabled = true
+shadow_opacity = 0.6
+directional_shadow_max_distance = 30.0
+
+[node name="Fill" type="DirectionalLight3D" parent="ViewportContainer/Viewport/World/WorkLights" unique_id=1874423303]
+transform = Transform3D(-0.866025, 0, -0.5, -0.286788, 0.819152, 0.496732, 0.409576, 0.573576, -0.709406, 0, 6, 0)
+light_color = Color(0.86, 0.9, 1, 1)
+light_energy = 0.45
+light_specular = 0.0
+
 [node name="Room" type="Node3D" parent="ViewportContainer/Viewport/World" unique_id=1963531261 instance=ExtResource("2_eb1qn")]
 unique_name_in_owner = true
 
@@ -165,6 +185,29 @@ theme_type_variation = &"PillButton"
 toggle_mode = true
 text = "Top"
 
+[node name="ShadingGap" type="Control" parent="Overlay/ViewButtons" unique_id=1874423304]
+custom_minimum_size = Vector2(12, 0)
+layout_mode = 2
+
+[node name="Work" type="Button" parent="Overlay/ViewButtons" unique_id=1874423305]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Work lights on: the room is lit evenly so you can see and place the rig (Z toggles)"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Work"
+
+[node name="Show" type="Button" parent="Overlay/ViewButtons" unique_id=1874423306]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Dark club room: only your fixtures and the haze light the stage (Z toggles)"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+button_pressed = true
+text = "Show"
+
 [node name="Tools" type="HBoxContainer" parent="Overlay" unique_id=1209258975]
 unique_name_in_owner = true
 layout_mode = 0
@@ -225,6 +268,8 @@ theme_override_constants/separation = 8
 [node name="HazeLabel" type="Label" parent="Overlay/LookControls" unique_id=794720736]
 layout_mode = 2
 theme_type_variation = &"Caption"
+theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
+theme_override_constants/outline_size = 4
 text = "Haze"
 
 [node name="Haze" type="HSlider" parent="Overlay/LookControls" unique_id=1277716040]
@@ -296,7 +341,9 @@ offset_right = 16.0
 offset_bottom = -30.0
 grow_vertical = 0
 theme_type_variation = &"Caption"
-text = "Right drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename"
+theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
+theme_override_constants/outline_size = 4
+text = "Right drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
 
 [node name="EmptyHint" type="VBoxContainer" parent="Overlay" unique_id=14525423]
 unique_name_in_owner = true
