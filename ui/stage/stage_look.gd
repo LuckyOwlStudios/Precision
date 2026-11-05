@@ -1,15 +1,20 @@
 class_name StageLook
 extends RefCounted
-## How the 3D stage is rendered: haze amount, quality level and the club-room
-## environment (tonemapping, glow, fog, reflections, ambient occlusion).
+## How the 3D stage is rendered: shading mode, haze amount, quality level and
+## the club-room environment (tonemapping, glow, fog, reflections, ambient occlusion).
 ## Pure visuals: nothing here touches DMX or the show. Saved per machine in
 ## user://stage_look.cfg, because quality depends on the computer, not the show.
 
 signal changed
 
 enum Quality { LOW, MEDIUM, HIGH, ULTRA }
+## Like a 3D app's viewport shading. WORK: the house lights are on, the room is
+## lit evenly so you can see and place the rig. SHOW: the dark club with only
+## the fixtures (and haze) lighting it, the way the audience sees it.
+enum Shading { WORK, SHOW }
 
 const QUALITY_NAMES: PackedStringArray = ["Low", "Medium", "High", "Ultra"]
+const SHADING_NAMES: PackedStringArray = ["Work", "Show"]
 const SAVE_PATH := "user://stage_look.cfg"
 
 ## 0 = clean air, 1 = thick haze. Beams and light shafts read more in haze.
@@ -20,6 +25,10 @@ var haze: float = 0.45:
 var quality: Quality = Quality.HIGH:
 	set(v):
 		quality = v
+		changed.emit()
+var shading: Shading = Shading.SHOW:
+	set(v):
+		shading = v
 		changed.emit()
 
 ## Forward+ has volumetric fog, SSR, SSAO and glow that behaves; the
@@ -33,13 +42,19 @@ func load_saved() -> void:
 		return
 	haze = float(cfg.get_value("stage", "haze", haze))
 	quality = clampi(int(cfg.get_value("stage", "quality", quality)), 0, Quality.ULTRA) as Quality
+	shading = clampi(int(cfg.get_value("stage", "shading", shading)), 0, Shading.SHOW) as Shading
 
 
 func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("stage", "haze", haze)
 	cfg.set_value("stage", "quality", quality)
+	cfg.set_value("stage", "shading", shading)
 	cfg.save(SAVE_PATH)
+
+
+func work_lights() -> bool:
+	return shading == Shading.WORK
 
 
 # ---------------------------------------------------------------- per-fixture choices
@@ -54,14 +69,17 @@ func wash_shadows() -> bool:
 	return forward_plus and quality >= Quality.HIGH
 
 
-## Lights feed the volumetric haze (the light shafts). Off on Low.
+## Lights feed the volumetric haze (the light shafts). Off on Low, and with the
+## work lights on (a lit room washes the shafts out and they only get in the way).
 func volumetric() -> bool:
-	return forward_plus and quality >= Quality.MEDIUM and haze > 0.001
+	return forward_plus and quality >= Quality.MEDIUM and haze > 0.001 and not work_lights()
 
 
 ## How strongly the fake beam cones show. Some beam is always drawn so a
-## programmer can see where things point even in clean air.
+## programmer can see where things point even in clean air or a lit room.
 func beam_strength() -> float:
+	if work_lights():
+		return lerpf(0.3, 0.6, haze)
 	return lerpf(0.35, 1.25, haze)
 
 
@@ -92,11 +110,20 @@ func build_environment() -> Environment:
 	return env
 
 
-## Re-tune an environment for the current haze and quality.
+## Re-tune an environment for the current shading, haze and quality.
 func apply(env: Environment) -> void:
-	# Enough ambient to see the rig when every light is off, low enough that a
-	# single par paints the room.
-	env.ambient_light_energy = 0.35 if forward_plus else 0.55
+	if work_lights():
+		# House lights: a neutral grey room and flat, even ambient so every
+		# piece of truss and every fixture body reads, lit or not.
+		env.background_color = Color("3b4049")
+		env.ambient_light_color = Color("d9dde6")
+		env.ambient_light_energy = 0.9 if forward_plus else 1.1
+	else:
+		# Enough ambient to see the rig when every light is off, low enough
+		# that a single par paints the room.
+		env.background_color = Color("050608")
+		env.ambient_light_color = Color("2a3140")
+		env.ambient_light_energy = 0.35 if forward_plus else 0.55
 
 	if forward_plus:
 		env.tonemap_mode = Environment.TONE_MAPPER_AGX
@@ -112,7 +139,7 @@ func apply(env: Environment) -> void:
 	env.glow_intensity = 0.8
 	env.glow_strength = 1.0
 	env.glow_bloom = 0.02
-	env.glow_hdr_threshold = 1.0
+	env.glow_hdr_threshold = 1.6 if work_lights() else 1.0 # in a lit room only the lenses bloom
 	env.glow_hdr_scale = 2.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 	for i in 7:
