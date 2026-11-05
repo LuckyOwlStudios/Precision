@@ -2,6 +2,10 @@ class_name InspectorPanel
 extends ScrollContainer
 ## Properties of the selected fixture: name, patch, placement, look and aim.
 ## Edits go straight to the DMXFixture, so the 3D stage and real lights follow.
+##
+## Everything here must fit the right dock's width: if the panel asks for more,
+## the dock grows and squeezes the stage view every time a fixture is selected.
+## Horizontal scrolling is set to "never" so content can't widen the dock.
 
 var ctx: StudioContext
 var fx: DMXFixture
@@ -50,6 +54,9 @@ func _ready() -> void:
 			ctx.fixtures_changed.emit())
 	for sb: SpinBox in _place + _turn:
 		sb.value_changed.connect(func(_v: float) -> void: _push_placement())
+		# Let the X/Y/Z boxes share the dock's width instead of each asking for
+		# room for four characters, which made the inspector wider than its dock.
+		sb.get_line_edit().add_theme_constant_override("minimum_character_width", 0)
 	_color.color_changed.connect(func(c: Color) -> void:
 		if not _syncing and fx:
 			fx.color = c)
