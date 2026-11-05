@@ -332,6 +332,7 @@ theme_type_variation = &"Caption"
 text = "Haze and shadows need the Forward+ renderer"
 
 [node name="Help" type="Label" parent="Overlay" unique_id=1128013438]
+unique_name_in_owner = true
 layout_mode = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -343,7 +344,7 @@ grow_vertical = 0
 theme_type_variation = &"Caption"
 theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
 theme_override_constants/outline_size = 4
-text = "Right drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
+text = "Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
 
 [node name="EmptyHint" type="VBoxContainer" parent="Overlay" unique_id=14525423]
 unique_name_in_owner = true
