@@ -105,9 +105,9 @@ func shadow_atlas_size() -> int:
 func build_environment() -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("04141d")
+	env.background_color = Color("050608")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("27414f")
+	env.ambient_light_color = Color("2a3140")
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	apply(env)
 	return env
@@ -118,14 +118,14 @@ func apply(env: Environment) -> void:
 	if work_lights():
 		# House lights: a neutral grey room and flat, even ambient so every
 		# piece of truss and every fixture body reads, lit or not.
-		env.background_color = Color("3a5a6b")
+		env.background_color = Color("3b4049")
 		env.ambient_light_color = Color("d9dde6")
 		env.ambient_light_energy = 0.9 if forward_plus else 1.1
 	else:
 		# Enough ambient to see the rig when every light is off, low enough
 		# that a single par paints the room.
-		env.background_color = Color("04141d")
-		env.ambient_light_color = Color("27414f")
+		env.background_color = Color("050608")
+		env.ambient_light_color = Color("2a3140")
 		env.ambient_light_energy = 0.35 if forward_plus else 0.55
 
 	if forward_plus:
