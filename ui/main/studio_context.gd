@@ -55,7 +55,8 @@ var stage_surfaces: Array[StageRoom.Surface] = []
 ## edit goes through record() or one of the helpers below, so panels never
 ## keep their own.
 var history := UndoRedo.new()
-var workspace: Workspace = Workspace.PROGRAM
+## Opens on Stage so a first launch goes straight to building the rig.
+var workspace: Workspace = Workspace.STAGE
 
 # Transport
 var bpm: float = 128.0

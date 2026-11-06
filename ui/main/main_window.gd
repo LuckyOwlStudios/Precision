@@ -42,6 +42,8 @@ func _ready() -> void:
 			ctx.set_workspace(StudioContext.Workspace.STAGE)
 		right_tabs.current_tab = right_tabs.get_tab_idx_from_control(%Inspector))
 	_apply_workspace(ctx.workspace)
+	# First launch: Stage with the fixture Library in front of the left dock.
+	left_tabs.current_tab = left_tabs.get_tab_idx_from_control(%Library)
 	_update_footers()
 
 	# Audio files dropped anywhere on the window go into the song library.
