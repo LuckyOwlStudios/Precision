@@ -267,7 +267,7 @@ step = 0.01
 
 [node name="DimmerValue" type="SpinBox" parent="Padding/Content/DimmerField/Row" unique_id=795425564]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 max_value = 100.0
 step = 1.0
@@ -312,7 +312,7 @@ step = 0.01
 
 [node name="WhiteValue" type="SpinBox" parent="Padding/Content/WhiteRow" unique_id=423946139]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 max_value = 100.0
 step = 1.0
@@ -340,7 +340,7 @@ max_value = 255.0
 
 [node name="StrobeValue" type="SpinBox" parent="Padding/Content/StrobeRow" unique_id=947876999]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 max_value = 255.0
 step = 1.0
@@ -389,7 +389,7 @@ step = 0.001
 
 [node name="PanValue" type="SpinBox" parent="Padding/Content/AimSection/PanField" unique_id=1497871144]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 max_value = 540.0
 step = 0.1
@@ -417,7 +417,7 @@ step = 0.001
 
 [node name="TiltValue" type="SpinBox" parent="Padding/Content/AimSection/TiltField" unique_id=203694312]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 max_value = 270.0
 step = 0.1
