@@ -178,6 +178,18 @@ func _detach_fixture(fx: Object) -> void:
 	fixtures_changed.emit()
 
 
+## For a group delete (StageView): take these fixtures off, or put them back
+## at `indices` (their places in the rig, in rising order, as before removal).
+func detach_fixtures(list: Array) -> void:
+	for fx: Object in list:
+		_detach_fixture(fx)
+
+
+func attach_fixtures(list: Array, indices: Array) -> void:
+	for i in list.size():
+		_attach_fixture(list[i], int(indices[i]))
+
+
 func select(fx: DMXFixture) -> void:
 	if selected == fx:
 		return
@@ -282,6 +294,18 @@ func record_removed(action: String, obj: Object, attach: Callable, detach: Calla
 	history.add_do_method(detach)
 	history.add_undo_method(attach)
 	history.add_undo_reference(obj)
+	history.commit_action()
+
+
+## Like record_removed, for several things taken away together (a box
+## selection deleted at once): `detach` removes them all now, undo calls
+## `attach`, and the history keeps every one of them alive meanwhile.
+func record_removed_all(action: String, objs: Array, attach: Callable, detach: Callable) -> void:
+	history.create_action(action)
+	history.add_do_method(detach)
+	history.add_undo_method(attach)
+	for obj: Object in objs:
+		history.add_undo_reference(obj)
 	history.commit_action()
 
 

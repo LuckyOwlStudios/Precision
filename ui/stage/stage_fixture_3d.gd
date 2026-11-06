@@ -55,6 +55,7 @@ var look: StageLook ## haze and quality; null renders with defaults
 var _lights: Array[Light3D] = []
 var _beam_strength := 1.0
 var _marker_tween: Tween
+var _selected := false
 
 @onready var _yoke: Node3D = %Yoke ## rotates with pan
 @onready var _head: Node3D = %Head ## rotates with tilt; the beam points down its -Y
@@ -153,6 +154,9 @@ func center() -> Vector3:
 
 
 func set_selected(on: bool) -> void:
+	if on == _selected:
+		return # already showing (or hiding): don't restart the brackets' animation
+	_selected = on
 	if _marker_tween:
 		_marker_tween.kill()
 	if on:

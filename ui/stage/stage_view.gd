@@ -9,6 +9,11 @@ extends Control
 ##                                       connector (truss end, plate, corner face)
 ##   Left click / double-click / F2    -> select / rename a fixture
 ##   Left drag a fixture               -> slide it along the tube or surface it is on
+##   Left drag on empty space          -> box select fixtures (and, in the Stage
+##                                       workspace, structure pieces); Shift adds.
+##                                       Delete removes them all as one undo step,
+##                                       dragging one of them slides them all across
+##                                       the floor plan, Esc clears the selection
 ##   Stage workspace, a structure piece: click selects, drag re-snaps it,
 ##                                       R turns it a quarter turn, Delete removes it
 ##   Shift + left drag                 -> re-stick it onto another surface
@@ -38,7 +43,7 @@ const FLY_FAST := 3.0 ## Shift
 const FLY_SLOW := 0.25 ## Alt
 const LOOK_DEG_PER_PX := 0.25
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
-const HELP_TEXT := "Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
+const HELP_TEXT := "Drag empty space box select (Shift adds) · Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
 
 var ctx: StudioContext
 
@@ -76,6 +81,18 @@ var _drag_pipe: StageRoom.Pipe ## the tube it slides along, if hung on one
 var _drag_along_offset := 0.0 ## clamps' place on the tube minus the grab point's
 var _edit_before := Transform3D.IDENTITY ## where the fixture being dragged started, for undo
 
+# Box select: drag on empty space to pick several things at once.
+var _group: Array[Object] = [] ## fixtures and pieces picked together (two or more), else empty
+var _boxing := false
+var _box_from := Vector2.ZERO
+var _box_add := false ## Shift held: add to what is already selected
+var _group_drag := false ## pressed on a member of the group
+var _group_drag_started := false
+var _group_target: Object ## the member pressed on
+var _group_plane := Plane() ## level plane through it: the group slides across the floor plan
+var _group_grab := Vector3.ZERO
+var _group_before: Array[Transform3D] = []
+
 var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
 var _view_buttons: Dictionary = {} ## preset name -> Button
 var _quality_buttons: Array[Button] = []
@@ -92,6 +109,7 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _grid: MeshInstance3D = %Grid
 @onready var _drop_marker: MeshInstance3D = %DropMarker
 @onready var _gizmo: TransformGizmo = %Gizmo
+@onready var _box_select: Panel = %BoxSelect
 @onready var _tools: Control = %Tools
 @onready var _snap_button: Button = %Snap
 @onready var _haze: HSlider = %Haze
@@ -120,6 +138,10 @@ func _ready() -> void:
 	_rebuild_pipes()
 	(_drop_marker.material_override as ShaderMaterial).set_shader_parameter("color", UIPalette.ACCENT)
 	_gizmo.camera = _camera
+	var box_style := (_box_select.get_theme_stylebox("panel") as StyleBoxFlat).duplicate() as StyleBoxFlat
+	box_style.bg_color = Color(UIPalette.ACCENT, 0.12)
+	box_style.border_color = Color(UIPalette.ACCENT, 0.9)
+	_box_select.add_theme_stylebox_override("panel", box_style)
 
 	# View presets, top left.
 	_view_buttons = {"Perspective": %Perspective, "Front": %Front, "Top": %Top}
@@ -211,6 +233,7 @@ func _sync_fixtures() -> void:
 			_fixtures.remove_child(gone) # now, so an undone fixture's new visual gets the same name
 			gone.queue_free()
 			_visuals.erase(fx)
+			_group.erase(fx)
 	for fx in live:
 		if not _visuals.has(fx):
 			var v := StageFixture3D.create(fx)
@@ -224,14 +247,18 @@ func _sync_fixtures() -> void:
 
 func _on_workspace_changed(_ws: StudioContext.Workspace) -> void:
 	_update_gizmo()
-	_select_piece(null) # pieces are only edited while setting up the stage
+	# Pieces are only edited while setting up the stage: let go of them.
+	if _group.is_empty():
+		_select_piece(null)
+	else:
+		_set_selection(_group.filter(func(o: Object) -> bool: return o is DMXFixture))
 
 
 func _on_selection_changed(fx: DMXFixture) -> void:
 	if fx:
+		_group.clear() # picked on its own (here or in a panel)
 		_select_piece(null)
-	for key: DMXFixture in _visuals:
-		(_visuals[key] as StageFixture3D).set_selected(key == fx)
+	_refresh_marks()
 	_update_gizmo()
 
 
@@ -487,6 +514,10 @@ func _gui_input(event: InputEvent) -> void:
 					_on_left_press(mb)
 				else:
 					_orbiting = false
+					if _boxing:
+						_end_box(mb.position)
+					if _group_drag:
+						_end_group_drag()
 					if _dragging:
 						if _drag_started:
 							ctx.record_move(_dragging, _edit_before, "Move fixture")
@@ -535,6 +566,10 @@ func _gui_input(event: InputEvent) -> void:
 			var fwd := Vector3(_camera.global_transform.basis.z.x, 0, _camera.global_transform.basis.z.z).normalized()
 			_pivot.position += (-right * mm.relative.x + -fwd * mm.relative.y) * _distance * 0.0016
 			_update_camera()
+		elif _boxing:
+			_update_box(mm.position)
+		elif _group_drag:
+			_update_group_drag(mm.position, mm.ctrl_pressed)
 		elif _gizmo.is_dragging() and ctx.selected:
 			ctx.move_fixture(ctx.selected, _gizmo.drag(mm.position, _snapping(mm.ctrl_pressed)))
 		elif _dragging:
@@ -563,8 +598,14 @@ func _gui_input(event: InputEvent) -> void:
 				set_gizmo_mode(TransformGizmo.Mode.ROTATE)
 			KEY_Z:
 				look.shading = StageLook.Shading.SHOW if look.work_lights() else StageLook.Shading.WORK
+			KEY_ESCAPE:
+				if _group.is_empty() and not _selected_piece and not ctx.selected:
+					return
+				_set_selection([])
 			KEY_DELETE:
-				if _selected_piece:
+				if not _group.is_empty():
+					_delete_group()
+				elif _selected_piece:
 					_delete_piece(_selected_piece)
 				elif ctx.selected:
 					ctx.remove_fixture(ctx.selected)
@@ -590,6 +631,12 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		_gizmo.begin_drag(handle, mb.position)
 		return
 	var picked := _pick_at(mb.position)
+	if picked == null:
+		_begin_box(mb.position, mb.shift_pressed)
+		return
+	if _group.has(picked) and ctx.workspace == StudioContext.Workspace.STAGE:
+		_begin_group_drag(picked, mb.position)
+		return
 	var fx: DMXFixture = picked if picked is DMXFixture else null
 	ctx.select(fx)
 	if fx == null:
@@ -769,6 +816,7 @@ func _show_free_arrows(piece: StructurePiece) -> void:
 func _clear_ghost() -> void:
 	_show_free_arrows(null)
 	if _ghost:
+		_set.remove_child(_ghost) # now: a dying ghost must not count as part of the set
 		_ghost.queue_free()
 		_ghost = null
 		_ghost_path = ""
@@ -785,8 +833,8 @@ func _drop_piece(at: Vector2, path: String) -> void:
 	_set.add_child(piece)
 	piece.global_transform = xf
 	_rebuild_pipes()
-	_select_piece(piece)
-	ctx.record_added("Add truss piece", piece, _attach_piece.bind(piece, xf), _detach_piece.bind(piece))
+	# Not selected: once it is down it looks like the rest of the set. Click it to edit it.
+	ctx.record_added("Add truss piece", piece, _attach_piece.bind(piece, xf, false), _detach_piece.bind(piece))
 
 
 func _update_piece_drag(at: Vector2) -> void:
@@ -806,13 +854,16 @@ func _delete_piece(piece: StructurePiece) -> void:
 		_detach_piece.bind(piece))
 
 
-func _attach_piece(piece: Object, xf: Transform3D) -> void:
+func _attach_piece(piece: Object, xf: Transform3D, select := true) -> void:
 	if not is_instance_valid(piece) or (piece as Node).get_parent() != null:
 		return
 	_set.add_child(piece as Node)
 	(piece as StructurePiece).global_transform = xf
 	_rebuild_pipes()
-	_select_piece(piece as StructurePiece)
+	if select:
+		_select_piece(piece as StructurePiece)
+	else:
+		_refresh_marks()
 
 
 func _detach_piece(piece: Object) -> void:
@@ -822,6 +873,8 @@ func _detach_piece(piece: Object) -> void:
 		_select_piece(null)
 	if _piece_drag == piece:
 		_piece_drag = null
+	_group.erase(piece)
+	(piece as StructurePiece).set_highlight(false) # so it comes back plain if undone
 	_set.remove_child(piece as Node)
 	_rebuild_pipes()
 
@@ -840,12 +893,219 @@ func _place_piece(piece: Object, xf: Transform3D) -> void:
 
 
 func _select_piece(piece: StructurePiece) -> void:
-	if _selected_piece == piece:
-		return
-	if _selected_piece and is_instance_valid(_selected_piece):
-		_selected_piece.set_highlight(false)
-	_selected_piece = piece
 	if piece:
-		piece.set_highlight(true)
-		if ctx and ctx.selected:
-			ctx.select(null)
+		_group.clear()
+	_selected_piece = piece
+	if piece and ctx and ctx.selected:
+		ctx.select(null)
+	_refresh_marks()
+
+
+# ---------------------------------------------------------------- selection (one thing, or a box of several)
+
+## Brackets on selected fixtures and a tint on selected pieces: the single
+## selection (ctx.selected / _selected_piece) or every member of the group.
+func _refresh_marks() -> void:
+	var fx_sel: DMXFixture = ctx.selected if ctx else null
+	for fx: DMXFixture in _visuals:
+		(_visuals[fx] as StageFixture3D).set_selected(fx == fx_sel or _group.has(fx))
+	for p in _pieces():
+		p.set_highlight(p == _selected_piece or _group.has(p))
+
+
+## Everything selected right now, single or group.
+func _selection() -> Array[Object]:
+	if not _group.is_empty():
+		return _group.duplicate()
+	var list: Array[Object] = []
+	if ctx.selected:
+		list.append(ctx.selected)
+	if _selected_piece:
+		list.append(_selected_piece)
+	return list
+
+
+## Select exactly `items` (fixtures and/or pieces). One item is an ordinary
+## selection (inspector, gizmo); two or more make a group.
+func _set_selection(items: Array) -> void:
+	if items.size() == 1:
+		_group.clear()
+		if items[0] is DMXFixture:
+			_selected_piece = null
+			ctx.select(items[0] as DMXFixture)
+			_refresh_marks()
+		else:
+			_select_piece(items[0] as StructurePiece)
+		return
+	_group.clear()
+	_selected_piece = null
+	ctx.select(null)
+	for o: Object in items:
+		if is_instance_valid(o) and not _group.has(o):
+			_group.append(o)
+	_refresh_marks()
+	_update_gizmo()
+
+
+func _begin_box(at: Vector2, add: bool) -> void:
+	_boxing = true
+	_box_from = at
+	_box_add = add
+	if not add:
+		_set_selection([]) # a plain click on empty space deselects, as before
+
+
+func _box_rect(at: Vector2) -> Rect2:
+	return Rect2(_box_from, Vector2.ZERO).expand(at)
+
+
+func _update_box(at: Vector2) -> void:
+	var dragged := at.distance_to(_box_from) >= DRAG_THRESHOLD_PX
+	_box_select.visible = dragged
+	if dragged:
+		var r := _box_rect(at)
+		_box_select.position = r.position
+		_box_select.size = r.size
+
+
+func _end_box(at: Vector2) -> void:
+	_boxing = false
+	_box_select.visible = false
+	if at.distance_to(_box_from) < DRAG_THRESHOLD_PX:
+		return # just a click
+	var items: Array[Object] = []
+	if _box_add:
+		items = _selection()
+	for o in _things_in(_box_rect(at)):
+		if not items.has(o):
+			items.append(o)
+	_set_selection(items)
+
+
+## Fixtures (and, while setting up the stage, pieces) whose middle is inside
+## a screen rectangle.
+func _things_in(rect: Rect2) -> Array[Object]:
+	var list: Array[Object] = []
+	for fx: DMXFixture in _visuals:
+		if _on_screen_in((_visuals[fx] as StageFixture3D).center(), rect):
+			list.append(fx)
+	if ctx.workspace == StudioContext.Workspace.STAGE:
+		for p in _pieces():
+			if _on_screen_in(p.world_bounds().get_center(), rect):
+				list.append(p)
+	return list
+
+
+func _on_screen_in(p: Vector3, rect: Rect2) -> bool:
+	return not _camera.is_position_behind(p) and rect.has_point(_camera.unproject_position(p))
+
+
+func _transform_of(o: Object) -> Transform3D:
+	if o is DMXFixture:
+		return StudioContext.fixture_transform(o as DMXFixture)
+	return (o as StructurePiece).global_transform
+
+
+## Put each of `items` at its transform in `xfs` (fixtures and pieces alike).
+func _place_group(items: Array, xfs: Array) -> void:
+	var pieces_moved := false
+	for i in items.size():
+		var o: Object = items[i]
+		if not is_instance_valid(o) or not (o as Node).is_inside_tree():
+			continue
+		if o is DMXFixture:
+			ctx.move_fixture(o as DMXFixture, xfs[i])
+		else:
+			(o as StructurePiece).global_transform = xfs[i]
+			pieces_moved = true
+	if pieces_moved:
+		_rebuild_pipes()
+
+
+func _begin_group_drag(target: Object, at: Vector2) -> void:
+	_group_drag = true
+	_group_drag_started = false
+	_group_target = target
+	_press_pos = at
+	var centre: Vector3
+	if target is DMXFixture:
+		centre = (_visuals[target] as StageFixture3D).center()
+	else:
+		centre = (target as StructurePiece).world_bounds().get_center()
+	_group_plane = Plane(Vector3.UP, centre.y)
+	var grab: Variant = _ray_plane(_group_plane, at)
+	_group_grab = grab if grab != null else centre
+	_group_before.clear()
+	for o in _group:
+		_group_before.append(_transform_of(o))
+
+
+## Slide the whole group across the floor plan, keeping each thing's height.
+func _update_group_drag(at: Vector2, ctrl_held: bool) -> void:
+	if not _group_drag_started:
+		if at.distance_to(_press_pos) < DRAG_THRESHOLD_PX:
+			return
+		_group_drag_started = true
+	var hit: Variant = _ray_plane(_group_plane, at)
+	if hit == null:
+		return
+	var delta: Vector3 = (hit as Vector3) - _group_grab
+	delta.y = 0.0
+	if _snapping(ctrl_held):
+		delta.x = snappedf(delta.x, TransformGizmo.MOVE_STEP)
+		delta.z = snappedf(delta.z, TransformGizmo.MOVE_STEP)
+	var xfs: Array[Transform3D] = []
+	for xf in _group_before:
+		xfs.append(xf.translated(delta))
+	_place_group(_group, xfs)
+
+
+func _end_group_drag() -> void:
+	_group_drag = false
+	if not _group_drag_started:
+		_set_selection([_group_target]) # a click on one of them picks just that one
+		return
+	var items := _group.duplicate()
+	var after: Array[Transform3D] = []
+	for o in items:
+		after.append(_transform_of(o))
+	ctx.record("Move %d things" % items.size(), _place_group.bind(items, after),
+		_place_group.bind(items, _group_before.duplicate()))
+
+
+## Delete everything in the group as one undo step; undo brings it all back
+## (fixtures to their places in the rig, same patch) and selects it again.
+func _delete_group() -> void:
+	var fxs: Array[DMXFixture] = []
+	var pieces: Array[StructurePiece] = []
+	for o in _group:
+		if o is DMXFixture:
+			fxs.append(o)
+		elif o is StructurePiece:
+			pieces.append(o)
+	fxs.sort_custom(func(a: DMXFixture, b: DMXFixture) -> bool: return a.get_index() < b.get_index())
+	var indices: Array[int] = []
+	for fx in fxs:
+		indices.append(fx.get_index())
+	var xfs: Array[Transform3D] = []
+	for p in pieces:
+		xfs.append(p.global_transform)
+	ctx.record_removed_all("Delete %d things" % _group.size(), _group.duplicate(),
+		_attach_group.bind(fxs, indices, pieces, xfs), _detach_group.bind(fxs, pieces))
+
+
+func _detach_group(fxs: Array, pieces: Array) -> void:
+	_set_selection([])
+	ctx.detach_fixtures(fxs)
+	for p: Object in pieces:
+		_detach_piece(p)
+
+
+func _attach_group(fxs: Array, indices: Array, pieces: Array, xfs: Array) -> void:
+	ctx.attach_fixtures(fxs, indices)
+	for i in pieces.size():
+		_attach_piece(pieces[i], xfs[i], false)
+	var items: Array[Object] = []
+	items.append_array(fxs)
+	items.append_array(pieces)
+	_set_selection(items)

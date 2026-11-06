@@ -12,7 +12,7 @@ Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline
 | Header | Workspaces: **Stage** (place and patch), **Program** (build a song's show), **Live** (run the night). Keys 1/2/3. |
 | Now playing band | Transport, tempo, beat dots, **Blackout** (Esc). Its background blends the rig's live colours. |
 | Left dock | **Library** (drag a fixture onto the stage, or double-click), **On stage** (patch list), **Songs** (your music, see below). |
-| Centre | 3D stage. Hold right mouse to fly like the Godot editor (drag to look, WASD move, Q/E down/up, Shift faster, wheel sets speed), Alt drag orbit, middle drag pan, wheel zoom, F frame, left click select, Delete to remove. See **Placing fixtures** below. |
+| Centre | 3D stage. Hold right mouse to fly like the Godot editor (drag to look, WASD move, Q/E down/up, Shift faster, wheel sets speed), Alt drag orbit, middle drag pan, wheel zoom, F frame, left click select, drag on empty space to box select several, Delete to remove. See **Placing fixtures** below. |
 | Bottom | Beat-grid timeline: the song's waveform, a lane per fixture, red playhead (Space plays the song). Clips come next. |
 | Right dock | **Inspector** (patch, colour, dimmer, pan/tilt), **Cues** (Record / GO), **DMX** (live 512-channel monitor). |
 
@@ -69,6 +69,14 @@ The **Structure** group in the library holds the truss pieces. Drag one onto the
 In the Stage workspace click a piece to select it, drag it to snap it somewhere else, **R** to give it a
 quarter turn about the joint it hangs from, **Delete** to remove it. Fixtures don't follow a piece you
 move yet, and the set isn't saved with the show yet (nothing is, so far).
+
+### Selecting several things
+Drag on empty space to draw a box: every fixture whose middle is inside it is selected (in the Stage
+workspace, truss pieces and base plates too). **Shift** + drag adds to what is already selected, a click
+on empty space or **Esc** clears it. With several things selected, **Delete** removes them all (one
+**Ctrl+Z** brings them all back), and dragging one of them slides the whole group across the floor
+plan, keeping each one's height. A box has to start on empty space; starting on a fixture or truss
+drags that instead.
 
 Each piece is a scene with the `StructurePiece` script and three kinds of child nodes:
 - `TrussConnector` (a Marker3D): a face that joins another piece. +Y points out of the face, +Z is

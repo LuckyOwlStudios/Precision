@@ -50,7 +50,9 @@ static func kind_flag(k: Kind) -> int:
 	return 1 << int(k)
 
 
-## A soft accent tint over the whole piece while it is selected.
+## A soft accent tint over the whole piece while it is selected. Covers both
+## plain meshes (truss lattice) and CSG shapes (base plate): only the root CSG
+## shape draws, so that is the one that gets the tint.
 func set_highlight(on: bool) -> void:
 	if _highlight == null:
 		_highlight = StandardMaterial3D.new()
@@ -58,5 +60,8 @@ func set_highlight(on: bool) -> void:
 		_highlight.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_highlight.albedo_color = Color(UIPalette.ACCENT, 0.35)
 		_highlight.no_depth_test = false
-	for n in find_children("*", "MeshInstance3D", true, false):
-		(n as MeshInstance3D).material_overlay = _highlight if on else null
+	for n in find_children("*", "GeometryInstance3D", true, false):
+		if n is CSGShape3D and not (n as CSGShape3D).is_root_shape():
+			continue
+		if n is MeshInstance3D or n is CSGShape3D:
+			(n as GeometryInstance3D).material_overlay = _highlight if on else null
