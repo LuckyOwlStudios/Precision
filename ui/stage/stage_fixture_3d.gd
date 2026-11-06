@@ -19,7 +19,6 @@ extends Node3D
 
 const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
 const BAR_PIXELS := 8
-const PAR_AIM_DEG := -18.0 ## pars lean slightly towards the audience
 
 ## Body scenes (loaded, not preloaded: they use this script themselves).
 const SCENES := {

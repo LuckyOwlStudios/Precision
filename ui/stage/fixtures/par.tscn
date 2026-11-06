@@ -97,7 +97,7 @@ unique_name_in_owner = true
 
 [node name="Head" type="Node3D" parent="Yoke" unique_id=1229396354]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 0.95105654, 0.309017, 0, -0.309017, 0.95105654, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Shell" type="MeshInstance3D" parent="Yoke/Head" unique_id=485444657]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
