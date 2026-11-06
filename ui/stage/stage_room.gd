@@ -14,6 +14,9 @@ enum Kind { FLOOR, WALL, TRUSS, FURNITURE } ## TRUSS is unused now: trusses are 
 const ON_PIPE_TOLERANCE := 0.01
 ## Tubes whose ends are this close (and that line up) join into one run.
 const JOIN_TOLERANCE := 0.012
+## How far beside a corner tube the cursor is aimed to pick one of its faces:
+## about half the width of a truss, so the left of a truss means its left faces.
+const SIDE_REACH := 0.12
 
 
 class Surface:
@@ -43,6 +46,13 @@ class Pipe:
 		b = p_b
 		out = p_out
 		out2 = p_out2
+
+	## Every face a fixture can hang on: one or two.
+	func sides() -> Array[Vector3]:
+		var list: Array[Vector3] = [out]
+		if out2 != Vector3.ZERO:
+			list.append(out2)
+		return list
 
 	## The face of the tube a fixture would hang on to reach `target` (a point
 	## or the camera): the outward face most turned towards it.

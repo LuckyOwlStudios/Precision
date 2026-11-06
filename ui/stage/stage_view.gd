@@ -350,7 +350,7 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	if not mounts.is_empty():
 		var grab := _pipe_at(at)
 		if not grab.is_empty():
-			return StageRoom.hang(grab[0], grab[1], mounts, (grab[0] as StageRoom.Pipe).side_towards(origin, float(grab[1])))
+			return StageRoom.hang(grab[0], grab[1], mounts, grab[2])
 	var hit := StageRoom.raycast(_surfaces, origin, dir)
 	if hit == null:
 		return null
@@ -360,8 +360,11 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	return Transform3D(StageRoom.mount_basis(hit.normal), pos + hit.normal * StageFixture3D.mount_offset(body))
 
 
-## The tube nearest the cursor on screen, and where along it: [Pipe, along],
-## or [] if none is within PIPE_GRAB_PX. Of tubes about as near, the one
+## The tube face under the cursor on screen, and where along it:
+## [Pipe, along, side], or [] if none is within PIPE_GRAB_PX. A tube on a truss
+## corner has two faces (see StageRoom.Pipe), each aimed at by where the cursor
+## sits beside the tube: left of a truss picks the left face of the nearer of its
+## top and bottom bars, above it the top face. Of faces about as near, the one
 ## closer to the camera wins.
 func _pipe_at(at: Vector2) -> Array:
 	var origin := _camera.project_ray_origin(at)
@@ -369,17 +372,21 @@ func _pipe_at(at: Vector2) -> Array:
 	var best: Array = []
 	var best_score := INF
 	for pipe in _pipes:
-		var r := pipe.closest_to_ray(origin, dir)
-		var p := pipe.point(float(r[0]))
-		if _camera.is_position_behind(p):
-			continue
-		var px := _camera.unproject_position(p).distance_to(at)
-		if px > PIPE_GRAB_PX:
-			continue
-		var score := px + float(r[2]) * 2.0 # pixels, plus a nudge towards the front
-		if score < best_score:
-			best_score = score
-			best = [pipe, float(r[0])]
+		for side in pipe.sides():
+			var reach := StageRoom.SIDE_REACH if pipe.out2 != Vector3.ZERO else 0.0
+			var shift: Vector3 = side * reach # aim at a line beside the tube, on that face
+			var aimed := StageRoom.Pipe.new(pipe.a + shift, pipe.b + shift, side)
+			var r := aimed.closest_to_ray(origin, dir)
+			var p := aimed.point(float(r[0]))
+			if _camera.is_position_behind(p):
+				continue
+			var px := _camera.unproject_position(p).distance_to(at)
+			if px > PIPE_GRAB_PX * (2.0 if reach > 0.0 else 1.0):
+				continue
+			var score := px + float(r[2]) * 2.0 # pixels, plus a nudge towards the front
+			if score < best_score:
+				best_score = score
+				best = [pipe, float(r[0]), side]
 	return best
 
 
