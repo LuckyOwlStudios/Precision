@@ -2,6 +2,8 @@ class_name InspectorPanel
 extends ScrollContainer
 ## Properties of the selected fixture: name, patch, placement, look and aim.
 ## Edits go straight to the DMXFixture, so the 3D stage and real lights follow.
+## Every edit is one undo step (Ctrl+Z): a whole slider drag or colour-picker
+## session counts once, and quick typing / wheel / arrow nudges merge.
 ##
 ## Everything here must fit the right dock's width: if the panel asks for more,
 ## the dock grows and squeezes the stage view every time a fixture is selected.
@@ -11,6 +13,13 @@ var ctx: StudioContext
 var fx: DMXFixture
 
 var _syncing := false
+
+# A slider being dragged, or the colour picker being open: the value before it
+# started, stored as one undo step when it ends.
+var _drag_prop := ""
+var _drag_before: Variant
+var _color_fx: DMXFixture
+var _color_before := Color.WHITE
 
 @onready var _content: VBoxContainer = %Content
 @onready var _empty: Control = %Empty
@@ -57,9 +66,7 @@ func _ready() -> void:
 	_name.focus_exited.connect(func() -> void: _apply_name(_name.text))
 	_address.value_changed.connect(func(v: float) -> void:
 		if not _syncing and fx:
-			fx.start_address = int(v)
-			ctx.universe.data.fill(0)
-			ctx.fixtures_changed.emit())
+			ctx.set_address(fx, int(v)))
 	for sb: SpinBox in _place + _turn:
 		sb.value_changed.connect(func(_v: float) -> void: _push_placement())
 		# Let the X/Y/Z boxes share the dock's width instead of each asking for
@@ -68,6 +75,13 @@ func _ready() -> void:
 	_color.color_changed.connect(func(c: Color) -> void:
 		if not _syncing and fx:
 			fx.color = c)
+	_color.get_popup().about_to_popup.connect(func() -> void:
+		_color_fx = fx
+		_color_before = fx.color if fx else Color.WHITE)
+	_color.popup_closed.connect(func() -> void:
+		if _color_fx and is_instance_valid(_color_fx):
+			ctx.record_fixture_value(_color_fx, &"color", _color_before)
+		_color_fx = null)
 	# Each slider and its number box write straight to the fixture property of
 	# the same name; _pull copies the fixture back into both.
 	_bind(_dimmer, _dimmer_value, "dimmer")
@@ -86,11 +100,24 @@ func _bind(s: HSlider, box: SpinBox, prop: String) -> void:
 	box.value_changed.connect(func(v: float) -> void:
 		if not _syncing and fx:
 			_write(prop, v / _unit_scale(prop)))
+	# A whole drag is one undo step, recorded when the mouse lets go.
+	s.drag_started.connect(func() -> void:
+		if fx:
+			_drag_prop = prop
+			_drag_before = fx.get(prop))
+	s.drag_ended.connect(func(_changed: bool) -> void:
+		if _drag_prop == prop and fx:
+			ctx.record_fixture_value(fx, prop, _drag_before)
+		_drag_prop = "")
 
 
 ## Set a look property (0..1, or 0..255 for strobe) and show it in both widgets.
 func _write(prop: String, v: float) -> void:
-	fx.set(prop, roundi(v) if prop == "strobe" else clampf(v, 0.0, 1.0))
+	var value: Variant = roundi(v) if prop == "strobe" else clampf(v, 0.0, 1.0)
+	if _drag_prop == prop:
+		fx.set(prop, value) # recorded as one step when the drag ends
+	else:
+		ctx.set_fixture_value(fx, prop, value)
 	_sync_pair(prop)
 
 
@@ -132,10 +159,15 @@ func _push_placement() -> void:
 		return
 	var pos := Vector3(_place[0].value, _place[1].value, _place[2].value)
 	var rot := Vector3(deg_to_rad(_turn[0].value), deg_to_rad(_turn[1].value), deg_to_rad(_turn[2].value))
+	var before := StudioContext.fixture_transform(fx)
 	ctx.move_fixture(fx, Transform3D(Basis.from_euler(rot), pos))
+	ctx.record_move(fx, before, "Move fixture", true)
 
 
 func _show(p_fx: DMXFixture) -> void:
+	if p_fx != fx and _drag_prop != "" and fx and is_instance_valid(fx):
+		ctx.record_fixture_value(fx, _drag_prop, _drag_before) # selection changed mid-drag
+		_drag_prop = ""
 	fx = p_fx
 	var has := fx != null
 	for c in _content.get_children():
@@ -173,6 +205,13 @@ func _pull() -> void:
 		_color.color = fx.color
 	var xf := StudioContext.fixture_transform(fx)
 	var euler := xf.basis.get_euler()
+	# Hung or standing fixtures only turn the ways their mounting allows (the
+	# Rotate gizmo's rings); typing angles would twist them off the truss or
+	# floor, so the boxes only take typing for fixtures placed freely.
+	var free := _mount(fx, xf) == MountRotation.Mount.FREE
+	for sb in _turn:
+		sb.editable = free
+		sb.tooltip_text = "" if free else "Mounted fixtures turn with the Rotate gizmo (E) in the stage view."
 	for i in 3:
 		# Leave a box alone while you're typing in it.
 		if not _place[i].get_line_edit().has_focus():
@@ -180,6 +219,12 @@ func _pull() -> void:
 		if not _turn[i].get_line_edit().has_focus():
 			_turn[i].value = rad_to_deg(euler[i])
 	_syncing = false
+
+
+func _mount(p_fx: DMXFixture, xf: Transform3D) -> MountRotation.Mount:
+	var body: FixtureCatalog.Body = p_fx.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
+	return MountRotation.mount_of(xf, MountRotation.rules_of(StageFixture3D.scene_path_of(p_fx)),
+		StageFixture3D.mount_offset(body), ctx.truss_pipes, ctx.stage_surfaces)
 
 
 func _process(_delta: float) -> void:

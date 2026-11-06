@@ -171,7 +171,7 @@ static func hang(pipe: Pipe, along: float, mounts: PackedVector3Array) -> Transf
 ## goes to `along`, but no further than lets its outermost clamp reach an end.
 ## A 1.2 m bar with a clamp at each end stops 0.6 m from the end of the tube.
 static func slide(pipe: Pipe, xform: Transform3D, mounts: PackedVector3Array, along: float) -> Transform3D:
-	var centre := _centre(mounts)
+	var centre := centre_of(mounts)
 	var half_span := 0.0
 	for m: Vector3 in mounts:
 		half_span = maxf(half_span, absf(m.x - centre.x))
@@ -183,10 +183,11 @@ static func slide(pipe: Pipe, xform: Transform3D, mounts: PackedVector3Array, al
 
 ## Where the middle of a fixture's clamps is along a tube.
 static func clamps_along(pipe: Pipe, xform: Transform3D, mounts: PackedVector3Array) -> float:
-	return pipe.along_of(xform * _centre(mounts))
+	return pipe.along_of(xform * centre_of(mounts))
 
 
-static func _centre(mounts: PackedVector3Array) -> Vector3:
+## The middle of a fixture's clamps, in its own space.
+static func centre_of(mounts: PackedVector3Array) -> Vector3:
 	var centre := Vector3.ZERO
 	for m: Vector3 in mounts:
 		centre += m
@@ -196,13 +197,19 @@ static func _centre(mounts: PackedVector3Array) -> Vector3:
 
 
 ## The tube a fixture is hung from: one that every clamp sits on, running along
-## the fixture's X axis. Null when it stands on a floor or wall instead, or was
+## the fixture's X axis (or, with a single clamp, square to its Y). Null when it stands on a floor or wall instead, or was
 ## moved off the tube.
 static func pipe_holding(pipes: Array[Pipe], xform: Transform3D, mounts: PackedVector3Array) -> Pipe:
 	if mounts.is_empty():
 		return null
 	for pipe in pipes:
-		if absf(xform.basis.x.normalized().dot(pipe.axis())) < 0.99:
+		if mounts.size() > 1:
+			# Several clamps on one tube: the fixture's X runs along it.
+			if absf(xform.basis.x.normalized().dot(pipe.axis())) < 0.99:
+				continue
+		elif absf(xform.basis.y.normalized().dot(pipe.axis())) > 0.02:
+			# One clamp may be turned on its bolt (see MountRotation), but
+			# the bolt still stands square to the tube.
 			continue
 		var ok := true
 		for m: Vector3 in mounts:

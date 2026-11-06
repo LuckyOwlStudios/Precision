@@ -48,6 +48,13 @@ var selected: DMXFixture
 ## The truss tubes on stage (kept up to date by the stage view), for hanging
 ## fixtures from code.
 var truss_pipes: Array[StageRoom.Pipe] = []
+## The floor, wall and booth boxes fixtures stand on (also from the stage view),
+## so the inspector can tell how a fixture is mounted.
+var stage_surfaces: Array[StageRoom.Surface] = []
+## The one undo history for the whole app (Ctrl+Z undo, Ctrl+R redo). Every
+## edit goes through record() or one of the helpers below, so panels never
+## keep their own.
+var history := UndoRedo.new()
 var workspace: Workspace = Workspace.PROGRAM
 
 # Transport
@@ -67,8 +74,11 @@ var blackout: bool = false:
 
 var _counters: Dictionary = {} ## short name -> last number used
 
+const HISTORY_STEPS := 300
+
 
 func _ready() -> void:
+	history.max_steps = HISTORY_STEPS
 	library.songs_changed.connect(_on_library_changed)
 
 	music_player.finished.connect(_on_music_finished)
@@ -136,16 +146,34 @@ func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3, stage_bas
 	rig.add_child(fx)
 	fixtures_changed.emit()
 	select(fx)
+	var index := fx.get_index()
+	record_added("Add fixture", fx, _attach_fixture.bind(fx, index), _detach_fixture.bind(fx))
 	return fx
 
 
+## Take a fixture off the stage. Undo puts it back where it was in the rig
+## (same patch, look and name), so recorded cues still find it.
 func remove_fixture(fx: DMXFixture) -> void:
-	if fx == null:
+	if fx == null or fx.get_parent() != rig:
+		return
+	record_removed("Remove fixture", fx, _attach_fixture.bind(fx, fx.get_index()), _detach_fixture.bind(fx))
+
+
+func _attach_fixture(fx: Object, index: int) -> void:
+	if not is_instance_valid(fx) or (fx as Node).get_parent() != null:
+		return
+	rig.add_child(fx as Node)
+	rig.move_child(fx as Node, mini(index, rig.get_child_count() - 1))
+	fixtures_changed.emit()
+	select(fx as DMXFixture)
+
+
+func _detach_fixture(fx: Object) -> void:
+	if not is_instance_valid(fx) or (fx as Node).get_parent() != rig:
 		return
 	if selected == fx:
 		select(null)
-	rig.remove_child(fx)
-	fx.queue_free()
+	rig.remove_child(fx as Node)
 	_clear_universe()
 	fixtures_changed.emit()
 
@@ -161,6 +189,131 @@ func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
 	fx.set_meta(META_POSITION, xform.origin)
 	fx.set_meta(META_BASIS, xform.basis.orthonormalized())
 	fixture_moved.emit(fx)
+
+
+## Remember a finished drag of `fx` from `before` to where it is now, so it
+## can be undone. A click that didn't move it records nothing. With `merge`,
+## quick repeated nudges (typing in the inspector's boxes, holding an arrow)
+## become one step.
+func record_move(fx: DMXFixture, before: Transform3D, action: String, merge := false) -> void:
+	var after := fixture_transform(fx)
+	if after.is_equal_approx(before):
+		return
+	record(action, _restore_placement.bind(fx, after), _restore_placement.bind(fx, before),
+		false, _merge_key(fx, "place") if merge else "")
+
+
+func _restore_placement(fx: Object, xform: Transform3D) -> void:
+	if is_instance_valid(fx) and (fx as Node).is_inside_tree():
+		move_fixture(fx as DMXFixture, xform)
+
+
+## Set a look property (dimmer, color, white, strobe, pan, tilt...) as one
+## undo step. Quick repeats on the same fixture and property (the mouse wheel
+## on a slider, a box's arrows) merge into a single step.
+func set_fixture_value(fx: DMXFixture, prop: StringName, value: Variant) -> void:
+	var before: Variant = fx.get(prop)
+	fx.set(prop, value)
+	record_fixture_value(fx, prop, before, true)
+
+
+## The property was already changed (by dragging a slider or the colour
+## picker): store the change from `before` to its value now as one step.
+func record_fixture_value(fx: DMXFixture, prop: StringName, before: Variant, merge := false) -> void:
+	var after: Variant = fx.get(prop)
+	if after == before:
+		return
+	record("Change %s" % prop, _apply_value.bind(fx, prop, after), _apply_value.bind(fx, prop, before),
+		false, _merge_key(fx, prop) if merge else "")
+
+
+func _apply_value(fx: Object, prop: StringName, value: Variant) -> void:
+	if is_instance_valid(fx):
+		fx.set(prop, value)
+
+
+## Re-patch a fixture to a new start address, with undo.
+func set_address(fx: DMXFixture, address: int) -> void:
+	if fx.start_address == address:
+		return
+	record("Patch fixture", _apply_address.bind(fx, address), _apply_address.bind(fx, fx.start_address),
+		true, _merge_key(fx, "address"))
+
+
+func _apply_address(fx: Object, address: int) -> void:
+	if is_instance_valid(fx):
+		(fx as DMXFixture).start_address = address
+		_clear_universe()
+		fixtures_changed.emit()
+
+
+# ---------------------------------------------------------------- undo / redo
+
+## Add a step to the undo history. `do_call` redoes it and `undo_call` undoes
+## it; with `execute` false the change has already happened. Steps with the
+## same non-empty `merge_key` less than a moment apart become one step.
+func record(action: String, do_call: Callable, undo_call: Callable, execute := false, merge_key := "") -> void:
+	if merge_key.is_empty():
+		history.create_action(action)
+	else:
+		# UndoRedo merges same-named MERGE_ENDS actions made within 800 ms, keeping
+		# the first undo and the last do. The key keeps fixtures/properties apart.
+		history.create_action("%s [%s]" % [action, merge_key], UndoRedo.MERGE_ENDS)
+	history.add_do_method(do_call)
+	history.add_undo_method(undo_call)
+	history.commit_action(execute)
+
+
+## `obj` was just added (and is attached now). Undo calls `detach`, redo `attach`.
+## The history keeps `obj` alive while it is detached and frees it once the
+## step can't be redone any more.
+func record_added(action: String, obj: Object, attach: Callable, detach: Callable) -> void:
+	history.create_action(action)
+	history.add_do_method(attach)
+	history.add_undo_method(detach)
+	history.add_do_reference(obj)
+	history.commit_action(false)
+
+
+## Remove `obj` now by calling `detach`; undo calls `attach`. The history keeps
+## `obj` alive until the step falls off the end of the history.
+func record_removed(action: String, obj: Object, attach: Callable, detach: Callable) -> void:
+	history.create_action(action)
+	history.add_do_method(detach)
+	history.add_undo_method(attach)
+	history.add_undo_reference(obj)
+	history.commit_action()
+
+
+## Several edits as one undo step: everything recorded between begin_step() and
+## end_step() is undone together (e.g. loading the demo rig).
+func begin_step(action: String) -> void:
+	history.create_action(action)
+
+
+func end_step() -> void:
+	history.commit_action(false)
+
+
+func undo() -> bool:
+	if history.is_committing_action():
+		return false
+	return history.undo()
+
+
+func redo() -> bool:
+	if history.is_committing_action():
+		return false
+	return history.redo()
+
+
+func _merge_key(obj: Object, what: String) -> String:
+	return "%d:%s" % [obj.get_instance_id(), what]
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and history:
+		history.free()
 
 
 ## Front bottom bars of the two default trusses (stage_room.tscn's Set).
@@ -197,14 +350,21 @@ func rename_fixture(fx: DMXFixture, new_name: String) -> void:
 	if fx == null:
 		return
 	var clean := new_name.strip_edges()
-	if clean.is_empty() or clean == String(fx.name):
-		if not fx.has_meta(META_LABEL):
-			return
-		fx.remove_meta(META_LABEL)
-	elif clean == display_name(fx):
+	if clean == String(fx.name):
+		clean = ""
+	var old := String(fx.get_meta(META_LABEL, ""))
+	if clean == old:
 		return
+	record("Rename fixture", _apply_label.bind(fx, clean), _apply_label.bind(fx, old), true)
+
+
+func _apply_label(fx: Object, label: String) -> void:
+	if not is_instance_valid(fx):
+		return
+	if label.is_empty():
+		fx.remove_meta(META_LABEL)
 	else:
-		fx.set_meta(META_LABEL, clean)
+		fx.set_meta(META_LABEL, label)
 	fixtures_changed.emit()
 
 
@@ -371,7 +531,24 @@ func set_workspace(value: Workspace) -> void:
 # ---------------------------------------------------------------- cues
 
 func record_cue() -> void:
-	cue_stack.record_cue("", 1.0)
+	var cue := cue_stack.record_cue("", 1.0)
+	cues_changed.emit()
+	record("Record cue", _insert_cue.bind(cue, cue_stack.cues.size() - 1), _remove_cue.bind(cue))
+
+
+func _insert_cue(cue: LightCue, index: int) -> void:
+	if not cue_stack.cues.has(cue):
+		cue_stack.cues.insert(mini(index, cue_stack.cues.size()), cue)
+		cues_changed.emit()
+
+
+func _remove_cue(cue: LightCue) -> void:
+	var i := cue_stack.cues.find(cue)
+	if i < 0:
+		return
+	cue_stack.cues.remove_at(i)
+	if cue_stack.current >= i:
+		cue_stack.current -= 1 # the cue after it keeps being "next"
 	cues_changed.emit()
 
 
@@ -392,6 +569,7 @@ func load_demo_rig() -> void:
 	var par: FixtureCatalog.Entry = catalog[1]
 	var mover: FixtureCatalog.Entry = catalog[4]
 	var colors: Array[Color] = [Color("ff3b6b"), Color("ffb547"), Color("38c6ff"), Color("8b5cff")]
+	begin_step("Load demo rig") # one Ctrl+Z takes the whole rig away again
 	# Clamped onto the front tubes of the two trusses, as the stage view would hang them.
 	for i in 4:
 		var fx := hang_fixture(par, FRONT_TRUSS_TUBE + Vector3(-3.0 + i * 2.0, 0, 0))
@@ -407,4 +585,5 @@ func load_demo_rig() -> void:
 	for i in 2:
 		var fx := add_fixture(bar, Vector3(-2.6 + i * 5.2, StageFixture3D.mount_offset(bar.body), -5.55), StageRoom.mount_basis(Vector3.UP) * Basis(Vector3.UP, PI)) # lean towards the wall
 		fx.color = Color("19d3c5")
+	end_step()
 	select(null)

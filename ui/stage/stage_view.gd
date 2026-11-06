@@ -12,7 +12,13 @@ extends Control
 ##   Stage workspace, a structure piece: click selects, drag re-snaps it,
 ##                                       R turns it a quarter turn, Delete removes it
 ##   Shift + left drag                 -> re-stick it onto another surface
-##   W / E                             -> move / rotate gizmo; Ctrl while dragging snaps
+##   W / E                             -> move / rotate gizmo; Ctrl while dragging snaps.
+##                                       The rotate rings depend on how the fixture is
+##                                       mounted (see MountRotation): swing around the
+##                                       truss, spin under a single clamp, spin on the
+##                                       spot on a floor or wall, any axis when free
+##   Ctrl+Z / Ctrl+R                   -> undo / redo (main window): placing, moving,
+##                                       turning and deleting fixtures and pieces
 ##   Hold right mouse                  -> fly, like the Godot editor: drag to look,
 ##                                       WASD move, Q/E down/up, Shift faster,
 ##                                       Alt slower, wheel sets the fly speed
@@ -55,6 +61,7 @@ var _ghost_path := ""
 var _selected_piece: StructurePiece
 var _piece_drag: StructurePiece
 var _piece_drag_started := false
+var _piece_before := Transform3D.IDENTITY ## where the dragged piece started, for undo
 
 # Dragging a fixture by its body (not the gizmo).
 var _dragging: DMXFixture
@@ -67,6 +74,7 @@ var _drag_screen_offset := Vector2.ZERO ## fixture on screen minus the cursor
 var _drag_start := Transform3D.IDENTITY
 var _drag_pipe: StageRoom.Pipe ## the tube it slides along, if hung on one
 var _drag_along_offset := 0.0 ## clamps' place on the tube minus the grab point's
+var _edit_before := Transform3D.IDENTITY ## where the fixture being dragged started, for undo
 
 var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
 var _view_buttons: Dictionary = {} ## preset name -> Button
@@ -100,12 +108,15 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
 	ctx.truss_pipes = _pipes
+	ctx.stage_surfaces = _surfaces
 	_sync_fixtures()
 
 
 func _ready() -> void:
 	look.load_saved()
 	_surfaces = StageRoom.surfaces_in(_room)
+	if ctx:
+		ctx.stage_surfaces = _surfaces
 	_rebuild_pipes()
 	(_drop_marker.material_override as ShaderMaterial).set_shader_parameter("color", UIPalette.ACCENT)
 	_gizmo.camera = _camera
@@ -196,7 +207,9 @@ func _sync_fixtures() -> void:
 	var live := ctx.fixtures()
 	for fx: DMXFixture in _visuals.keys():
 		if not live.has(fx) or not is_instance_valid(fx):
-			(_visuals[fx] as Node).queue_free()
+			var gone: Node = _visuals[fx]
+			_fixtures.remove_child(gone) # now, so an undone fixture's new visual gets the same name
+			gone.queue_free()
 			_visuals.erase(fx)
 	for fx in live:
 		if not _visuals.has(fx):
@@ -239,6 +252,15 @@ func _update_gizmo() -> void:
 	_gizmo.shown = staging and fx != null and _visuals.has(fx)
 	if _gizmo.shown:
 		_gizmo.target = StudioContext.fixture_transform(fx)
+		_gizmo.rings = _rotation_axes(fx)
+
+
+## The ways a fixture can be turned where it is mounted now (rotate rings).
+func _rotation_axes(fx: DMXFixture) -> Array[MountRotation.Axis]:
+	var body: FixtureCatalog.Body = fx.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
+	return MountRotation.axes(StudioContext.fixture_transform(fx),
+		MountRotation.rules_of(StageFixture3D.scene_path_of(fx)),
+		StageFixture3D.mount_offset(body), _pipes, _surfaces)
 
 
 func set_gizmo_mode(m: TransformGizmo.Mode) -> void:
@@ -255,7 +277,7 @@ func _snapping(ctrl_held: bool) -> bool:
 
 ## Clamps show while a fixture hangs on a tube and hide once it is moved off.
 func _update_rigging(fx: DMXFixture) -> void:
-	(_visuals[fx] as StageFixture3D).set_rigged(_pipe_holding(fx) != null)
+	(_visuals[fx] as StageFixture3D).set_rigged(_pipe_holding(fx))
 
 
 func _pipe_holding(fx: DMXFixture) -> StageRoom.Pipe:
@@ -380,6 +402,7 @@ func _begin_body_drag(fx: DMXFixture, at: Vector2, restick: bool) -> void:
 	_drag_restick = restick
 	_press_pos = at
 	_drag_start = StudioContext.fixture_transform(fx)
+	_edit_before = _drag_start
 	var v: StageFixture3D = _visuals[fx]
 	_drag_screen_offset = _camera.unproject_position(v.center()) - at
 	# Slide along the surface it is mounted on: the plane through its origin,
@@ -448,13 +471,21 @@ func _gui_input(event: InputEvent) -> void:
 					_on_left_press(mb)
 				else:
 					_orbiting = false
-					_dragging = null
+					if _dragging:
+						if _drag_started:
+							ctx.record_move(_dragging, _edit_before, "Move fixture")
+						_dragging = null
 					if _piece_drag:
+						if _piece_drag_started:
+							_record_piece_move(_piece_drag, _piece_before, "Move truss piece")
 						_piece_drag = null
 						_show_free_arrows(null)
 						_rebuild_pipes()
 					if _gizmo.is_dragging():
 						_gizmo.end_drag()
+						if ctx.selected:
+							ctx.record_move(ctx.selected, _edit_before,
+								"Turn fixture" if _gizmo.mode == TransformGizmo.Mode.ROTATE else "Move fixture")
 						_update_gizmo()
 			MOUSE_BUTTON_RIGHT:
 				_set_flying(mb.pressed)
@@ -503,6 +534,8 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if not k.pressed or k.echo:
 			return
+		if k.ctrl_pressed or k.meta_pressed:
+			return # Ctrl+Z, Ctrl+R... are the main window's, not W / E / R / Z here
 		match k.keycode:
 			KEY_F:
 				_pivot.position = Vector3(0, 1.4, -0.5)
@@ -513,8 +546,6 @@ func _gui_input(event: InputEvent) -> void:
 			KEY_E:
 				set_gizmo_mode(TransformGizmo.Mode.ROTATE)
 			KEY_Z:
-				if k.ctrl_pressed or k.meta_pressed:
-					return # leave Ctrl+Z / Cmd+Z for undo
 				look.shading = StageLook.Shading.SHOW if look.work_lights() else StageLook.Shading.WORK
 			KEY_DELETE:
 				if _selected_piece:
@@ -526,8 +557,10 @@ func _gui_input(event: InputEvent) -> void:
 			KEY_R:
 				if not _selected_piece:
 					return
+				var before := _selected_piece.global_transform
 				_selected_piece.global_transform = StructureSnap.turned(_selected_piece, _pieces())
 				_rebuild_pipes()
+				_record_piece_move(_selected_piece, before, "Turn truss piece")
 			_:
 				return
 		accept_event()
@@ -536,7 +569,8 @@ func _gui_input(event: InputEvent) -> void:
 func _on_left_press(mb: InputEventMouseButton) -> void:
 	var handle := _gizmo.handle_at(mb.position)
 	if handle != TransformGizmo.Handle.NONE and ctx.selected:
-		_gizmo.target = StudioContext.fixture_transform(ctx.selected)
+		_edit_before = StudioContext.fixture_transform(ctx.selected)
+		_gizmo.target = _edit_before
 		_gizmo.begin_drag(handle, mb.position)
 		return
 	var fx := _pick(mb.position)
@@ -547,6 +581,7 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		if piece:
 			_piece_drag = piece
 			_piece_drag_started = false
+			_piece_before = piece.global_transform
 			_press_pos = mb.position
 		return
 	if mb.double_click:
@@ -656,6 +691,8 @@ func _rebuild_pipes() -> void:
 		ctx.truss_pipes = _pipes
 	for fx: DMXFixture in _visuals:
 		_update_rigging(fx)
+	if ctx:
+		_update_gizmo() # a fixture's tube may have come or gone: its rings change
 
 
 ## Where `piece` would go for the cursor at `at`: a base plate on the floor
@@ -732,6 +769,7 @@ func _drop_piece(at: Vector2, path: String) -> void:
 	piece.global_transform = xf
 	_rebuild_pipes()
 	_select_piece(piece)
+	ctx.record_added("Add truss piece", piece, _attach_piece.bind(piece, xf), _detach_piece.bind(piece))
 
 
 func _update_piece_drag(at: Vector2) -> void:
@@ -745,11 +783,43 @@ func _update_piece_drag(at: Vector2) -> void:
 		_piece_drag.global_transform = xf
 
 
+## Delete a piece. Undo puts it back where it was (the history keeps it alive).
 func _delete_piece(piece: StructurePiece) -> void:
-	_select_piece(null)
-	_set.remove_child(piece)
-	piece.queue_free()
+	ctx.record_removed("Delete truss piece", piece, _attach_piece.bind(piece, piece.global_transform),
+		_detach_piece.bind(piece))
+
+
+func _attach_piece(piece: Object, xf: Transform3D) -> void:
+	if not is_instance_valid(piece) or (piece as Node).get_parent() != null:
+		return
+	_set.add_child(piece as Node)
+	(piece as StructurePiece).global_transform = xf
 	_rebuild_pipes()
+	_select_piece(piece as StructurePiece)
+
+
+func _detach_piece(piece: Object) -> void:
+	if not is_instance_valid(piece) or (piece as Node).get_parent() != _set:
+		return
+	if _selected_piece == piece:
+		_select_piece(null)
+	if _piece_drag == piece:
+		_piece_drag = null
+	_set.remove_child(piece as Node)
+	_rebuild_pipes()
+
+
+func _record_piece_move(piece: StructurePiece, before: Transform3D, action: String) -> void:
+	var after := piece.global_transform
+	if after.is_equal_approx(before):
+		return
+	ctx.record(action, _place_piece.bind(piece, after), _place_piece.bind(piece, before))
+
+
+func _place_piece(piece: Object, xf: Transform3D) -> void:
+	if is_instance_valid(piece) and (piece as Node).is_inside_tree():
+		(piece as StructurePiece).global_transform = xf
+		_rebuild_pipes()
 
 
 func _select_piece(piece: StructurePiece) -> void:

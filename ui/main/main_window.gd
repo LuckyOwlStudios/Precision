@@ -7,7 +7,9 @@ extends Control
 ##
 ## Shortcuts: Space = play/pause, Esc = blackout, Delete = remove selected fixture,
 ## F2 = rename selected fixture, W/E = move/rotate gizmo (stage view),
-## 1/2/3 = Stage/Program/Live workspace (when no text field has focus).
+## Ctrl+Z = undo, Ctrl+R = redo (Ctrl+Shift+Z and Ctrl+Y redo too; Cmd on a Mac),
+## 1/2/3 = Stage/Program/Live workspace. None of these fire while you're typing
+## in a text field: there Ctrl+Z undoes your typing instead.
 
 @onready var ctx: StudioContext = %Studio
 @onready var workspace_tabs: TabBar = %WorkspaceTabs
@@ -81,9 +83,14 @@ func _update_footers() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	if get_viewport().gui_get_focus_owner() is LineEdit:
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit:
 		return
-	match (event as InputEventKey).keycode:
+	var key := event as InputEventKey
+	if key.ctrl_pressed or key.meta_pressed:
+		_on_command_key(key)
+		return
+	match key.keycode:
 		KEY_SPACE:
 			ctx.toggle_play()
 		KEY_ESCAPE:
@@ -103,3 +110,34 @@ func _unhandled_input(event: InputEvent) -> void:
 		_:
 			return
 	get_viewport().set_input_as_handled()
+
+
+## Ctrl (Cmd on a Mac) shortcuts. Any other Ctrl+key is left alone, so Ctrl+R
+## or Ctrl+Z never also trigger the plain R / Z shortcuts.
+func _on_command_key(key: InputEventKey) -> void:
+	match key.keycode:
+		KEY_Z:
+			if key.shift_pressed:
+				_redo()
+			else:
+				_undo()
+		KEY_R, KEY_Y:
+			_redo()
+		_:
+			return
+	get_viewport().set_input_as_handled()
+
+
+func _undo() -> void:
+	# Not in the middle of a drag: the drag's own step isn't recorded yet.
+	if not _mouse_held():
+		ctx.undo()
+
+
+func _redo() -> void:
+	if not _mouse_held():
+		ctx.redo()
+
+
+func _mouse_held() -> bool:
+	return Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
