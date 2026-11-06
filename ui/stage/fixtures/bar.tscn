@@ -74,12 +74,24 @@ cap_bottom = false
 [sub_resource type="QuadMesh" id="QuadMesh_cqs0m"]
 size = Vector2(2, 2)
 
+[sub_resource type="BoxMesh" id="BoxMesh_standbase"]
+size = Vector3(0.1, 0.01, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_standarm"]
+size = Vector3(0.012, 0.07, 0.07)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_standknob"]
+top_radius = 0.018
+bottom_radius = 0.018
+height = 0.02
+
 [sub_resource type="BoxMesh" id="BoxMesh_endbracket"]
 size = Vector3(0.03, 0.025, 0.05)
 
 [node name="Bar" type="Node3D" unique_id=996515571]
 script = ExtResource("1_luydv")
 body = 2
+tilt_on_stand = 1
 lens_material = SubResource("StandardMaterial3D_levmg")
 glow_material = SubResource("ShaderMaterial_fevgs")
 beam_material = SubResource("ShaderMaterial_0yj5p")
@@ -90,7 +102,7 @@ unique_name_in_owner = true
 
 [node name="Head" type="Node3D" parent="Yoke" unique_id=844028122]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 0.95105654, 0.309017, 0, -0.309017, 0.95105654, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Shell" type="MeshInstance3D" parent="Yoke/Head" unique_id=1654831664]
 material_override = ExtResource("14_plastic")
@@ -245,3 +257,36 @@ script = ExtResource("10_mount")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0825, 0)
 material_override = ExtResource("13_black")
 mesh = SubResource("BoxMesh_endbracket")
+
+[node name="Stand" type="Node3D" parent="."]
+editor_description = "The U-bracket the bar stands on. Stays flat on the floor while the bar tilts about its long axis (the knobs). Shown only when the bar is not hung."
+
+[node name="LeftBase" type="MeshInstance3D" parent="Stand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545, 0.065, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("BoxMesh_standbase")
+
+[node name="LeftArm" type="MeshInstance3D" parent="Stand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.545, 0.03, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("BoxMesh_standarm")
+
+[node name="LeftKnob" type="MeshInstance3D" parent="Stand"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.565, 0, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("CylinderMesh_standknob")
+
+[node name="RightBase" type="MeshInstance3D" parent="Stand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.545, 0.065, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("BoxMesh_standbase")
+
+[node name="RightArm" type="MeshInstance3D" parent="Stand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.545, 0.03, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("BoxMesh_standarm")
+
+[node name="RightKnob" type="MeshInstance3D" parent="Stand"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.565, 0, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("CylinderMesh_standknob")

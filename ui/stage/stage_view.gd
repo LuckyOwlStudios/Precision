@@ -304,7 +304,10 @@ func _snapping(ctrl_held: bool) -> bool:
 
 ## Clamps show while a fixture hangs on a tube and hide once it is moved off.
 func _update_rigging(fx: DMXFixture) -> void:
-	(_visuals[fx] as StageFixture3D).set_rigged(_pipe_holding(fx))
+	var tilt := MountRotation.stand_tilt(StudioContext.fixture_transform(fx),
+		MountRotation.rules_of(StageFixture3D.scene_path_of(fx)),
+		StageFixture3D.mount_offset(fx.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)), _surfaces)
+	(_visuals[fx] as StageFixture3D).set_rigged(_pipe_holding(fx), 0.0 if is_nan(tilt) else tilt)
 
 
 func _pipe_holding(fx: DMXFixture) -> StageRoom.Pipe:

@@ -26,7 +26,8 @@ func _init() -> void:
 	_expect_kinds("par on a truss (one clamp)", _axes(par, pipes, surfaces),
 		[MountRotation.Kind.SWING, MountRotation.Kind.SPIN_CLAMP])
 	_expect_kinds("mover on a truss (two clamps)", _axes(mover, pipes, surfaces), [MountRotation.Kind.SWING])
-	_expect_kinds("bar on the floor", _axes(bar, pipes, surfaces), [MountRotation.Kind.SPIN_SURFACE])
+	_expect_kinds("bar on the floor", _axes(bar, pipes, surfaces),
+		[MountRotation.Kind.SPIN_SURFACE, MountRotation.Kind.TILT_STAND])
 	var floating := Transform3D(Basis.IDENTITY, Vector3(0, 2, 2))
 	var rules := MountRotation.rules_of(StageFixture3D.scene_path_of(par))
 	_expect_kinds("par placed freely", MountRotation.axes(floating, rules, 0.215, pipes, surfaces),
@@ -67,6 +68,27 @@ func _init() -> void:
 	var b1 := StudioContext.fixture_transform(bar)
 	_expect(MountRotation.standing_on(b1, StageFixture3D.mount_offset(FixtureCatalog.Body.BAR), surfaces), "bar still standing after spinning")
 	_expect(b1.origin.is_equal_approx(b0.origin), "bar spins on the spot")
+
+	# Bar tilts on its stand about its long axis: still on the floor, still on
+	# the spot, can then still spin, and undo puts it back.
+	var brules := MountRotation.rules_of(StageFixture3D.scene_path_of(bar))
+	var boff := StageFixture3D.mount_offset(FixtureCatalog.Body.BAR)
+	var flat := StudioContext.fixture_transform(bar)
+	_expect(absf(MountRotation.stand_tilt(flat, brules, boff, surfaces)) < 0.001, "bar starts flat on its stand")
+	ctx.move_fixture(bar, _axes(bar, pipes, surfaces)[1].turned(flat, deg_to_rad(35)))
+	var tilted := StudioContext.fixture_transform(bar)
+	_expect(is_equal_approx(absf(MountRotation.stand_tilt(tilted, brules, boff, surfaces)), deg_to_rad(35)), "bar tilts 35 degrees on its stand")
+	_expect(tilted.origin.is_equal_approx(flat.origin), "tilting does not lift the bar")
+	_expect(_axes(bar, pipes, surfaces).size() == 2, "tilted bar keeps its spin and tilt rings")
+	_expect(MountRotation.mount_of(tilted, brules, boff, pipes, surfaces) == MountRotation.Mount.SURFACE, "tilted bar still counts as standing")
+	ctx.move_fixture(bar, _axes(bar, pipes, surfaces)[0].turned(tilted, deg_to_rad(50)))
+	_expect(is_equal_approx(absf(MountRotation.stand_tilt(StudioContext.fixture_transform(bar), brules, boff, surfaces)), deg_to_rad(35)), "spinning keeps the tilt")
+	ctx.move_fixture(bar, tilted)
+	ctx.record_move(bar, flat, "Tilt fixture")
+	ctx.undo()
+	_expect(StudioContext.fixture_transform(bar).is_equal_approx(flat), "undo flattens the bar again")
+	var par_rules := MountRotation.rules_of(StageFixture3D.scene_path_of(par))
+	_expect(is_nan(MountRotation.stand_tilt(flat, par_rules, boff, surfaces)), "a par has no tilting stand")
 
 	# The gizmo draws one ring per axis in rotate mode.
 	ctx.set_workspace(StudioContext.Workspace.STAGE)

@@ -9,8 +9,14 @@ extends RefCounted
 ##                            on one hook clamp). Two or more clamps on the
 ##                            same tube (light bar, moving head on two omega
 ##                            brackets) lock that, so they only swing.
-##   Standing on a surface -> SPIN about the floor's / wall's normal only: its
-##                            feet stay planted.
+##   Standing on a surface -> SPIN about the floor's / wall's normal: its
+##                            feet stay planted. A light bar (stand allowed
+##                            in its scene) can also TILT on its stand: it
+##                            turns about its own long axis on the bracket's
+##                            knobs, to aim at a wall. That is the stand, not
+##                            DMX tilt, and it lives in the fixture's
+##                            transform, so move, undo and save need nothing
+##                            extra.
 ##   Placed freely (Alt)   -> all three world axes, as before.
 ##
 ## The defaults come from the fixture scene's MountPoints (how many clamps,
@@ -22,10 +28,10 @@ extends RefCounted
 
 enum Allow { AUTO, ALLOW, LOCK } ## AUTO = decide from the clamps and mounting
 enum Mount { FREE, SURFACE, TRUSS }
-enum Kind { SWING, SPIN_CLAMP, SPIN_SURFACE, FREE_X, FREE_Y, FREE_Z }
+enum Kind { SWING, SPIN_CLAMP, SPIN_SURFACE, TILT_STAND, FREE_X, FREE_Y, FREE_Z }
 
 const _NAMES := {
-	Kind.SWING: "Swing", Kind.SPIN_CLAMP: "Spin", Kind.SPIN_SURFACE: "Spin",
+	Kind.SWING: "Swing", Kind.SPIN_CLAMP: "Spin", Kind.SPIN_SURFACE: "Spin", Kind.TILT_STAND: "Tilt",
 	Kind.FREE_X: "X", Kind.FREE_Y: "Y", Kind.FREE_Z: "Z",
 }
 ## A mounting face closer than this to a surface counts as standing on it.
@@ -59,6 +65,8 @@ class Axis:
 				return "Spin under the clamp"
 			MountRotation.Kind.SPIN_SURFACE:
 				return "Spin on the spot"
+			MountRotation.Kind.TILT_STAND:
+				return "Tilt on the stand"
 		return "Turn about " + label()
 
 	## `xform` turned by `angle` radians about this axis.
@@ -75,6 +83,7 @@ class Rules:
 	var swing_on_truss: MountRotation.Allow = MountRotation.Allow.AUTO
 	var spin_on_clamp: MountRotation.Allow = MountRotation.Allow.AUTO
 	var spin_on_surface: MountRotation.Allow = MountRotation.Allow.AUTO
+	var tilt_on_stand: MountRotation.Allow = MountRotation.Allow.AUTO
 
 	func can_swing() -> bool:
 		return MountRotation._decide(swing_on_truss, not mounts.is_empty())
@@ -86,6 +95,10 @@ class Rules:
 
 	func can_spin_on_surface() -> bool:
 		return MountRotation._decide(spin_on_surface, true)
+
+	## AUTO: no. Only fixtures whose scene has a tilting stand (the light bar).
+	func can_tilt_on_stand() -> bool:
+		return MountRotation._decide(tilt_on_stand, false)
 
 
 static func _decide(rule: Allow, auto: bool) -> bool:
@@ -108,6 +121,7 @@ static func rules_of(path: String) -> Rules:
 		rules.swing_on_truss = s.swing_on_truss
 		rules.spin_on_clamp = s.spin_on_clamp
 		rules.spin_on_surface = s.spin_on_surface
+		rules.tilt_on_stand = s.tilt_on_stand
 	for n in root.find_children("*", "", true, false):
 		if n is MountPoint:
 			var t := (n as Node3D).transform
@@ -129,7 +143,7 @@ static func mount_of(xform: Transform3D, rules: Rules, offset: float,
 		pipes: Array[StageRoom.Pipe], surfaces: Array[StageRoom.Surface]) -> Mount:
 	if StageRoom.pipe_holding(pipes, xform, rules.mounts) != null:
 		return Mount.TRUSS
-	if standing_on(xform, offset, surfaces):
+	if standing_on(xform, offset, surfaces) or not is_nan(stand_tilt(xform, rules, offset, surfaces)):
 		return Mount.SURFACE
 	return Mount.FREE
 
@@ -144,6 +158,29 @@ static func standing_on(xform: Transform3D, offset: float, surfaces: Array[Stage
 		and hit.position.distance_to(face) < ON_SURFACE_TOLERANCE
 
 
+## For a fixture on a tilting stand: how far (radians, about its own X) it is
+## tilted off sitting flat on a floor / wall, or NAN if it is not on one. The
+## stand's pivot is the fixture's origin, so tilting never lifts the base:
+## the origin stays `offset` off the surface, and the long axis (local X)
+## stays parallel to it. Walls, floors and booth tops are axis aligned, so
+## only the six axis normals need checking.
+static func stand_tilt(xform: Transform3D, rules: Rules, offset: float,
+		surfaces: Array[StageRoom.Surface]) -> float:
+	if not rules.can_tilt_on_stand():
+		return NAN
+	var x := xform.basis.x.normalized()
+	for n: Vector3 in [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]:
+		if absf(x.dot(n)) > 0.01:
+			continue
+		var into := -n # flush mounting side, pointing into the surface
+		var face := xform.origin + into * offset
+		var hit := StageRoom.raycast(surfaces, face - into * 0.05, into)
+		if hit == null or hit.normal.dot(n) < 0.99 or hit.position.distance_to(face) > ON_SURFACE_TOLERANCE:
+			continue
+		return into.signed_angle_to(xform.basis.y.normalized(), x)
+	return NAN
+
+
 ## The axes a fixture can be turned about, given where it is. Empty if it is
 ## locked in place (a scene that locks every option).
 static func axes(xform: Transform3D, rules: Rules, offset: float,
@@ -156,6 +193,14 @@ static func axes(xform: Transform3D, rules: Rules, offset: float,
 			list.append(Axis.new(Kind.SWING, pipe.axis(), pipe.point(pipe.along_of(clamps))))
 		if rules.can_spin_on_clamp():
 			list.append(Axis.new(Kind.SPIN_CLAMP, xform.basis.y, clamps))
+		return list
+	var tilt := stand_tilt(xform, rules, offset, surfaces)
+	if not is_nan(tilt):
+		# Spin about the surface normal (not the tilted local Y); tilt about the bar's length.
+		var up := xform.basis.y.rotated(xform.basis.x.normalized(), -tilt).normalized()
+		if rules.can_spin_on_surface():
+			list.append(Axis.new(Kind.SPIN_SURFACE, up, xform.origin))
+		list.append(Axis.new(Kind.TILT_STAND, xform.basis.x, xform.origin))
 		return list
 	if standing_on(xform, offset, surfaces):
 		if rules.can_spin_on_surface():
