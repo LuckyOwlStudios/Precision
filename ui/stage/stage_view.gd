@@ -26,7 +26,7 @@ extends Control
 ##   Mouse wheel                       -> zoom        F -> frame the rig
 ##   Z / Work, Show buttons            -> work lights on (evenly lit room) / dark show room
 
-const PICK_RADIUS_PX := 28.0
+const PICK_RADIUS_PX := 12.0 ## fallback only: a click this close to a fixture's middle picks it
 const DRAG_THRESHOLD_PX := 4.0
 const PIPE_GRAB_PX := 26.0 ## a fixture snaps to a tube this close to the cursor on screen
 const CONNECTOR_GRAB_PX := 70.0 ## a piece snaps to a free connector this close on screen
@@ -379,19 +379,35 @@ func _notification(what: int) -> void:
 		_set_flying(false) # alt-tabbed away mid-flight: don't keep flying
 
 
-func _pick(at: Vector2) -> DMXFixture:
-	var best: DMXFixture = null
+## The fixture or structure piece under the cursor, or null. Judged by the
+## meshes you see (see StagePick): click anywhere on a fixture's body or a
+## truss, not just its middle. Pieces only count while setting up the stage.
+func _pick_at(at: Vector2) -> Object:
+	var best: StagePick.Hit = null
+	for fx: DMXFixture in _visuals:
+		var hit := StagePick.ray_node(_camera, at, _visuals[fx], fx)
+		if hit and hit.beats(best):
+			best = hit
+	if ctx.workspace == StudioContext.Workspace.STAGE:
+		for p in _pieces():
+			var hit := StagePick.ray_node(_camera, at, p, p, p.bounds)
+			if hit and hit.beats(best):
+				best = hit
+	if best:
+		return best.target
+	# Nothing under the cursor: a fixture whose middle is very close on screen
+	# still counts, for tiny far-away ones.
+	var near_fx: DMXFixture = null
 	var best_d := PICK_RADIUS_PX
 	for fx: DMXFixture in _visuals:
-		var v: StageFixture3D = _visuals[fx]
-		var c := v.center()
+		var c := (_visuals[fx] as StageFixture3D).center()
 		if _camera.is_position_behind(c):
 			continue
 		var d := _camera.unproject_position(c).distance_to(at)
 		if d < best_d:
 			best_d = d
-			best = fx
-	return best
+			near_fx = fx
+	return near_fx
 
 
 # ---------------------------------------------------------------- moving a fixture by its body
@@ -573,10 +589,11 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		_gizmo.target = _edit_before
 		_gizmo.begin_drag(handle, mb.position)
 		return
-	var fx := _pick(mb.position)
+	var picked := _pick_at(mb.position)
+	var fx: DMXFixture = picked if picked is DMXFixture else null
 	ctx.select(fx)
 	if fx == null:
-		var piece: StructurePiece = _pick_piece(mb.position) if ctx.workspace == StudioContext.Workspace.STAGE else null
+		var piece: StructurePiece = picked if picked is StructurePiece else null
 		_select_piece(piece)
 		if piece:
 			_piece_drag = piece
@@ -832,17 +849,3 @@ func _select_piece(piece: StructurePiece) -> void:
 		piece.set_highlight(true)
 		if ctx and ctx.selected:
 			ctx.select(null)
-
-
-## The structure piece under the cursor (nearest its box along the ray), or null.
-func _pick_piece(at: Vector2) -> StructurePiece:
-	var origin := _camera.project_ray_origin(at)
-	var dir := _camera.project_ray_normal(at)
-	var best: StructurePiece = null
-	var best_t := INF
-	for p in _pieces():
-		var r := StageRoom.ray_box(p.world_bounds(), origin, dir)
-		if not r.is_empty() and float(r[0]) < best_t:
-			best_t = r[0]
-			best = p
-	return best
