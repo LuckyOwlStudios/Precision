@@ -34,21 +34,25 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, -0.121, 0.121)
 script = ExtResource("3_tube")
 length = 3.0
 hang_side = Vector3(0, -1, 0)
+hang_side2 = Vector3(0, 0, 1)
 
 [node name="BottomBack" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, -0.121, -0.121)
 script = ExtResource("3_tube")
 length = 3.0
 hang_side = Vector3(0, -1, 0)
+hang_side2 = Vector3(0, 0, -1)
 
 [node name="TopFront" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.121, 0.121)
 script = ExtResource("3_tube")
 length = 3.0
 hang_side = Vector3(0, 1, 0)
+hang_side2 = Vector3(0, 0, 1)
 
 [node name="TopBack" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.121, -0.121)
 script = ExtResource("3_tube")
 length = 3.0
 hang_side = Vector3(0, 1, 0)
+hang_side2 = Vector3(0, 0, -1)

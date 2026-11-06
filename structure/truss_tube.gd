@@ -18,6 +18,9 @@ const RADIUS := MountPoint.TUBE_RADIUS
 ## Which side of the tube fixtures hang on, in this node's space
 ## (down for a truss's bottom bars, up for its top bars).
 @export var hang_side := Vector3.DOWN
+## A second face fixtures can hang on, for a tube on a truss corner (the top
+## left tube takes `hang_side` up and this left). Zero for none.
+@export var hang_side2 := Vector3.ZERO
 
 var _line: MeshInstance3D
 
@@ -38,6 +41,10 @@ func world_hang_side() -> Vector3:
 	return (global_basis * hang_side).normalized()
 
 
+func world_hang_side2() -> Vector3:
+	return (global_basis * hang_side2).normalized()
+
+
 func _update_line() -> void:
 	if not Engine.is_editor_hint() or not is_inside_tree():
 		return
@@ -55,5 +62,8 @@ func _update_line() -> void:
 	m.surface_add_vertex(Vector3(length, 0, 0))
 	m.surface_add_vertex(Vector3(length * 0.5, 0, 0))
 	m.surface_add_vertex(hang_side.normalized() * 0.08 + Vector3(length * 0.5, 0, 0))
+	if hang_side2 != Vector3.ZERO:
+		m.surface_add_vertex(Vector3(length * 0.5, 0, 0))
+		m.surface_add_vertex(hang_side2.normalized() * 0.08 + Vector3(length * 0.5, 0, 0))
 	m.surface_end()
 	_line.mesh = m
