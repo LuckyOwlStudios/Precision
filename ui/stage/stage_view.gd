@@ -464,6 +464,7 @@ func _gui_input(event: InputEvent) -> void:
 						_dragging = null
 					if _piece_drag:
 						_piece_drag = null
+						_show_free_arrows(null)
 						_rebuild_pipes()
 					if _gizmo.is_dragging():
 						_gizmo.end_drag()
@@ -710,13 +711,28 @@ func _preview_piece(at: Vector2, path: String) -> void:
 		_ghost_path = path
 		_set.add_child(_ghost)
 		_ghost.set_highlight(true)
+	_show_free_arrows(_ghost)
 	var xf: Variant = _piece_placement(at, _ghost)
 	_ghost.visible = xf != null
 	if xf != null:
 		_ghost.global_transform = xf
 
 
+## Arrows on the connectors a piece could join, while you place one; none
+## when `piece` is null.
+func _show_free_arrows(piece: StructurePiece) -> void:
+	var free: Array[TrussConnector] = []
+	if piece:
+		for c in StructureSnap.free_connectors(_pieces(piece), piece):
+			if c.accepts_kind(piece.kind):
+				free.append(c)
+	for p in _pieces():
+		for c in p.connectors():
+			c.set_arrow_visible(free.has(c))
+
+
 func _clear_ghost() -> void:
+	_show_free_arrows(null)
 	if _ghost:
 		_ghost.queue_free()
 		_ghost = null
@@ -742,6 +758,7 @@ func _update_piece_drag(at: Vector2) -> void:
 		if at.distance_to(_press_pos) < DRAG_THRESHOLD_PX:
 			return
 		_piece_drag_started = true
+		_show_free_arrows(_piece_drag)
 	var xf: Variant = _piece_placement(at, _piece_drag)
 	if xf != null:
 		_piece_drag.global_transform = xf

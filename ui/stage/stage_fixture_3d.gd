@@ -19,8 +19,6 @@ extends Node3D
 
 const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
 const BAR_PIXELS := 8
-const PAN_RANGE_DEG := 540.0
-const TILT_RANGE_DEG := 270.0
 const PAR_AIM_DEG := -18.0 ## pars lean slightly towards the audience
 
 ## Body scenes (loaded, not preloaded: they use this script themselves).
@@ -248,8 +246,8 @@ func _process(_delta: float) -> void:
 		l.visible = level > 0.01
 
 	if body == FixtureCatalog.Body.MOVING_HEAD:
-		_yoke.rotation_degrees.y = (fixture.pan - 0.5) * PAN_RANGE_DEG
-		_head.rotation_degrees.x = -(fixture.tilt - 0.5) * TILT_RANGE_DEG
+		_yoke.rotation_degrees.y = (fixture.pan - 0.5) * fixture.profile.pan_range_deg
+		_head.rotation_degrees.x = -(fixture.tilt - 0.5) * fixture.profile.tilt_range_deg
 
 
 ## The strobe channel as a flash pattern: 0-9 open, then 1 to 20 flashes a second.

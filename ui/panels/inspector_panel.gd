@@ -22,15 +22,23 @@ var _syncing := false
 @onready var _place: Array[SpinBox] = [%PositionX, %PositionY, %PositionZ] ## metres
 @onready var _turn: Array[SpinBox] = [%RotationX, %RotationY, %RotationZ] ## degrees
 @onready var _dimmer: HSlider = %Dimmer
-@onready var _dimmer_value: Label = %DimmerValue
+@onready var _dimmer_value: SpinBox = %DimmerValue
 @onready var _color: ColorPickerButton = %Colour
 @onready var _white_row: Control = %WhiteRow
 @onready var _white: HSlider = %White
+@onready var _white_value: SpinBox = %WhiteValue
 @onready var _strobe_row: Control = %StrobeRow
 @onready var _strobe: HSlider = %Strobe
+@onready var _strobe_value: SpinBox = %StrobeValue
 @onready var _position_section: Control = %AimSection
 @onready var _pan: HSlider = %Pan
+@onready var _pan_value: SpinBox = %PanValue
 @onready var _tilt: HSlider = %Tilt
+@onready var _tilt_value: SpinBox = %TiltValue
+
+## Fixture property -> [slider, number box]. The box shows the value in the
+## units you'd type (see _unit_scale); both write the same fixture property.
+var _pairs: Dictionary = {}
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -60,18 +68,53 @@ func _ready() -> void:
 	_color.color_changed.connect(func(c: Color) -> void:
 		if not _syncing and fx:
 			fx.color = c)
-	# Sliders write straight to the fixture property of the same name.
-	_bind_slider(_dimmer, "dimmer")
-	_bind_slider(_white, "white")
-	_bind_slider(_strobe, "strobe")
-	_bind_slider(_pan, "pan")
-	_bind_slider(_tilt, "tilt")
+	# Each slider and its number box write straight to the fixture property of
+	# the same name; _pull copies the fixture back into both.
+	_bind(_dimmer, _dimmer_value, "dimmer")
+	_bind(_white, _white_value, "white")
+	_bind(_strobe, _strobe_value, "strobe")
+	_bind(_pan, _pan_value, "pan")
+	_bind(_tilt, _tilt_value, "tilt")
 
 
-func _bind_slider(s: HSlider, prop: String) -> void:
+func _bind(s: HSlider, box: SpinBox, prop: String) -> void:
+	_pairs[prop] = [s, box]
+	box.get_line_edit().add_theme_constant_override("minimum_character_width", 0)
 	s.value_changed.connect(func(v: float) -> void:
 		if not _syncing and fx:
-			fx.set(prop, int(v) if prop == "strobe" else v))
+			_write(prop, v))
+	box.value_changed.connect(func(v: float) -> void:
+		if not _syncing and fx:
+			_write(prop, v / _unit_scale(prop)))
+
+
+## Set a look property (0..1, or 0..255 for strobe) and show it in both widgets.
+func _write(prop: String, v: float) -> void:
+	fx.set(prop, roundi(v) if prop == "strobe" else clampf(v, 0.0, 1.0))
+	_sync_pair(prop)
+
+
+## How the number box shows a property: dimmer and white in percent, pan and
+## tilt in degrees across the fixture's range, strobe as the raw DMX value.
+func _unit_scale(prop: String) -> float:
+	match prop:
+		"pan": return fx.profile.pan_range_deg
+		"tilt": return fx.profile.tilt_range_deg
+		"strobe": return 1.0
+	return 100.0
+
+
+func _sync_pair(prop: String) -> void:
+	var s: HSlider = _pairs[prop][0]
+	var box: SpinBox = _pairs[prop][1]
+	var v := float(fx.get(prop))
+	var was := _syncing
+	_syncing = true
+	s.value = v
+	# Leave a box alone while you're typing in it.
+	if not box.get_line_edit().has_focus():
+		box.value = v * _unit_scale(prop)
+	_syncing = was
 
 
 func _focus_name() -> void:
@@ -107,6 +150,10 @@ func _show(p_fx: DMXFixture) -> void:
 	_position_section.visible = fx.profile.has_channel("pan") or fx.profile.has_channel("tilt")
 	_channels.text = "Channels %d–%d: %s" % [fx.start_address, fx.start_address + fx.profile.channels.size() - 1, ", ".join(fx.profile.channels)]
 	_syncing = true
+	# Inside _syncing: shrinking the range clamps the box, which would otherwise
+	# write that clamped angle into the newly selected fixture.
+	_pan_value.max_value = fx.profile.pan_range_deg
+	_tilt_value.max_value = fx.profile.tilt_range_deg
 	_address.value = fx.start_address
 	if not _name.has_focus():
 		_name.text = String(fx.get_meta(StudioContext.META_LABEL, ""))
@@ -120,14 +167,10 @@ func _pull() -> void:
 	if fx == null:
 		return
 	_syncing = true
-	_dimmer.value = fx.dimmer
-	_dimmer_value.text = "%d%%" % roundi(fx.dimmer * 100.0)
+	for prop: String in _pairs:
+		_sync_pair(prop)
 	if not _color.get_popup().visible:
 		_color.color = fx.color
-	_white.value = fx.white
-	_strobe.value = fx.strobe
-	_pan.value = fx.pan
-	_tilt.value = fx.tilt
 	var xf := StudioContext.fixture_transform(fx)
 	var euler := xf.basis.get_euler()
 	# Hung or standing fixtures only turn the ways their mounting allows (the
