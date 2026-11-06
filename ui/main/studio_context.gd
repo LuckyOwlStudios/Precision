@@ -415,6 +415,67 @@ func next_free_address(count: int) -> int:
 	return 1
 
 
+## Move every fixture that clashes with an earlier one (or runs past 512) to
+## the first free gap. Fixtures that were fine stay exactly where they are.
+## One undo step. Returns how many were moved.
+func fix_overlaps() -> int:
+	var used := PackedByteArray()
+	used.resize(513)
+	var movers: Array[DMXFixture] = []
+	for fx in fixtures():
+		var count := fx.profile.channels.size()
+		var clash := fx.start_address < 1 or fx.start_address + count - 1 > 512
+		for i in count:
+			if not clash and used[fx.start_address + i]:
+				clash = true
+		if clash:
+			movers.append(fx)
+		else:
+			for i in count:
+				used[fx.start_address + i] = 1
+	if movers.is_empty():
+		return 0
+	begin_step("Fix DMX overlaps")
+	for fx in movers:
+		var count := fx.profile.channels.size()
+		var at := _free_run(used, count)
+		for i in count:
+			if at + i <= 512:
+				used[at + i] = 1
+		_patch_in_step(fx, at)
+	end_step()
+	return movers.size()
+
+
+## Line every fixture up one after another from channel 1, in rig order, with
+## no gaps. One undo step.
+func pack_addresses() -> void:
+	begin_step("Pack DMX addresses")
+	var at := 1
+	for fx in fixtures():
+		_patch_in_step(fx, at)
+		at += fx.profile.channels.size()
+	end_step()
+
+
+func _patch_in_step(fx: DMXFixture, address: int) -> void:
+	if fx.start_address == address:
+		return
+	history.add_do_method(_apply_address.bind(fx, address))
+	history.add_undo_method(_apply_address.bind(fx, fx.start_address))
+	_apply_address(fx, address)
+
+
+## First `count` free addresses in a row in `used` (1-based), or 1 if none.
+static func _free_run(used: PackedByteArray, count: int) -> int:
+	var run := 0
+	for a in range(1, 513):
+		run = 0 if used[a] else run + 1
+		if run == count:
+			return a - count + 1
+	return 1
+
+
 ## "Par 1 · red" for a channel, or "" if nothing is patched there.
 func channel_owner(address: int) -> String:
 	for fx in fixtures():

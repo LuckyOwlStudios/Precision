@@ -6,10 +6,13 @@ extends Control
 
 signal slot_hovered(address: int) ## 0 when the pointer leaves
 signal fixture_clicked(fixture: DMXFixture)
+## Dragging a fixture along the map: where its first channel should now be.
+signal fixture_moved(fixture: DMXFixture, start_address: int)
 
 const COLUMNS := 32
 const ROWS := 16
 const GUTTER := 26.0 ## room for the row numbers on the left
+const MAX_CELL := 14.0 ## keeps the map from growing huge in a wide window
 
 var info: DMXPatchInfo
 var focus: DMXFixture:
@@ -19,6 +22,8 @@ var focus: DMXFixture:
 			queue_redraw()
 
 var _hover := 0
+var _drag: DMXFixture
+var _grab := 0 ## which of the fixture's channels you picked up (0 = its first)
 
 
 func _ready() -> void:
@@ -29,7 +34,7 @@ func _ready() -> void:
 
 
 func _cell() -> float:
-	return maxf(floorf((size.x - GUTTER) / COLUMNS), 3.0)
+	return clampf(floorf((size.x - GUTTER) / COLUMNS), 3.0, MAX_CELL)
 
 
 func _notification(what: int) -> void:
@@ -52,17 +57,40 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		var a := _address_at((event as InputEventMouseMotion).position)
+		if _drag and a > 0:
+			var count := _drag.profile.channels.size()
+			var start := clampi(a - _grab, 1, 512 - count + 1)
+			if start != _drag.start_address:
+				fixture_moved.emit(_drag, start)
 		if a != _hover:
 			_hover = a
 			slot_hovered.emit(a)
 			queue_redraw()
+		mouse_default_cursor_shape = Control.CURSOR_DRAG if _drag else (Control.CURSOR_POINTING_HAND if info.first_owner(a) else Control.CURSOR_ARROW)
 	elif event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-			var fx := info.first_owner(_address_at(mb.position))
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			var a := _address_at(mb.position)
+			var fx := _pick(a)
 			if fx:
+				_drag = fx
+				_grab = a - fx.start_address
 				fixture_clicked.emit(fx)
 				accept_event()
+		else:
+			_drag = null
+
+
+## The fixture under an address: the focused one if it shares the slot, else the first.
+func _pick(address: int) -> DMXFixture:
+	if address < 1:
+		return null
+	var list: Array = info.owners[address]
+	if focus and list.has(focus):
+		return focus
+	return info.first_owner(address)
 
 
 func _draw() -> void:
