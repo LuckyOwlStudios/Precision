@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="1_apl61"]
+[ext_resource type="PackedScene" path="res://ui/panels/structure_info.tscn" id="2_structure"]
 
 [node name="InspectorPanel" type="ScrollContainer" unique_id=941001158]
 horizontal_scroll_mode = 3
@@ -38,7 +39,7 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 theme_type_variation = &"Subtitle"
-text = "Click a fixture on the stage to edit it here."
+text = "Click a fixture or a piece of truss on the stage to edit it here."
 horizontal_alignment = 1
 autowrap_mode = 3
 
@@ -425,3 +426,7 @@ alignment = 2
 suffix = "°"
 custom_arrow_step = 5.0
 select_all_on_focus = true
+
+[node name="StructureInfo" parent="Padding" instance=ExtResource("2_structure")]
+unique_name_in_owner = true
+layout_mode = 2

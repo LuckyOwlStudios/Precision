@@ -1,6 +1,7 @@
 class_name InspectorPanel
 extends ScrollContainer
 ## Properties of the selected fixture: name, patch, placement, look and aim.
+## A selected structure piece gets its own sections instead (StructureInfo).
 ## Edits go straight to the DMXFixture, so the 3D stage and real lights follow.
 ## Every edit is one undo step (Ctrl+Z): a whole slider drag or colour-picker
 ## session counts once, and quick typing / wheel / arrow nudges merge.
@@ -23,6 +24,7 @@ var _color_before := Color.WHITE
 
 @onready var _content: VBoxContainer = %Content
 @onready var _empty: Control = %Empty
+@onready var _structure: StructureInfo = %StructureInfo ## shown instead of the fixture sections for a truss, corner box or base plate
 @onready var _title: Label = %FixtureTitle
 @onready var _detail: Label = %FixtureDetail
 @onready var _name: LineEdit = %NameEdit
@@ -58,6 +60,8 @@ var _pairs: Dictionary = {}
 func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
 	ctx.selection_changed.connect(_show)
+	ctx.piece_selection_changed.connect(func(_p: StructurePiece) -> void: _show(ctx.selected))
+	_structure.setup(ctx)
 	ctx.fixtures_changed.connect(func() -> void: _show(ctx.selected))
 	ctx.workspace_changed.connect(func(_ws: StudioContext.Workspace) -> void: _show(ctx.selected))
 	# Deferred: the window first switches to this tab so the field can take focus.
@@ -175,6 +179,13 @@ func _show(p_fx: DMXFixture) -> void:
 		ctx.record_fixture_value(fx, _drag_prop, _drag_before) # selection changed mid-drag
 		_drag_prop = ""
 	fx = p_fx
+	# A structure piece is selected on its own, never together with a fixture.
+	var piece := ctx.selected_piece if fx == null else null
+	_structure.visible = piece != null
+	_content.visible = piece == null
+	_structure.show_piece(piece)
+	if piece:
+		return
 	var has := fx != null
 	for c in _content.get_children():
 		(c as Control).visible = has

@@ -1,0 +1,248 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/structure_info.gd" id="1_info"]
+
+[node name="StructureInfo" type="VBoxContainer"]
+visible = false
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+script = ExtResource("1_info")
+
+[node name="Title" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PieceTitle" type="Label" parent="Title"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text_overrun_behavior = 3
+
+[node name="PieceDetail" type="Label" parent="Title"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text_overrun_behavior = 3
+
+[node name="NameField" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="NameField"]
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Name"
+
+[node name="PieceName" type="LineEdit" parent="NameField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Name this piece"
+select_all_on_focus = true
+
+[node name="SizeHeading" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="Label" parent="SizeHeading"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Size"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="SizeHeading"]
+layout_mode = 2
+
+[node name="TypeRow" type="HBoxContainer" parent="."]
+
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="TypeRow"]
+
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Type"
+
+[node name="TypeValue" type="Label" parent="TypeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+
+[node name="LengthRow" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="LengthRow"]
+
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Length"
+
+[node name="LengthValue" type="Label" parent="LengthRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+
+[node name="SizeRow" type="HBoxContainer" parent="."]
+
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="SizeRow"]
+
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Dimensions"
+
+[node name="SizeValue" type="Label" parent="SizeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+
+[node name="ConnectionsHeading" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="Label" parent="ConnectionsHeading"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Connections"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="ConnectionsHeading"]
+layout_mode = 2
+
+[node name="Joined" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="FixturesRow" type="HBoxContainer" parent="."]
+
+layout_mode = 2
+
+[node name="FixturesCaption" type="Label" parent="FixturesRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Fixtures"
+
+[node name="FixturesValue" type="Label" parent="FixturesRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+
+[node name="PlacementHeading" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Row" type="Label" parent="PlacementHeading"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Placement"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="PlacementHeading"]
+layout_mode = 2
+
+[node name="PositionField" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="PositionField"]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Position"
+
+[node name="Axes" type="HBoxContainer" parent="PositionField"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PositionX" type="SpinBox" parent="PositionField/Axes"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="PositionY" type="SpinBox" parent="PositionField/Axes"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="PositionZ" type="SpinBox" parent="PositionField/Axes"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="RotationField" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="RotationField"]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Rotation"
+
+[node name="Axes" type="HBoxContainer" parent="RotationField"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="RotationX" type="SpinBox" parent="RotationField/Axes"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -360.0
+max_value = 360.0
+step = 0.1
+suffix = "°"
+custom_arrow_step = 1.0
+select_all_on_focus = true
+
+[node name="RotationY" type="SpinBox" parent="RotationField/Axes"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -360.0
+max_value = 360.0
+step = 0.1
+suffix = "°"
+custom_arrow_step = 1.0
+select_all_on_focus = true
+
+[node name="RotationZ" type="SpinBox" parent="RotationField/Axes"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -360.0
+max_value = 360.0
+step = 0.1
+suffix = "°"
+custom_arrow_step = 1.0
+select_all_on_focus = true

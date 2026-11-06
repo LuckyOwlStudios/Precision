@@ -128,6 +128,8 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.selection_changed.connect(_on_selection_changed)
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
+	ctx.piece_moved.connect(func(_p: StructurePiece) -> void: _rebuild_pipes())
+	ctx.set_root = _set
 	ctx.truss_pipes = _pipes
 	ctx.stage_surfaces = _surfaces
 	_sync_fixtures()
@@ -928,6 +930,8 @@ func _refresh_marks() -> void:
 		(_visuals[fx] as StageFixture3D).set_selected(fx == fx_sel or _group.has(fx))
 	for p in _pieces():
 		p.set_highlight(p == _selected_piece or _group.has(p))
+	if ctx:
+		ctx.select_piece(_selected_piece if _group.is_empty() else null) # the inspector's details
 
 
 ## Everything selected right now, single or group.
