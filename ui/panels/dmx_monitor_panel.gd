@@ -26,6 +26,8 @@ var _dock_index := 0
 @onready var _list: GridContainer = %Cards
 @onready var _empty: Label = %Empty
 @onready var _pop_out: Button = %PopOut
+@onready var _fix_button: Button = %FixOverlaps
+@onready var _pack_button: Button = %Pack
 
 const CARD_MIN_WIDTH := 250.0
 
@@ -36,6 +38,9 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.selection_changed.connect(_on_selection_changed)
 	_overview.slot_hovered.connect(_on_slot_hovered)
 	_overview.fixture_clicked.connect(_on_overview_clicked)
+	_overview.fixture_moved.connect(func(fx: DMXFixture, start: int) -> void: ctx.set_address(fx, start))
+	_fix_button.pressed.connect(func() -> void: ctx.fix_overlaps())
+	_pack_button.pressed.connect(func() -> void: ctx.pack_addresses())
 	_pop_out.pressed.connect(_toggle_pop_out)
 	_scroll.resized.connect(_update_columns)
 	_rebuild()
@@ -44,11 +49,20 @@ func setup(p_ctx: StudioContext) -> void:
 func _rebuild() -> void:
 	if ctx == null:
 		return
+	var fixtures := ctx.fixtures()
+	_info = DMXPatchInfo.build(fixtures)
+	# Same fixtures as before (a re-patch or rename): update the cards in place.
+	if fixtures.size() == _cards.size() and fixtures.all(func(fx: DMXFixture) -> bool: return _cards.has(fx)):
+		for fx in fixtures:
+			(_cards[fx] as DMXFixtureCard).refresh(_info)
+		_overview.info = _info
+		_update_problems()
+		_overview.queue_redraw()
+		return
 	for card: Node in _list.get_children():
 		_list.remove_child(card)
 		card.queue_free()
 	_cards.clear()
-	_info = DMXPatchInfo.build(ctx.fixtures())
 	_overview.info = _info
 	_empty.visible = _info.fixtures.is_empty()
 	for fx in _info.fixtures:
@@ -58,6 +72,7 @@ func _rebuild() -> void:
 		card.setup(fx, _info, _open.has(fx), fx == ctx.selected)
 		card.header_pressed.connect(_on_header_pressed)
 		card.hover_changed.connect(_on_card_hover)
+		card.address_edited.connect(func(c: DMXFixtureCard, a: int) -> void: ctx.set_address(c.fixture, a))
 		_cards[fx] = card
 	_open = _open.duplicate() # keep only fixtures that still exist
 	for fx: Object in _open.keys():
@@ -75,6 +90,8 @@ func _update_problems() -> void:
 			n += 1
 	_problems.text = "%d fixture%s share channels. Red squares and red ! badges show where; give each its own address range." % [n, "" if n == 1 else "s"]
 	_problems.visible = n > 0
+	_fix_button.visible = n > 0
+	_pack_button.visible = _info.fixtures.size() > 1
 
 
 func _on_header_pressed(card: DMXFixtureCard) -> void:
@@ -129,7 +146,7 @@ func _on_slot_hovered(address: int) -> void:
 	_hovered = _info.first_owner(address) if address > 0 else null
 	_update_focus()
 	if address == 0:
-		_hint.text = "Hover a square to see which fixture owns it. Click to select."
+		_hint.text = "Drag a fixture along the map to move it. Hover a square to see who owns it."
 		return
 	var list: Array = _info.owners[address]
 	if list.is_empty():

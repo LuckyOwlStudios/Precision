@@ -17,6 +17,34 @@ custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 script = ExtResource("2_head")
 
+[node name="AddressBox" type="MarginContainer" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 6
+
+[node name="AddressRow" type="HBoxContainer" parent="Box/AddressBox"]
+layout_mode = 2
+
+[node name="AddressLabel" type="Label" parent="Box/AddressBox/AddressRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Caption"
+text = "Start address"
+
+[node name="Address" type="SpinBox" parent="Box/AddressBox/AddressRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+tooltip_text = "The first DMX channel this fixture listens on. Type a number, or drag the fixture on the map above."
+min_value = 1.0
+max_value = 512.0
+value = 1.0
+rounded = true
+
 [node name="ProblemBox" type="MarginContainer" parent="Box"]
 unique_name_in_owner = true
 visible = false

@@ -55,7 +55,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_type_variation = &"Caption"
-text = "Hover a square to see which fixture owns it. Click to select."
+text = "Drag a fixture along the map to move it. Hover a square to see who owns it."
 autowrap_mode = 3
 
 [node name="Problems" type="Label" parent="Column"]
@@ -65,6 +65,24 @@ layout_mode = 2
 theme_type_variation = &"Caption"
 theme_override_colors/font_color = Color(1, 0.33, 0.41, 1)
 autowrap_mode = 3
+
+[node name="Actions" type="HBoxContainer" parent="Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FixOverlaps" type="Button" parent="Column/Actions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Move only the fixtures that clash to the first free channels. The others stay put. Ctrl+Z undoes it."
+text = "Fix overlaps"
+
+[node name="Pack" type="Button" parent="Column/Actions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Line all fixtures up from channel 1 with no gaps, in the order they were added. Ctrl+Z undoes it."
+text = "Tidy up addresses"
 
 [node name="Scroll" type="ScrollContainer" parent="Column"]
 unique_name_in_owner = true
