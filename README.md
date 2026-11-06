@@ -1,10 +1,10 @@
-# Lucky DMX: fixture control from Godot 4
+# Precision: fixture control from Godot 4
 
 Open `project.godot` in Godot 4.7+ and press Play. The editor UI opens (see below).
 The original one-light test is still at `demo/demo.tscn` (open it and press F6).
 Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline, **ESC** = blackout.
 
-![Lucky DMX editor UI](docs/ui/program.png)
+![Precision editor UI](docs/ui/program.png)
 
 ## The editor UI (ui/)
 | Area | What it's for |
@@ -151,7 +151,7 @@ FLAC isn't supported yet (Godot can't load it at runtime); export it as WAV or M
 | Script | What it does |
 |---|---|
 | `Song` | One track: tags, duration, BPM, the library's copy of the file, and its linked show. |
-| `SongLibrary` | Imports, removes and searches songs; saves `songs.json`. Lives under `user://library` (on Windows `%APPDATA%\Godot\app_userdata\Lucky DMX\library`). |
+| `SongLibrary` | Imports, removes and searches songs; saves `songs.json`. Lives under `user://library` (on Windows `%APPDATA%\Godot\app_userdata\Precision\library`). |
 | `AudioMetadata` | Reads ID3 (MP3), Vorbis comments (OGG) and RIFF INFO (WAV) tags. Falls back to "Artist - Title" file names. |
 | `AudioDecoder` | Loads files as AudioStreams and computes waveform peaks (cached as `.peaks` files). |
 

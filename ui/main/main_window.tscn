@@ -67,7 +67,7 @@ custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 theme_type_variation = &"BigTitle"
 theme_override_font_sizes/font_size = 18
-text = "Lucky DMX"
+text = "Precision"
 
 [node name="Divider" type="VSeparator" parent="Layout/Header/Row"]
 layout_mode = 2

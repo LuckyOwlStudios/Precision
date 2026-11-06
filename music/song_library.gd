@@ -6,9 +6,9 @@ extends Node
 ## The list is saved to songs.json in the same folder after every change.
 ##
 ## Where that is: Godot's user data folder for the app, e.g.
-##   Windows  %APPDATA%\Godot\app_userdata\Lucky DMX\library
-##   macOS    ~/Library/Application Support/Godot/app_userdata/Lucky DMX/library
-##   Linux    ~/.local/share/godot/app_userdata/Lucky DMX/library
+##   Windows  %APPDATA%\Godot\app_userdata\Precision\library
+##   macOS    ~/Library/Application Support/Godot/app_userdata/Precision/library
+##   Linux    ~/.local/share/godot/app_userdata/Precision/library
 ##
 ## No UI in here: panels listen to the signals.
 
