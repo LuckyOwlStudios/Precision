@@ -265,12 +265,16 @@ size_flags_horizontal = 3
 max_value = 1.0
 step = 0.01
 
-[node name="DimmerValue" type="Label" parent="Padding/Content/DimmerField/Row" unique_id=1700529188]
+[node name="DimmerValue" type="SpinBox" parent="Padding/Content/DimmerField/Row" unique_id=795425564]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 0)
+custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
-theme_type_variation = &"MonoLabel"
-horizontal_alignment = 2
+max_value = 100.0
+step = 1.0
+alignment = 2
+suffix = "%"
+custom_arrow_step = 5.0
+select_all_on_focus = true
 
 [node name="ColourField" type="HBoxContainer" parent="Padding/Content" unique_id=931039494]
 layout_mode = 2
@@ -306,6 +310,17 @@ size_flags_horizontal = 3
 max_value = 1.0
 step = 0.01
 
+[node name="WhiteValue" type="SpinBox" parent="Padding/Content/WhiteRow" unique_id=423946139]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+max_value = 100.0
+step = 1.0
+alignment = 2
+suffix = "%"
+custom_arrow_step = 5.0
+select_all_on_focus = true
+
 [node name="StrobeRow" type="HBoxContainer" parent="Padding/Content" unique_id=1792286844]
 unique_name_in_owner = true
 layout_mode = 2
@@ -322,6 +337,16 @@ custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 255.0
+
+[node name="StrobeValue" type="SpinBox" parent="Padding/Content/StrobeRow" unique_id=947876999]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+max_value = 255.0
+step = 1.0
+alignment = 2
+custom_arrow_step = 10.0
+select_all_on_focus = true
 
 [node name="AimSection" type="VBoxContainer" parent="Padding/Content" unique_id=1633651425]
 unique_name_in_owner = true
@@ -362,6 +387,17 @@ size_flags_horizontal = 3
 max_value = 1.0
 step = 0.001
 
+[node name="PanValue" type="SpinBox" parent="Padding/Content/AimSection/PanField" unique_id=1497871144]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+max_value = 540.0
+step = 0.1
+alignment = 2
+suffix = "°"
+custom_arrow_step = 5.0
+select_all_on_focus = true
+
 [node name="TiltField" type="HBoxContainer" parent="Padding/Content/AimSection" unique_id=449329919]
 layout_mode = 2
 
@@ -378,3 +414,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.001
+
+[node name="TiltValue" type="SpinBox" parent="Padding/Content/AimSection/TiltField" unique_id=203694312]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+max_value = 270.0
+step = 0.1
+alignment = 2
+suffix = "°"
+custom_arrow_step = 5.0
+select_all_on_focus = true
