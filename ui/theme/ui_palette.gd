@@ -1,6 +1,6 @@
 class_name UIPalette
 extends RefCounted
-## Every colour and size the Lucky DMX UI uses, in one place.
+## Every colour and size the Precision UI uses, in one place.
 ## The theme, the panels and the custom-drawn widgets all read from here,
 ## so a re-skin (or a light theme later) only touches this file.
 ##

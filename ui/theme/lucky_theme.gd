@@ -1,6 +1,6 @@
 class_name LuckyTheme
 extends RefCounted
-## Builds the Lucky DMX dark Theme from UIPalette.
+## Builds the Precision dark Theme from UIPalette.
 ##
 ## The theme is generated in code so colours stay in one file, then baked to
 ## res://ui/theme/lucky_dark.tres (see bake_theme.gd) so the editor shows it

@@ -14,7 +14,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Lucky DMX"
+config/name="Precision"
 run/main_scene="res://ui/main/main_window.tscn"
 config/features=PackedStringArray("4.7")
 
