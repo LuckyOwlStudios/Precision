@@ -87,6 +87,8 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _tools: Control = %Tools
 @onready var _snap_button: Button = %Snap
 @onready var _haze: HSlider = %Haze
+@onready var _haze_label: ResetLabel = %HazeLabel
+@onready var _quality_label: ResetLabel = %QualityLabel
 @onready var _empty_hint: Control = %EmptyHint
 @onready var _help: Label = %Help
 
@@ -131,6 +133,11 @@ func _ready() -> void:
 	_quality_buttons = [%Low, %Medium, %High, %Ultra]
 	for q in _quality_buttons.size():
 		_quality_buttons[q].pressed.connect(func() -> void: look.quality = q as StageLook.Quality)
+	# Clicking "Haze" / "Quality" puts that setting back once it has been changed.
+	_haze_label.default_text = "%d%%" % roundi(StageLook.DEFAULT_HAZE * 100.0)
+	_haze_label.reset_requested.connect(func() -> void: look.haze = StageLook.DEFAULT_HAZE)
+	_quality_label.default_text = StageLook.QUALITY_NAMES[StageLook.DEFAULT_QUALITY]
+	_quality_label.reset_requested.connect(func() -> void: look.quality = StageLook.DEFAULT_QUALITY)
 	%ForwardPlusNote.visible = not look.forward_plus
 	look.changed.connect(_sync_look_controls)
 	_sync_look_controls()
@@ -157,6 +164,8 @@ func _apply_look() -> void:
 
 func _sync_look_controls() -> void:
 	_haze.set_value_no_signal(look.haze)
+	_haze_label.modified = not is_equal_approx(look.haze, StageLook.DEFAULT_HAZE)
+	_quality_label.modified = look.quality != StageLook.DEFAULT_QUALITY
 	for i in _quality_buttons.size():
 		_quality_buttons[i].button_pressed = i == look.quality
 	for i in _shading_buttons.size():

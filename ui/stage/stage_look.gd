@@ -16,13 +16,16 @@ enum Shading { WORK, SHOW }
 const QUALITY_NAMES: PackedStringArray = ["Low", "Medium", "High", "Ultra"]
 const SHADING_NAMES: PackedStringArray = ["Work", "Show"]
 const SAVE_PATH := "user://stage_look.cfg"
+## What a fresh install starts with, and what the bottom-bar labels reset to.
+const DEFAULT_HAZE := 0.45
+const DEFAULT_QUALITY := Quality.HIGH
 
 ## 0 = clean air, 1 = thick haze. Beams and light shafts read more in haze.
-var haze: float = 0.45:
+var haze: float = DEFAULT_HAZE:
 	set(v):
 		haze = clampf(v, 0.0, 1.0)
 		changed.emit()
-var quality: Quality = Quality.HIGH:
+var quality: Quality = DEFAULT_QUALITY:
 	set(v):
 		quality = v
 		changed.emit()

@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://ui/stage/stage_room.tscn" id="2_eb1qn"]
 [ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="3_2mcbt"]
 [ext_resource type="Script" path="res://ui/stage/transform_gizmo.gd" id="4_1eond"]
+[ext_resource type="Script" path="res://ui/widgets/reset_label.gd" id="5_rstlb"]
 
 [sub_resource type="Environment" id="Environment_onnio"]
 background_mode = 1
@@ -266,11 +267,13 @@ mouse_filter = 2
 theme_override_constants/separation = 8
 
 [node name="HazeLabel" type="Label" parent="Overlay/LookControls" unique_id=794720736]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Caption"
 theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
 theme_override_constants/outline_size = 4
 text = "Haze"
+script = ExtResource("5_rstlb")
 
 [node name="Haze" type="HSlider" parent="Overlay/LookControls" unique_id=1277716040]
 unique_name_in_owner = true
@@ -286,6 +289,15 @@ value = 0.45
 [node name="Gap" type="Control" parent="Overlay/LookControls" unique_id=984644216]
 custom_minimum_size = Vector2(6, 0)
 layout_mode = 2
+
+[node name="QualityLabel" type="Label" parent="Overlay/LookControls" unique_id=1840562377]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
+theme_override_constants/outline_size = 4
+text = "Quality"
+script = ExtResource("5_rstlb")
 
 [node name="Low" type="Button" parent="Overlay/LookControls" unique_id=1595457844]
 unique_name_in_owner = true
