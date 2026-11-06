@@ -48,7 +48,13 @@ long as the unique names stay.
   Hover a ring to see what it does. Motorised pan and tilt stay in the inspector's **Aim** section.
   New fixtures get this from their MountPoints; override it per scene on the root node
   (**Rotating on stage**), or untick **Swivel** on a MountPoint.
-- **Undo**: **Ctrl+Z** / **Ctrl+Shift+Z** undo and redo moving or turning a fixture.
+- **Undo**: **Ctrl+Z** undoes, **Ctrl+R** redoes (**Ctrl+Shift+Z** and **Ctrl+Y** redo too;
+  Cmd on a Mac). One history covers the whole app: placing, moving, turning, snapping and
+  deleting fixtures and truss pieces, renaming and re-patching, inspector edits (dimmer, colour,
+  white, strobe, pan, tilt, typed values) and recording cues. A slider drag or a colour-picker
+  session is one step; quick wheel or arrow nudges merge. While you type in a text field,
+  Ctrl+Z undoes your typing instead. (Run from the Godot editor, the running window gets
+  Ctrl+R; the editor's own shortcuts only apply while the editor has focus.)
 - **Rename**: F2, double-click the fixture, or type in the inspector's **Name** field.
   Double-click a row in **On stage** to rename it in place. An empty name goes back to "Par 3".
   Your name is display only; cues still find the fixture by its node name.
