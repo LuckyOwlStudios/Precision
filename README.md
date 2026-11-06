@@ -59,6 +59,8 @@ move yet, and the set isn't saved with the show yet (nothing is, so far).
 Each piece is a scene with the `StructurePiece` script and three kinds of child nodes:
 - `TrussConnector` (a Marker3D): a face that joins another piece. +Y points out of the face, +Z is
   "outward x up". Its **Accepts** flags say which kinds of piece may join there.
+  An orange arrow shows which way it faces: always in the editor, and in the app on the free
+  connectors a piece could join while you place one.
 - `TrussTube`: a bar fixtures can clamp onto, from the node along its +X for `length`. `hang_side`
   says which side fixtures hang on. Drawn as an orange line in the editor. Tubes that line up end to
   end across joined trusses count as one run, so fixtures slide across joints.
