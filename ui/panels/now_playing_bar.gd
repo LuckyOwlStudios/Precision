@@ -73,7 +73,7 @@ func _draw() -> void:
 	var h := size.y
 	var stops := _colors.duplicate()
 	if stops.is_empty():
-		stops = PackedColorArray([Color("2a2230"), Color("1d2230"), Color("1c2a2e")])
+		stops = PackedColorArray([Color("1d2a40"), Color("123747"), Color("124048")])
 	if stops.size() == 1:
 		stops.append(stops[0])
 	# Wide soft horizontal gradient, muted so white text stays readable.

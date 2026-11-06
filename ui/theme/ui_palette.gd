@@ -4,23 +4,23 @@ extends RefCounted
 ## The theme, the panels and the custom-drawn widgets all read from here,
 ## so a re-skin (or a light theme later) only touches this file.
 ##
-## Rule of thumb: the UI stays neutral graphite so the lights themselves are
+## Rule of thumb: the UI stays deep navy blue (palette #071C27 .. #DCE9E9) so the lights themselves are
 ## the brightest, most colourful thing on screen.
 
 # --- Surfaces (darkest to lightest) ---
-const APP_BG := Color("0d0f12")        ## Behind everything, and the 3D void
-const SIDE_BG := Color("14171c")       ## Left and right columns
-const CENTER_BG := Color("191c22")     ## Header, timeline, centre surfaces
-const RAISED := Color("21252d")        ## Buttons, inputs, cards
-const HOVER := Color("2a2f38")         ## Hovered rows and buttons
-const SELECTED_ROW := Color("2c313b")  ## The grey "selected" band
-const HAIRLINE := Color("2a2e36")      ## 1 px rules and borders
-const INPUT_BG := Color("101216")
+const APP_BG := Color("071c27")        ## Behind everything, and the 3D void
+const SIDE_BG := Color("0a2432")       ## Left and right columns
+const CENTER_BG := Color("0d2a3a")     ## Header, timeline, centre surfaces
+const RAISED := Color("123747")        ## Buttons, inputs, cards
+const HOVER := Color("1a4559")         ## Hovered rows and buttons
+const SELECTED_ROW := Color("245568")  ## The grey "selected" band
+const HAIRLINE := Color("1b4356")      ## 1 px rules and borders
+const INPUT_BG := Color("051721")
 
 # --- Text ---
-const TEXT := Color("e8eaed")
-const TEXT_DIM := Color("9097a3")      ## Subtitles, secondary info
-const TEXT_FAINT := Color("5d6470")    ## Placeholders, disabled, grid labels
+const TEXT := Color("dce9e9")
+const TEXT_DIM := Color("9fb3b9")      ## Subtitles, secondary info
+const TEXT_FAINT := Color("477c8b")    ## Placeholders, disabled, grid labels
 
 # --- Meaning. Use each for its one job only. ---
 const ACCENT := Color("ffb547")        ## Amber: selection, focus, primary action
