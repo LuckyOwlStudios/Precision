@@ -27,7 +27,7 @@ func _ready() -> void:
 	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Cues, %DMX, %DJ]:
 		panel.call("setup", ctx)
 
-	_title_tabs(left_tabs, ["Library", "On stage", "Songs"])
+	_title_tabs(left_tabs, ["Library", "Songs"])
 	_title_tabs(right_tabs, ["Inspector", "Cues", "DMX", "DJ"])
 
 	workspace_tabs.current_tab = ctx.workspace
@@ -64,9 +64,12 @@ func _title_tabs(tabs: TabContainer, titles: Array[String]) -> void:
 
 
 ## Each workspace shows only the dock tabs that belong to its job:
-##   Stage   - build the rig: Library + On stage on the left; Inspector (name,
+##   The left dock is a vertical split, like Godot's scene tree over its file
+##   system: On stage (the rig) always on top, and below it the browser for the
+##   job (a tab strip that only holds that workspace's tab).
+##   Stage   - build the rig: On stage over Library on the left; Inspector (name,
 ##             patch, placement) + DMX patch map on the right. No timeline.
-##   Program - write a song's show: Songs + On stage on the left; Inspector
+##   Program - write a song's show: On stage over Songs on the left; Inspector
 ##             (look and aim) + Cues on the right, with the timeline below.
 ##   Live    - run the night: no left dock; DJ sync + Cues on the right, timeline below.
 func _apply_workspace(ws: StudioContext.Workspace) -> void:
@@ -75,10 +78,10 @@ func _apply_workspace(ws: StudioContext.Workspace) -> void:
 	var right: Array[Control]
 	match ws:
 		StudioContext.Workspace.STAGE:
-			left = [%Library, %OnStage]
+			left = [%Library]
 			right = [%Inspector, %DMX]
 		StudioContext.Workspace.PROGRAM:
-			left = [%Songs, %OnStage]
+			left = [%Songs]
 			right = [%Inspector, %Cues]
 		StudioContext.Workspace.LIVE:
 			right = [%DJ, %Cues]
