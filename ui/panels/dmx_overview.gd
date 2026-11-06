@@ -10,6 +10,7 @@ signal fixture_clicked(fixture: DMXFixture)
 const COLUMNS := 32
 const ROWS := 16
 const GUTTER := 26.0 ## room for the row numbers on the left
+const MAX_CELL := 14.0 ## keeps the map from growing huge in a wide window
 
 var info: DMXPatchInfo
 var focus: DMXFixture:
@@ -29,7 +30,7 @@ func _ready() -> void:
 
 
 func _cell() -> float:
-	return maxf(floorf((size.x - GUTTER) / COLUMNS), 3.0)
+	return clampf(floorf((size.x - GUTTER) / COLUMNS), 3.0, MAX_CELL)
 
 
 func _notification(what: int) -> void:

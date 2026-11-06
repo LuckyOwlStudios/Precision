@@ -28,6 +28,13 @@ theme_type_variation = &"SectionTitle"
 text = "Universe 1"
 uppercase = true
 
+[node name="PopOut" type="Button" parent="Column/Heading/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Open the DMX view in its own window so it has room. Close the window to dock it back."
+text = "Pop out"
+flat = true
+
 [node name="Rule" type="HSeparator" parent="Column/Heading"]
 layout_mode = 2
 
@@ -69,11 +76,13 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Cards" type="VBoxContainer" parent="Column/Scroll/Body"]
+[node name="Cards" type="GridContainer" parent="Column/Scroll/Body"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 1
 
 [node name="Empty" type="Label" parent="Column/Scroll/Body"]
 unique_name_in_owner = true
