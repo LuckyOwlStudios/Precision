@@ -65,6 +65,14 @@ shader_parameter/min_px = 16.0
 [sub_resource type="QuadMesh" id="QuadMesh_nb8rb"]
 size = Vector2(2, 2)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_box"]
+bg_color = Color(0.55, 0.36, 1, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.36, 1, 0.9)
+
 [node name="StageView" type="Control" unique_id=1526728156]
 clip_contents = true
 layout_mode = 3
@@ -152,6 +160,13 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("4_1eond")
+
+[node name="BoxSelect" type="Panel" parent="Overlay" unique_id=1874423307]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_box")
 
 [node name="ViewButtons" type="HBoxContainer" parent="Overlay" unique_id=461902371]
 layout_mode = 0
