@@ -1,33 +1,57 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c1hvqjtemcr66"]
 
-[ext_resource type="Script" path="res://structure/structure_piece.gd" id="1_piece"]
-[ext_resource type="Script" path="res://structure/truss_connector.gd" id="2_conn"]
+[ext_resource type="Script" uid="uid://d0aqu3te668gx" path="res://structure/structure_piece.gd" id="1_piece"]
+[ext_resource type="Script" uid="uid://dfeh167dwhyy3" path="res://structure/truss_connector.gd" id="2_conn"]
 [ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="5_metal"]
 
-[sub_resource type="BoxMesh" id="BoxMesh_plate"]
-size = Vector3(0.6, 0.012, 0.6)
-
-[sub_resource type="BoxMesh" id="BoxMesh_spigot"]
-size = Vector3(0.12, 0.03, 0.12)
-
-[node name="BasePlate" type="Node3D"]
+[node name="BasePlate" type="Node3D" unique_id=1456344305]
 script = ExtResource("1_piece")
 kind = 0
 display_name = "Base plate"
 bounds = AABB(-0.3, 0, -0.3, 0.6, 0.04, 0.6)
 
-[node name="Plate" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.006, 0)
-material_override = ExtResource("5_metal")
-mesh = SubResource("BoxMesh_plate")
-
-[node name="Spigot" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
-material_override = ExtResource("5_metal")
-mesh = SubResource("BoxMesh_spigot")
-
-[node name="Top" type="Marker3D" parent="."]
+[node name="Top" type="Marker3D" parent="." unique_id=947435930]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2
+
+[node name="CSGCombiner3D" type="CSGCombiner3D" parent="." unique_id=1805379839]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.006, 0)
+material_override = ExtResource("5_metal")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="CSGCombiner3D" unique_id=2058016212]
+size = Vector3(0.6, 0.012, 0.6)
+
+[node name="CSGCylinder3D" type="CSGCylinder3D" parent="CSGCombiner3D" unique_id=1546624436]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0, 0.12)
+operation = 2
+radius = 0.01171875
+height = 0.012
+
+[node name="CSGCylinder3D2" type="CSGCylinder3D" parent="CSGCombiner3D" unique_id=478288140]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0, 0.12)
+operation = 2
+radius = 0.01171875
+height = 0.012
+
+[node name="CSGCylinder3D3" type="CSGCylinder3D" parent="CSGCombiner3D" unique_id=901948406]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0, -0.12)
+operation = 2
+radius = 0.01171875
+height = 0.012
+
+[node name="CSGCylinder3D4" type="CSGCylinder3D" parent="CSGCombiner3D" unique_id=1463447646]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0, -0.12)
+operation = 2
+radius = 0.01171875
+height = 0.012
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="CSGCombiner3D" unique_id=285546118]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.25)
+operation = 2
+size = Vector3(0.109, 0.012, 0.021065429)
+
+[node name="CSGBox3D3" type="CSGBox3D" parent="CSGCombiner3D" unique_id=1465278402]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.25)
+operation = 2
+size = Vector3(0.109, 0.012, 0.021065429)

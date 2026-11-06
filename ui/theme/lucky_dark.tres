@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=113 format=3]
+[gd_resource type="Theme" format=3 uid="uid://btxelphqxhstj"]
 
 [sub_resource type="SystemFont" id="SystemFont_vptvh"]
 font_names = PackedStringArray("Inter", "Open Sans", "Segoe UI", "SF Pro Text", "Helvetica Neue", "Noto Sans", "Arial", "sans-serif")
@@ -484,7 +484,7 @@ corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
-[sub_resource type="Image" id="Image_jcv8u"]
+[sub_resource type="Image" id="Image_vptvh"]
 data = {
 "data": PackedByteArray(0, 0, 0, 0),
 "format": "RGBA8",
@@ -494,7 +494,7 @@ data = {
 }
 
 [sub_resource type="ImageTexture" id="ImageTexture_epjpk"]
-image = SubResource("Image_jcv8u")
+image = SubResource("Image_vptvh")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_koofp"]
 content_margin_left = 20.0
