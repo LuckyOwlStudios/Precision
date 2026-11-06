@@ -45,6 +45,11 @@ var _color_before := Color.WHITE
 @onready var _tilt: HSlider = %Tilt
 @onready var _tilt_value: SpinBox = %TiltValue
 
+## Which sections each workspace shows. Stage is about building the rig (name,
+## patch, placement); Program is about how a fixture looks (look and aim).
+const STAGE_SECTIONS: Array[StringName] = [&"Title", &"NameField", &"PatchHeading", &"AddressField", &"Channels", &"PlacementHeading", &"PositionField", &"RotationField"]
+const PROGRAM_SECTIONS: Array[StringName] = [&"Title", &"NameField", &"LookHeading", &"DimmerField", &"ColourField", &"WhiteRow", &"StrobeRow", &"AimSection"]
+
 ## Fixture property -> [slider, number box]. The box shows the value in the
 ## units you'd type (see _unit_scale); both write the same fixture property.
 var _pairs: Dictionary = {}
@@ -54,6 +59,7 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
 	ctx.selection_changed.connect(_show)
 	ctx.fixtures_changed.connect(func() -> void: _show(ctx.selected))
+	ctx.workspace_changed.connect(func(_ws: StudioContext.Workspace) -> void: _show(ctx.selected))
 	# Deferred: the window first switches to this tab so the field can take focus.
 	ctx.rename_requested.connect(func(_f: DMXFixture) -> void: _focus_name.call_deferred())
 	_show(ctx.selected)
@@ -177,9 +183,12 @@ func _show(p_fx: DMXFixture) -> void:
 		return
 	_title.text = StudioContext.display_name(fx)
 	_detail.text = String(fx.get_meta(StudioContext.META_PROFILE_LABEL, fx.profile.fixture_name))
-	_white_row.visible = fx.profile.has_channel("white")
-	_strobe_row.visible = fx.profile.has_channel("strobe")
-	_position_section.visible = fx.profile.has_channel("pan") or fx.profile.has_channel("tilt")
+	var wanted := STAGE_SECTIONS if ctx.workspace == StudioContext.Workspace.STAGE else PROGRAM_SECTIONS
+	for c in _content.get_children():
+		(c as Control).visible = wanted.has(c.name)
+	_white_row.visible = _white_row.visible and fx.profile.has_channel("white")
+	_strobe_row.visible = _strobe_row.visible and fx.profile.has_channel("strobe")
+	_position_section.visible = _position_section.visible and (fx.profile.has_channel("pan") or fx.profile.has_channel("tilt"))
 	_channels.text = "Channels %d–%d: %s" % [fx.start_address, fx.start_address + fx.profile.channels.size() - 1, ", ".join(fx.profile.channels)]
 	_syncing = true
 	# Inside _syncing: shrinking the range clamps the box, which would otherwise

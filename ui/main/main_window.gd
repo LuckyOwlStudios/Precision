@@ -35,8 +35,12 @@ func _ready() -> void:
 	ctx.workspace_changed.connect(_apply_workspace)
 	ctx.fixtures_changed.connect(_update_footers)
 	ctx.blackout_changed.connect(func(_on: bool) -> void: _update_footers())
-	# Renaming happens in the inspector's Name field, so bring it to the front.
-	ctx.rename_requested.connect(func(_fx: DMXFixture) -> void: right_tabs.current_tab = 0)
+	# Renaming happens in the inspector's Name field, so bring it to the front
+	# (that field lives in Stage and Program; from Live, go to Stage).
+	ctx.rename_requested.connect(func(_fx: DMXFixture) -> void:
+		if ctx.workspace == StudioContext.Workspace.LIVE:
+			ctx.set_workspace(StudioContext.Workspace.STAGE)
+		right_tabs.current_tab = right_tabs.get_tab_idx_from_control(%Inspector))
 	_apply_workspace(ctx.workspace)
 	_update_footers()
 
@@ -46,8 +50,10 @@ func _ready() -> void:
 
 func _on_files_dropped(files: PackedStringArray) -> void:
 	ctx.import_songs(files)
-	if left_dock.visible:
-		left_tabs.current_tab = 2 # Songs, so you see what came in
+	# Songs live in Program, so go there to see what came in.
+	if ctx.workspace != StudioContext.Workspace.PROGRAM:
+		ctx.set_workspace(StudioContext.Workspace.PROGRAM)
+	left_tabs.current_tab = left_tabs.get_tab_idx_from_control(%Songs)
 
 
 func _title_tabs(tabs: TabContainer, titles: Array[String]) -> void:
@@ -55,21 +61,38 @@ func _title_tabs(tabs: TabContainer, titles: Array[String]) -> void:
 		tabs.set_tab_title(i, titles[i].to_upper())
 
 
+## Each workspace shows only the dock tabs that belong to its job:
+##   Stage   - build the rig: Library + On stage on the left; Inspector (name,
+##             patch, placement) + DMX patch map on the right. No timeline.
+##   Program - write a song's show: Songs + On stage on the left; Inspector
+##             (look and aim) + Cues on the right, with the timeline below.
+##   Live    - run the night: no left dock; DJ sync + Cues on the right, timeline below.
 func _apply_workspace(ws: StudioContext.Workspace) -> void:
 	workspace_tabs.set_current_tab(ws)
+	var left: Array[Control]
+	var right: Array[Control]
 	match ws:
-		StudioContext.Workspace.STAGE: # place and patch fixtures
-			left_dock.visible = true
-			timeline.visible = false
-			left_tabs.current_tab = 0
-			right_tabs.current_tab = 0
-		StudioContext.Workspace.PROGRAM: # build a song's show
-			left_dock.visible = true
-			timeline.visible = true
-		StudioContext.Workspace.LIVE: # run the night
-			left_dock.visible = false
-			timeline.visible = true
-			right_tabs.current_tab = 1
+		StudioContext.Workspace.STAGE:
+			left = [%Library, %OnStage]
+			right = [%Inspector, %DMX]
+		StudioContext.Workspace.PROGRAM:
+			left = [%Songs, %OnStage]
+			right = [%Inspector, %Cues]
+		StudioContext.Workspace.LIVE:
+			right = [%DJ, %Cues]
+	left_dock.visible = not left.is_empty()
+	timeline.visible = ws != StudioContext.Workspace.STAGE
+	_show_only(left_tabs, left)
+	_show_only(right_tabs, right)
+
+
+## Hide every tab of the container except `keep`; select the first of those
+## unless the current tab is among them.
+func _show_only(tabs: TabContainer, keep: Array[Control]) -> void:
+	for i in tabs.get_tab_count():
+		tabs.set_tab_hidden(i, not keep.has(tabs.get_tab_control(i)))
+	if not keep.is_empty() and not keep.has(tabs.get_current_tab_control()):
+		tabs.current_tab = tabs.get_tab_idx_from_control(keep[0])
 
 
 func _update_footers() -> void:
