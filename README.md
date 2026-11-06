@@ -12,7 +12,7 @@ Demo controls: **SPACE** = GO next cue, **B** = back, **P** = play/stop timeline
 | Header | Workspaces: **Stage** (place and patch), **Program** (build a song's show), **Live** (run the night). Keys 1/2/3. |
 | Now playing band | Transport, tempo, beat dots, **Blackout** (Esc). Its background blends the rig's live colours. |
 | Left dock | **Library** (drag a fixture onto the stage, or double-click), **On stage** (patch list), **Songs** (your music, see below). |
-| Centre | 3D stage. Right drag orbit, middle drag pan, wheel zoom, F frame, left click select, Delete to remove. See **Placing fixtures** below. |
+| Centre | 3D stage. Hold right mouse to fly like the Godot editor (drag to look, WASD move, Q/E down/up, Shift faster, wheel sets speed), Alt drag orbit, middle drag pan, wheel zoom, F frame, left click select, Delete to remove. See **Placing fixtures** below. |
 | Bottom | Beat-grid timeline: the song's waveform, a lane per fixture, red playhead (Space plays the song). Clips come next. |
 | Right dock | **Inspector** (patch, colour, dimmer, pan/tilt), **Cues** (Record / GO), **DMX** (live 512-channel monitor). |
 

@@ -1,54 +1,47 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dij8a58xxrs4f"]
 
-[ext_resource type="Script" path="res://structure/structure_piece.gd" id="1_piece"]
-[ext_resource type="Script" path="res://structure/truss_connector.gd" id="2_conn"]
-[ext_resource type="Script" path="res://structure/truss_tube.gd" id="3_tube"]
-[ext_resource type="Script" path="res://structure/truss_mesh.gd" id="4_mesh"]
+[ext_resource type="Script" uid="uid://d0aqu3te668gx" path="res://structure/structure_piece.gd" id="1_piece"]
+[ext_resource type="Script" uid="uid://dfeh167dwhyy3" path="res://structure/truss_connector.gd" id="2_conn"]
+[ext_resource type="Script" uid="uid://cehxjfusbm355" path="res://structure/truss_mesh.gd" id="4_mesh"]
 [ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="5_metal"]
 
-[node name="CornerBox" type="Node3D"]
+[node name="CornerBox" type="Node3D" unique_id=460180538]
 script = ExtResource("1_piece")
 kind = 2
 display_name = "Corner box"
 bounds = AABB(-0.145, -0.145, -0.145, 0.29, 0.29, 0.29)
 
-[node name="Lattice" type="MeshInstance3D" parent="."]
+[node name="Lattice" type="MeshInstance3D" parent="." unique_id=977392556]
 material_override = ExtResource("5_metal")
 script = ExtResource("4_mesh")
 shape = 1
 
-[node name="Right" type="Marker3D" parent="."]
+[node name="Right" type="Marker3D" parent="." unique_id=1116730191]
 transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0.145, 0, 0)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2
 
-[node name="Left" type="Marker3D" parent="."]
+[node name="Left" type="Marker3D" parent="." unique_id=1961581070]
 transform = Transform3D(0, -1, 0, -1, 0, 0, 0, 0, -1, -0.145, 0, 0)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2
 
-[node name="Front" type="Marker3D" parent="."]
+[node name="Front" type="Marker3D" parent="." unique_id=723767358]
 transform = Transform3D(0, 0, -1, -1, 0, 0, 0, 1, 0, 0, 0, 0.145)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2
 
-[node name="Back" type="Marker3D" parent="."]
+[node name="Back" type="Marker3D" parent="." unique_id=124310930]
 transform = Transform3D(0, 0, 1, -1, 0, 0, 0, -1, 0, 0, 0, -0.145)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2
 
-[node name="Top" type="Marker3D" parent="."]
+[node name="Top" type="Marker3D" parent="." unique_id=1854448725]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.145, 0)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2
 
-[node name="Bottom" type="Marker3D" parent="."]
+[node name="Bottom" type="Marker3D" parent="." unique_id=703747327]
 transform = Transform3D(-1, 0, 0, 0, -1, 0, 0, 0, 1, 0, -0.145, 0)
 gizmo_extents = 0.12
 script = ExtResource("2_conn")
-accepts = 2

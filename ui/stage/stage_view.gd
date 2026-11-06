@@ -18,7 +18,10 @@ extends Control
 ##                                       truss, spin under a single clamp, spin on the
 ##                                       spot on a floor or wall, any axis when free
 ##   Ctrl+Z / Ctrl+Shift+Z             -> undo / redo a move or turn (main window)
-##   Right drag / Alt+left drag        -> orbit       Middle drag -> pan
+##   Hold right mouse                  -> fly, like the Godot editor: drag to look,
+##                                       WASD move, Q/E down/up, Shift faster,
+##                                       Alt slower, wheel sets the fly speed
+##   Alt+left drag                     -> orbit       Middle drag -> pan
 ##   Mouse wheel                       -> zoom        F -> frame the rig
 ##   Z / Work, Show buttons            -> work lights on (evenly lit room) / dark show room
 
@@ -26,6 +29,15 @@ const PICK_RADIUS_PX := 28.0
 const DRAG_THRESHOLD_PX := 4.0
 const PIPE_GRAB_PX := 26.0 ## a fixture snaps to a tube this close to the cursor on screen
 const CONNECTOR_GRAB_PX := 70.0 ## a piece snaps to a free connector this close on screen
+
+const FLY_SPEED_DEFAULT := 4.0 ## metres a second
+const FLY_SPEED_MIN := 0.25
+const FLY_SPEED_MAX := 40.0
+const FLY_FAST := 3.0 ## Shift
+const FLY_SLOW := 0.25 ## Alt
+const LOOK_DEG_PER_PX := 0.25
+const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
+const HELP_TEXT := "Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
 
 var ctx: StudioContext
 
@@ -37,6 +49,8 @@ var _pitch := -14.0
 var _distance := 12.5
 var _orbiting := false
 var _panning := false
+var _flying := false ## right mouse held: look around in place, WASD/QE move
+var _fly_speed := FLY_SPEED_DEFAULT
 var _surfaces: Array[StageRoom.Surface] = []
 var _pipes: Array[StageRoom.Pipe] = [] ## truss tubes fixtures clamp onto
 
@@ -80,6 +94,7 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _snap_button: Button = %Snap
 @onready var _haze: HSlider = %Haze
 @onready var _empty_hint: Control = %EmptyHint
+@onready var _help: Label = %Help
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -133,6 +148,7 @@ func _ready() -> void:
 
 	look.changed.connect(_apply_look)
 	_apply_look()
+	_help.text = HELP_TEXT
 	_update_camera()
 
 
@@ -346,6 +362,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END or what == NOTIFICATION_MOUSE_EXIT:
 		_drop_marker.visible = false
 		_clear_ghost()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_VISIBILITY_CHANGED:
+		_set_flying(false) # alt-tabbed away mid-flight: don't keep flying
 
 
 func _pick(at: Vector2) -> DMXFixture:
@@ -454,23 +472,31 @@ func _gui_input(event: InputEvent) -> void:
 								"Turn fixture" if _gizmo.mode == TransformGizmo.Mode.ROTATE else "Move fixture")
 						_update_gizmo()
 			MOUSE_BUTTON_RIGHT:
-				_orbiting = mb.pressed
+				_set_flying(mb.pressed)
 			MOUSE_BUTTON_MIDDLE:
 				_panning = mb.pressed
 			MOUSE_BUTTON_WHEEL_UP:
-				if mb.pressed:
+				if mb.pressed and _flying:
+					_set_fly_speed(_fly_speed * 1.2)
+				elif mb.pressed:
 					_distance = maxf(3.0, _distance * 0.9)
 					_update_camera()
 			MOUSE_BUTTON_WHEEL_DOWN:
-				if mb.pressed:
+				if mb.pressed and _flying:
+					_set_fly_speed(_fly_speed / 1.2)
+				elif mb.pressed:
 					_distance = minf(40.0, _distance * 1.1)
 					_update_camera()
 		accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
-		if _orbiting:
+		if _flying:
+			_look(mm.relative)
+		elif _orbiting:
 			_yaw -= mm.relative.x * 0.3
-			_pitch = clampf(_pitch - mm.relative.y * 0.3, -89.0, 5.0)
+			# Orbiting never dips the camera under the floor, but it won't snap
+			# down a view that flying left looking up, either.
+			_pitch = clampf(_pitch - mm.relative.y * 0.3, -89.0, maxf(5.0, _pitch))
 			_update_camera()
 		elif _panning:
 			var right := _camera.global_transform.basis.x
@@ -487,6 +513,9 @@ func _gui_input(event: InputEvent) -> void:
 			_gizmo.hovered = _gizmo.handle_at(mm.position)
 	elif event is InputEventKey:
 		var k := event as InputEventKey
+		if _flying and FLY_KEYS.has(k.physical_keycode):
+			accept_event() # flying (see _process), not the W / E gizmo shortcuts
+			return
 		if not k.pressed or k.echo:
 			return
 		match k.keycode:
@@ -540,6 +569,74 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		ctx.request_rename(fx)
 		return
 	_begin_body_drag(fx, mb.position, mb.shift_pressed)
+
+
+# ---------------------------------------------------------------- fly camera (hold right mouse)
+
+func _set_flying(on: bool) -> void:
+	if on == _flying:
+		return
+	_flying = on
+	if on:
+		grab_focus() # take the keys from any text field, so WASD doesn't type
+	_update_help()
+
+
+func _set_fly_speed(speed: float) -> void:
+	_fly_speed = clampf(speed, FLY_SPEED_MIN, FLY_SPEED_MAX)
+	_update_help()
+
+
+func _update_help() -> void:
+	_help.text = "Flying %.1f m/s · WASD move · Q/E down/up · Shift faster · Alt slower · Wheel speed" % _fly_speed if _flying else HELP_TEXT
+
+
+## Turn the camera where it stands. The orbit pivot is carried along, kept the
+## same distance in front, so orbit, pan and zoom carry on from the new view.
+func _look(relative: Vector2) -> void:
+	var eye := _camera.global_position
+	_yaw -= relative.x * LOOK_DEG_PER_PX
+	_pitch = clampf(_pitch - relative.y * LOOK_DEG_PER_PX, -89.0, 89.0)
+	var b := Basis.from_euler(Vector3(deg_to_rad(_pitch), deg_to_rad(_yaw), 0.0))
+	_pivot.position = eye - b * Vector3(0, 0, _distance)
+	_update_camera()
+
+
+func _process(delta: float) -> void:
+	if not _flying:
+		return
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		_set_flying(false) # the release went somewhere else
+		return
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit:
+		return
+	if Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META):
+		return # a shortcut like Ctrl+S, not a move
+	var b := _camera.global_basis
+	var move := Vector3.ZERO
+	# Physical keys: the same spots on AZERTY and other layouts, as in Godot.
+	if Input.is_physical_key_pressed(KEY_W):
+		move -= b.z
+	if Input.is_physical_key_pressed(KEY_S):
+		move += b.z
+	if Input.is_physical_key_pressed(KEY_A):
+		move -= b.x
+	if Input.is_physical_key_pressed(KEY_D):
+		move += b.x
+	if Input.is_physical_key_pressed(KEY_E):
+		move += Vector3.UP
+	if Input.is_physical_key_pressed(KEY_Q):
+		move -= Vector3.UP
+	if move == Vector3.ZERO:
+		return
+	var speed := _fly_speed
+	if Input.is_key_pressed(KEY_SHIFT):
+		speed *= FLY_FAST
+	elif Input.is_key_pressed(KEY_ALT):
+		speed *= FLY_SLOW
+	_pivot.position += move.normalized() * speed * delta
+	_update_camera()
 
 
 ## Point the orbit camera (degrees, metres). Used by the screenshot helper.
