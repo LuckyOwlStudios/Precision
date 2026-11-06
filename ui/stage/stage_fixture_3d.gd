@@ -46,6 +46,9 @@ static var _iris: Texture2D
 @export var spin_on_clamp: MountRotation.Allow = MountRotation.Allow.AUTO
 ## Turn about the floor or wall it stands on (feet stay planted). Auto: yes.
 @export var spin_on_surface: MountRotation.Allow = MountRotation.Allow.AUTO
+## Tilt on a stand, around its own long axis (a light bar's U-bracket and
+## knobs). Not DMX tilt: this is how the stand is set. Auto: no.
+@export var tilt_on_stand: MountRotation.Allow = MountRotation.Allow.AUTO
 @export_group("")
 
 var fixture: DMXFixture
@@ -90,7 +93,13 @@ static func mounts_of(path: String) -> PackedVector3Array:
 ## `pipe` is the tube it hangs from, or null. Each clamp's jaw is turned to
 ## run along the tube, so a fixture spun under a single clamp still shows the
 ## clamp gripping the tube properly.
-func set_rigged(pipe: StageRoom.Pipe) -> void:
+func set_rigged(pipe: StageRoom.Pipe, stand_tilt := 0.0) -> void:
+	# A stand (if the scene has one) shows when not hung, and stays flat on
+	# the floor while the fixture tilts on it.
+	var stand := get_node_or_null("Stand") as Node3D
+	if stand:
+		stand.visible = pipe == null
+		stand.transform = Transform3D(Basis(Vector3.RIGHT, -stand_tilt), Vector3.ZERO)
 	for n in find_children("*", "", true, false):
 		if n is MountPoint:
 			var mp := n as MountPoint
