@@ -5,7 +5,7 @@ extends MeshInstance3D
 ## lacing for a straight run, or the twelve edges of a corner box. The tubes
 ## are too fiddly to place by hand, so the mesh is built from the settings
 ## below (in the editor too) and not saved into the scene.
-## Fixtures clamp onto the TrussTube nodes next to this one, not onto the mesh,
+## Fixtures clamp onto the TubeSnap nodes next to this one, not onto the mesh,
 ## so keep those in step if you change the size.
 
 enum Shape { STRAIGHT, CORNER }

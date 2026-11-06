@@ -423,7 +423,7 @@ func hang_fixture(entry: FixtureCatalog.Entry, near: Vector3) -> DMXFixture:
 	if pipe == null:
 		return add_fixture(entry, near)
 	var mounts := StageFixture3D.mounts_of(StageFixture3D.scene_path(entry.body, entry.profile.fixture_name))
-	var xf := StageRoom.hang(pipe, pipe.along_of(near), mounts, pipe.side_towards(near, pipe.along_of(near)))
+	var xf := StageRoom.hang(pipe, pipe.along_of(near), mounts, pipe.face_for(near - pipe.point(pipe.along_of(near))))
 	return add_fixture(entry, xf.origin, xf.basis)
 
 

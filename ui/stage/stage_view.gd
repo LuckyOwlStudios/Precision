@@ -352,7 +352,7 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	if not mounts.is_empty():
 		var grab := _pipe_at(at)
 		if not grab.is_empty():
-			return StageRoom.hang(grab[0], grab[1], mounts, (grab[0] as StageRoom.Pipe).side_towards(origin, float(grab[1])))
+			return StageRoom.hang(grab[0], grab[1], mounts, grab[2])
 	var hit := StageRoom.raycast(_surfaces, origin, dir)
 	if hit == null:
 		return null
@@ -362,9 +362,9 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	return Transform3D(StageRoom.mount_basis(hit.normal), pos + hit.normal * StageFixture3D.mount_offset(body))
 
 
-## The tube nearest the cursor on screen, and where along it: [Pipe, along],
-## or [] if none is within PIPE_GRAB_PX. Of tubes about as near, the one
-## closer to the camera wins.
+## The tube nearest the cursor on screen, where along it, and which face of it
+## to hang on: [Pipe, along, face], or [] if none is within PIPE_GRAB_PX. Of
+## tubes about as near, the one closer to the camera wins.
 func _pipe_at(at: Vector2) -> Array:
 	var origin := _camera.project_ray_origin(at)
 	var dir := _camera.project_ray_normal(at)
@@ -381,8 +381,23 @@ func _pipe_at(at: Vector2) -> Array:
 		var score := px + float(r[2]) * 2.0 # pixels, plus a nudge towards the front
 		if score < best_score:
 			best_score = score
-			best = [pipe, float(r[0])]
+			best = [pipe, float(r[0]), pipe.face_for(_aim_round(pipe, p, origin, dir, float(r[2])))]
 	return best
+
+
+## Which way round a tube the cursor points, for choosing its face: from the
+## tube's centre line towards where the cursor's ray passes it. Left of the tube
+## on screen means its left, above means its top. Right over the tube the ray
+## gives no side, so it leans to the face looking at the camera.
+func _aim_round(pipe: StageRoom.Pipe, p: Vector3, origin: Vector3, dir: Vector3, t: float) -> Vector3:
+	var u := pipe.axis()
+	var beside := origin + dir * t - p
+	beside -= u * beside.dot(u)
+	var to_cam := origin - p
+	to_cam -= u * to_cam.dot(u)
+	# How far off the tube the cursor is, measured against the tube's thickness.
+	var off := clampf(beside.length() / (MountPoint.TUBE_RADIUS * 1.5), 0.0, 1.0)
+	return beside.normalized() * off + to_cam.normalized() * 0.35
 
 
 func _can_drop_data(at: Vector2, data: Variant) -> bool:

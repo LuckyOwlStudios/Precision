@@ -4,7 +4,7 @@ extends Node3D
 ## One structural element of a set: a base plate, a straight truss, a corner box.
 ## Pieces join by their TrussConnector children: drop a piece near a free
 ## connector and it snaps on, face to face (see StructureSnap). Fixtures clamp
-## onto the TrussTube children.
+## onto the TubeSnap children.
 ##
 ## Every piece scene lives in res://structure/. To make a new one, give it this
 ## script, set `kind` and `bounds`, and add connectors and tubes as children.
@@ -33,10 +33,10 @@ func connectors() -> Array[TrussConnector]:
 	return list
 
 
-func tubes() -> Array[TrussTube]:
-	var list: Array[TrussTube] = []
+func tubes() -> Array[TubeSnap]:
+	var list: Array[TubeSnap] = []
 	for n in find_children("*", "", true, false):
-		if n is TrussTube:
+		if n is TubeSnap:
 			list.append(n)
 	return list
 

@@ -3,7 +3,7 @@ extends RefCounted
 ## Snapping maths for the room the rig lives in. The room itself is
 ## stage_room.tscn: its StageSurface nodes (floor, back wall, DJ booth) are the
 ## boxes fixtures stick flush against, and the truss in its Set is built from
-## structure pieces whose TrussTube nodes are the tubes fixtures clamp onto.
+## structure pieces whose TubeSnap nodes are the tubes fixtures clamp onto.
 ##
 ## Plain box and line maths (no physics engine), so placement behaves the same
 ## in every renderer and can be called from input handlers at any time.
@@ -27,30 +27,71 @@ class Surface:
 
 
 ## One straight run of tube that clamps can grip, from `a` to `b`: a single
-## TrussTube, or several that line up end to end across joined trusses.
-## `out` is the side fixtures hang on, pointing away from the truss. A tube on
-## a truss corner has a second outward face, `out2` (zero if it has only one):
-## the top-left tube takes fixtures on its top and on its left.
+## TubeSnap, or several that line up end to end across joined trusses.
+## `faces` are the world directions, away from the truss, fixtures may hang
+## on (the first is the default); with `around` set they may hang anywhere
+## round the tube instead, in steps of `step` degrees counted from faces[0].
 class Pipe:
 	extends RefCounted
 	var a: Vector3
 	var b: Vector3
-	var out: Vector3
-	var out2: Vector3
+	var faces: Array[Vector3] = []
+	var around := false
+	var step := 0.0
 
-	func _init(p_a: Vector3, p_b: Vector3, p_out: Vector3, p_out2 := Vector3.ZERO) -> void:
+	func _init(p_a: Vector3, p_b: Vector3, p_faces: Array[Vector3], p_around := false, p_step := 0.0) -> void:
 		a = p_a
 		b = p_b
-		out = p_out
-		out2 = p_out2
+		for f in p_faces:
+			faces.append(f.normalized())
+		if faces.is_empty():
+			faces.append(Vector3.DOWN)
+		around = p_around
+		step = p_step
 
-	## The face of the tube a fixture would hang on to reach `target` (a point
-	## or the camera): the outward face most turned towards it.
-	func side_towards(target: Vector3, along: float) -> Vector3:
-		if out2 == Vector3.ZERO:
-			return out
-		var d := target - point(along)
-		return out if out.dot(d) >= out2.dot(d) else out2
+	## The default face: the first one listed.
+	var out: Vector3:
+		get:
+			return faces[0]
+
+	## The face to hang on when the fixture should point `want` (any direction;
+	## only its part square to the tube counts): the listed face nearest it, or
+	## with `around` that direction itself, rounded to `step`.
+	func face_for(want: Vector3) -> Vector3:
+		var u := axis()
+		var w := want - u * want.dot(u)
+		if w.length() < 1e-6:
+			return faces[0]
+		w = w.normalized()
+		if around:
+			if step <= 0.0:
+				return w
+			var ref := faces[0]
+			var ang := ref.signed_angle_to(w, u)
+			var turn := deg_to_rad(snappedf(rad_to_deg(ang), step))
+			return ref.rotated(u, turn).normalized()
+		var best := faces[0]
+		for f in faces:
+			if f.dot(w) > best.dot(w):
+				best = f
+		return best
+
+	## True when both runs let fixtures hang the same ways.
+	func same_faces(other: Pipe) -> bool:
+		if around != other.around or not is_equal_approx(step, other.step):
+			return false
+		if around:
+			return true
+		if faces.size() != other.faces.size():
+			return false
+		for f in faces:
+			var found := false
+			for g in other.faces:
+				if f.dot(g) > 0.99:
+					found = true
+			if not found:
+				return false
+		return true
 
 	func axis() -> Vector3:
 		return (b - a).normalized()
@@ -118,9 +159,9 @@ static func surfaces_in(root: Node) -> Array[Surface]:
 static func pipes_in(root: Node) -> Array[Pipe]:
 	var pipes: Array[Pipe] = []
 	for n in root.find_children("*", "", true, false):
-		if n is TrussTube:
-			var t := n as TrussTube
-			pipes.append(Pipe.new(t.world_start(), t.world_end(), t.world_hang_side(), t.world_hang_side2()))
+		if n is TubeSnap and (n as TubeSnap).enabled:
+			var t := n as TubeSnap
+			pipes.append(Pipe.new(t.world_start(), t.world_end(), t.world_faces(), t.mode == TubeSnap.Mode.AROUND, t.step))
 	var merged := true
 	while merged:
 		merged = false
@@ -139,9 +180,7 @@ static func pipes_in(root: Node) -> Array[Pipe]:
 
 ## Two tubes as one run if they line up and touch end to end, else null.
 static func _join(p: Pipe, q: Pipe) -> Pipe:
-	if absf(p.axis().dot(q.axis())) < 0.9995 or p.out.dot(q.out) < 0.9:
-		return null
-	if (p.out2 == Vector3.ZERO) != (q.out2 == Vector3.ZERO) or p.out2.dot(q.out2) < 0.9 and p.out2 != Vector3.ZERO:
+	if absf(p.axis().dot(q.axis())) < 0.9995 or not p.same_faces(q):
 		return null
 	if p.distance_to_line(q.a) > JOIN_TOLERANCE or p.distance_to_line(q.b) > JOIN_TOLERANCE:
 		return null
@@ -152,7 +191,7 @@ static func _join(p: Pipe, q: Pipe) -> Pipe:
 	var hi := maxf(qa, qb)
 	if lo > run + JOIN_TOLERANCE or hi < -JOIN_TOLERANCE:
 		return null # same line, but a gap between them
-	return Pipe.new(p.point(minf(0.0, lo)), p.point(maxf(run, hi)), p.out, p.out2)
+	return Pipe.new(p.point(minf(0.0, lo)), p.point(maxf(run, hi)), p.faces, p.around, p.step)
 
 
 ## The tube nearest a point, or null if there are none.
@@ -173,8 +212,8 @@ static func pipe_near(pipes: Array[Pipe], p: Vector3) -> Pipe:
 ## sit on the tube; it is kept far enough from the ends for every clamp to fit.
 ## The beam points away from the truss, and the fixture faces the audience (+Z)
 ## where it can.
-## `side` is the face of the tube to hang on (default: its main one); a side
-## face hangs the fixture off the side of the tube, beam pointing outwards.
+## `side` is the face of the tube to hang on (default: its first one, see
+## Pipe.face_for); a side face hangs the fixture off it, beam pointing outwards.
 static func hang(pipe: Pipe, along: float, mounts: PackedVector3Array, side := Vector3.ZERO) -> Transform3D:
 	var y := -(pipe.out if side == Vector3.ZERO else side).normalized()
 	var x := pipe.axis()

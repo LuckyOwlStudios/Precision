@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://structure/structure_piece.gd" id="1_piece"]
 [ext_resource type="Script" path="res://structure/truss_connector.gd" id="2_conn"]
-[ext_resource type="Script" path="res://structure/truss_tube.gd" id="3_tube"]
+[ext_resource type="Script" path="res://structure/snaps/tube_snap.gd" id="3_tube"]
 [ext_resource type="Script" path="res://structure/truss_mesh.gd" id="4_mesh"]
 [ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="5_metal"]
 
@@ -33,26 +33,22 @@ accepts = 6
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.121, 0.121)
 script = ExtResource("3_tube")
 length = 0.5
-hang_side = Vector3(0, -1, 0)
-hang_side2 = Vector3(0, 0, 1)
+angles = PackedFloat32Array(180, 90)
 
 [node name="BottomBack" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, -0.121, -0.121)
 script = ExtResource("3_tube")
 length = 0.5
-hang_side = Vector3(0, -1, 0)
-hang_side2 = Vector3(0, 0, -1)
+angles = PackedFloat32Array(180, -90)
 
 [node name="TopFront" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 0.121, 0.121)
 script = ExtResource("3_tube")
 length = 0.5
-hang_side = Vector3(0, 1, 0)
-hang_side2 = Vector3(0, 0, 1)
+angles = PackedFloat32Array(0, 90)
 
 [node name="TopBack" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 0.121, -0.121)
 script = ExtResource("3_tube")
 length = 0.5
-hang_side = Vector3(0, 1, 0)
-hang_side2 = Vector3(0, 0, -1)
+angles = PackedFloat32Array(0, -90)
