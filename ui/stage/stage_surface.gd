@@ -5,7 +5,7 @@ extends MeshInstance3D
 ## (floor, walls, the DJ booth). Give it a BoxMesh: the snapping box is that
 ## mesh's bounds wherever you move the node in stage_room.tscn. A hidden
 ## surface still snaps. Trusses are not surfaces: fixtures clamp onto their
-## tubes (TrussTube) instead.
+## tubes (TubeSnap) instead.
 
 @export var kind: StageRoom.Kind = StageRoom.Kind.FURNITURE
 

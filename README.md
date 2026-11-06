@@ -83,9 +83,14 @@ Each piece is a scene with the `StructurePiece` script and three kinds of child 
   "outward x up". Its **Accepts** flags say which kinds of piece may join there.
   An orange arrow shows which way it faces: always in the editor, and in the app on the free
   connectors a piece could join while you place one.
-- `TrussTube`: a bar fixtures can clamp onto, from the node along its +X for `length`. `hang_side`
-  says which side fixtures hang on. Drawn as an orange line in the editor. Tubes that line up end to
-  end across joined trusses count as one run, so fixtures slide across joints.
+- `TubeSnap` (a `SnapNode`, the base class for anything fixtures snap onto): a bar fixtures can
+  clamp onto, from the node along its +X for `length`. **Mode** says which way round it fixtures may
+  hang: *Angles* lists the faces in degrees round the tube from the node's +Y (0 up, 90 front,
+  180 down, -90 back; a truss corner bar uses two, e.g. 0 and 90), *Around* allows anywhere round it
+  in steps of **Step** degrees (0 = free). The cursor picks the face: beside the tube on the left
+  means its left face, above it means its top. Drawn as an orange line with a tick per face (or a
+  ring) in the editor. Tubes that line up end to end with the same faces count as one run, so
+  fixtures slide across joints.
 - `TrussMesh`: draws the lattice (straight or corner) from its settings; not saved into the scene.
 
 ### Truss clamps
