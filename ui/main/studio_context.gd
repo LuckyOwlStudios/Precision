@@ -12,6 +12,12 @@ signal selection_changed(fixture: DMXFixture)
 signal fixture_moved(fixture: DMXFixture)
 ## Someone pressed F2 or double-clicked a fixture: the inspector focuses its name field.
 signal rename_requested(fixture: DMXFixture)
+## A structure piece (truss, corner box, base plate) was picked on the stage, or
+## null when none is. The inspector shows its details.
+signal piece_selection_changed(piece: StructurePiece)
+## A piece was moved, turned or renamed from the inspector; the stage view
+## collects the truss tubes again.
+signal piece_moved(piece: StructurePiece)
 signal transport_changed
 signal blackout_changed(active: bool)
 signal workspace_changed(workspace: Workspace)
@@ -45,6 +51,10 @@ const META_PROFILE_LABEL := &"profile_label"
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
+var selected_piece: StructurePiece ## set by the stage view, never alongside `selected`
+## The node holding every structure piece (the stage view sets it), so the
+## inspector can tell what a piece is joined to.
+var set_root: Node3D
 ## The truss tubes on stage (kept up to date by the stage view), for hanging
 ## fixtures from code.
 var truss_pipes: Array[StageRoom.Pipe] = []
@@ -195,6 +205,65 @@ func select(fx: DMXFixture) -> void:
 		return
 	selected = fx
 	selection_changed.emit(fx)
+
+
+func select_piece(piece: StructurePiece) -> void:
+	if selected_piece == piece:
+		return
+	selected_piece = piece
+	piece_selection_changed.emit(piece)
+
+
+## Every structure piece on stage.
+func structure_pieces() -> Array[StructurePiece]:
+	var list: Array[StructurePiece] = []
+	if set_root:
+		for c in set_root.get_children():
+			if c is StructurePiece and not c.is_queued_for_deletion():
+				list.append(c)
+	return list
+
+
+## The name shown for a piece: your own name if you gave one, else its type.
+static func piece_name(piece: StructurePiece) -> String:
+	return String(piece.get_meta(META_LABEL, piece.display_name))
+
+
+## Give a piece your own name. An empty name goes back to its type ("Truss 2 m").
+func rename_piece(piece: StructurePiece, new_name: String) -> void:
+	var clean := new_name.strip_edges()
+	if clean == piece.display_name:
+		clean = ""
+	var old := String(piece.get_meta(META_LABEL, ""))
+	if clean == old:
+		return
+	record("Rename structure piece", _apply_piece_label.bind(piece, clean), _apply_piece_label.bind(piece, old), true)
+
+
+func _apply_piece_label(piece: Object, label: String) -> void:
+	if not is_instance_valid(piece):
+		return
+	if label.is_empty():
+		piece.remove_meta(META_LABEL)
+	else:
+		piece.set_meta(META_LABEL, label)
+	piece_moved.emit(piece)
+
+
+## Put a piece at `xform` (typed in the inspector), with undo. Quick repeated
+## nudges merge into one step.
+func place_piece(piece: StructurePiece, xform: Transform3D) -> void:
+	var before := piece.global_transform
+	if xform.is_equal_approx(before):
+		return
+	record("Move structure piece", _restore_piece.bind(piece, xform), _restore_piece.bind(piece, before),
+		true, _merge_key(piece, "place"))
+
+
+func _restore_piece(piece: Object, xform: Transform3D) -> void:
+	if is_instance_valid(piece) and (piece as Node).is_inside_tree():
+		(piece as StructurePiece).global_transform = xform
+		piece_moved.emit(piece as StructurePiece)
 
 
 func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
