@@ -1,6 +1,6 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene format=3 uid="uid://ckf2r4x5igpjd"]
 
-[ext_resource type="Script" path="res://ui/main/main_window.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://dw8mufs8wlsj" path="res://ui/main/main_window.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://ui/main/studio_context.tscn" id="2_ctx"]
 [ext_resource type="PackedScene" path="res://ui/panels/now_playing_bar.tscn" id="3_now"]
 [ext_resource type="PackedScene" path="res://ui/panels/fixture_library_panel.tscn" id="4_lib"]
@@ -13,6 +13,9 @@
 [ext_resource type="PackedScene" path="res://ui/panels/dmx_monitor_panel.tscn" id="11_dmx"]
 [ext_resource type="PackedScene" path="res://ui/panels/dj_panel.tscn" id="12_dj"]
 
+[sub_resource type="StyleBoxFlat" id="Background"]
+bg_color = Color(0.051, 0.059, 0.071, 1)
+
 [sub_resource type="StyleBoxFlat" id="Dot"]
 bg_color = Color(0.239, 0.863, 0.592, 1)
 corner_radius_top_left = 4
@@ -20,10 +23,7 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[sub_resource type="StyleBoxFlat" id="Background"]
-bg_color = Color(0.051, 0.059, 0.071, 1)
-
-[node name="MainWindow" type="Control"]
+[node name="MainWindow" type="Control" unique_id=1441078218]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,10 +32,10 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Studio" parent="." instance=ExtResource("2_ctx")]
+[node name="Studio" parent="." unique_id=688074191 instance=ExtResource("2_ctx")]
 unique_name_in_owner = true
 
-[node name="Background" type="Panel" parent="."]
+[node name="Background" type="Panel" parent="." unique_id=942412512]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,7 +44,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("Background")
 
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="Layout" type="VBoxContainer" parent="." unique_id=168435688]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -53,26 +53,26 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 0
 
-[node name="Header" type="PanelContainer" parent="Layout"]
+[node name="Header" type="PanelContainer" parent="Layout" unique_id=1719548287]
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_type_variation = &"HeaderBar"
 
-[node name="Row" type="HBoxContainer" parent="Layout/Header"]
+[node name="Row" type="HBoxContainer" parent="Layout/Header" unique_id=504865547]
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Brand" type="Label" parent="Layout/Header/Row"]
+[node name="Brand" type="Label" parent="Layout/Header/Row" unique_id=1034760798]
 custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 theme_type_variation = &"BigTitle"
 theme_override_font_sizes/font_size = 18
 text = "Precision"
 
-[node name="Divider" type="VSeparator" parent="Layout/Header/Row"]
+[node name="Divider" type="VSeparator" parent="Layout/Header/Row" unique_id=999910696]
 layout_mode = 2
 
-[node name="WorkspaceTabs" type="TabBar" parent="Layout/Header/Row"]
+[node name="WorkspaceTabs" type="TabBar" parent="Layout/Header/Row" unique_id=1948362203]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -80,76 +80,76 @@ size_flags_vertical = 8
 focus_mode = 0
 theme_type_variation = &"WorkspaceTabs"
 current_tab = 1
+tab_alignment = 1
 tab_count = 3
 tab_0/title = "STAGE"
 tab_1/title = "PROGRAM"
 tab_2/title = "LIVE"
 
-[node name="Search" type="LineEdit" parent="Layout/Header/Row"]
+[node name="Search" type="LineEdit" parent="Layout/Header/Row" unique_id=1880150569]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 size_flags_vertical = 4
 placeholder_text = "Search fixtures and songs"
 clear_button_enabled = true
 
-[node name="NowPlaying" parent="Layout" instance=ExtResource("3_now")]
+[node name="NowPlaying" parent="Layout" unique_id=98046476 instance=ExtResource("3_now")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Body" type="HSplitContainer" parent="Layout"]
+[node name="Body" type="HSplitContainer" parent="Layout" unique_id=962856546]
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 0
 
-[node name="LeftDock" type="PanelContainer" parent="Layout/Body"]
+[node name="LeftDock" type="PanelContainer" parent="Layout/Body" unique_id=1941642107]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 theme_type_variation = &"SidePanel"
 
-[node name="Column" type="VBoxContainer" parent="Layout/Body/LeftDock"]
+[node name="Column" type="VBoxContainer" parent="Layout/Body/LeftDock" unique_id=1177962627]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="LeftTabs" type="TabContainer" parent="Layout/Body/LeftDock/Column"]
+[node name="LeftTabs" type="TabContainer" parent="Layout/Body/LeftDock/Column" unique_id=1167913409]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Library" parent="Layout/Body/LeftDock/Column/LeftTabs" instance=ExtResource("4_lib")]
+[node name="Library" parent="Layout/Body/LeftDock/Column/LeftTabs" unique_id=1596397137 instance=ExtResource("4_lib")]
 unique_name_in_owner = true
 layout_mode = 2
 metadata/_tab_index = 0
 
-[node name="OnStage" parent="Layout/Body/LeftDock/Column/LeftTabs" instance=ExtResource("5_rig")]
+[node name="OnStage" parent="Layout/Body/LeftDock/Column/LeftTabs" unique_id=945886955 instance=ExtResource("5_rig")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
-[node name="Songs" parent="Layout/Body/LeftDock/Column/LeftTabs" instance=ExtResource("6_songs")]
+[node name="Songs" parent="Layout/Body/LeftDock/Column/LeftTabs" unique_id=1379967945 instance=ExtResource("6_songs")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 2
 
-[node name="LeftFooter" type="PanelContainer" parent="Layout/Body/LeftDock/Column"]
+[node name="LeftFooter" type="PanelContainer" parent="Layout/Body/LeftDock/Column" unique_id=13885142]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_type_variation = &"FooterBar"
 
-[node name="Row" type="HBoxContainer" parent="Layout/Body/LeftDock/Column/LeftFooter"]
+[node name="Row" type="HBoxContainer" parent="Layout/Body/LeftDock/Column/LeftFooter" unique_id=1297895503]
 layout_mode = 2
 
-[node name="OutputDot" type="Panel" parent="Layout/Body/LeftDock/Column/LeftFooter/Row"]
+[node name="OutputDot" type="Panel" parent="Layout/Body/LeftDock/Column/LeftFooter/Row" unique_id=1925880729]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(8, 8)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_styles/panel = SubResource("Dot")
 
-[node name="OutputLabel" type="Label" parent="Layout/Body/LeftDock/Column/LeftFooter/Row"]
+[node name="OutputLabel" type="Label" parent="Layout/Body/LeftDock/Column/LeftFooter/Row" unique_id=324959052]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -157,72 +157,72 @@ theme_type_variation = &"Subtitle"
 text = "Art-Net"
 text_overrun_behavior = 3
 
-[node name="RightSplit" type="HSplitContainer" parent="Layout/Body"]
+[node name="RightSplit" type="HSplitContainer" parent="Layout/Body" unique_id=1143865269]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="CenterSplit" type="VSplitContainer" parent="Layout/Body/RightSplit"]
+[node name="CenterSplit" type="VSplitContainer" parent="Layout/Body/RightSplit" unique_id=1990751366]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="StageFrame" type="PanelContainer" parent="Layout/Body/RightSplit/CenterSplit"]
+[node name="StageFrame" type="PanelContainer" parent="Layout/Body/RightSplit/CenterSplit" unique_id=1756753009]
 layout_mode = 2
 size_flags_vertical = 3
 theme_type_variation = &"StagePanel"
 
-[node name="StageView" parent="Layout/Body/RightSplit/CenterSplit/StageFrame" instance=ExtResource("7_stage")]
+[node name="StageView" parent="Layout/Body/RightSplit/CenterSplit/StageFrame" unique_id=108755315 instance=ExtResource("7_stage")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Timeline" parent="Layout/Body/RightSplit/CenterSplit" instance=ExtResource("8_timeline")]
+[node name="Timeline" parent="Layout/Body/RightSplit/CenterSplit" unique_id=1864524129 instance=ExtResource("8_timeline")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 240)
 layout_mode = 2
 
-[node name="RightDock" type="PanelContainer" parent="Layout/Body/RightSplit"]
+[node name="RightDock" type="PanelContainer" parent="Layout/Body/RightSplit" unique_id=901693069]
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 theme_type_variation = &"SidePanel"
 
-[node name="Column" type="VBoxContainer" parent="Layout/Body/RightSplit/RightDock"]
+[node name="Column" type="VBoxContainer" parent="Layout/Body/RightSplit/RightDock" unique_id=155496670]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="RightTabs" type="TabContainer" parent="Layout/Body/RightSplit/RightDock/Column"]
+[node name="RightTabs" type="TabContainer" parent="Layout/Body/RightSplit/RightDock/Column" unique_id=1640323285]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Inspector" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("9_inspector")]
+[node name="Inspector" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=283698523 instance=ExtResource("9_inspector")]
 unique_name_in_owner = true
 layout_mode = 2
 metadata/_tab_index = 0
 
-[node name="Cues" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("10_cues")]
+[node name="Cues" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=615594403 instance=ExtResource("10_cues")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
-[node name="DMX" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("11_dmx")]
+[node name="DMX" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=587719376 instance=ExtResource("11_dmx")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 2
 
-[node name="DJ" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("12_dj")]
+[node name="DJ" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=1485302954 instance=ExtResource("12_dj")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 3
 
-[node name="RightFooter" type="PanelContainer" parent="Layout/Body/RightSplit/RightDock/Column"]
+[node name="RightFooter" type="PanelContainer" parent="Layout/Body/RightSplit/RightDock/Column" unique_id=79491683]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_type_variation = &"FooterBar"
 
-[node name="RigLabel" type="Label" parent="Layout/Body/RightSplit/RightDock/Column/RightFooter"]
+[node name="RigLabel" type="Label" parent="Layout/Body/RightSplit/RightDock/Column/RightFooter" unique_id=231681694]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Subtitle"
