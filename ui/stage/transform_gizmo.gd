@@ -3,7 +3,11 @@ extends Control
 ## Move and rotate handles for the selected fixture, drawn in 2D on top of the
 ## 3D view so they stay the same size on screen and are always clickable.
 ##   Move:   arrows drag along one world axis, squares drag in a plane.
-##   Rotate: rings turn the fixture around one world axis (about its mount point).
+##   Rotate: one ring per way the fixture can turn where it is mounted (see
+##           MountRotation): around the truss tube it hangs from, under its
+##           clamp, on the spot on the floor, or about any world axis when it
+##           is placed freely. Each ring sits on its own pivot and is coloured
+##           like the world axis it is closest to (X red, Y green, Z blue).
 ## It only works out a new Transform3D; the stage view decides what to do with it.
 
 enum Mode { MOVE, ROTATE }
@@ -28,6 +32,11 @@ var mode: Mode = Mode.MOVE:
 var camera: Camera3D
 ## The transform being edited. Hidden while `shown` is false.
 var target := Transform3D.IDENTITY
+## The ways the target can turn (rotate mode), at most three. Empty = locked.
+var rings: Array[MountRotation.Axis] = []:
+	set(value):
+		rings = value
+		queue_redraw()
 var shown := false:
 	set(value):
 		shown = value
@@ -44,6 +53,12 @@ var _plane := Plane()
 var _grab := Vector3.ZERO
 var _last_angle := 0.0
 var _turned := 0.0
+var _ring: MountRotation.Axis ## the ring being dragged
+var _ring_edge_on := false ## seen side on: drag along the ring instead of around it
+var _ring_tangent := Vector2.ZERO ## screen direction the grabbed point moves for a + turn
+var _ring_px_per_rad := 100.0
+var _grab_mouse := Vector2.ZERO
+var _angle := 0.0 ## current turn while rotating, radians
 var _readout := ""
 
 
@@ -78,8 +93,8 @@ func handle_at(p: Vector2) -> Handle:
 		return best
 	var best_r := Handle.NONE
 	var best_rd := PICK_PX
-	for i in 3:
-		var pts := _ring(i, span * RING_SCALE)
+	for i in mini(rings.size(), 3):
+		var pts := _ring_points(rings[i])
 		for j in pts.size() - 1:
 			var d := p.distance_to(Geometry2D.get_closest_point_to_segment(p, pts[j], pts[j + 1]))
 			if d < best_rd:
@@ -93,8 +108,7 @@ func begin_drag(h: Handle, mouse: Vector2) -> void:
 	_start = target
 	_readout = ""
 	if mode == Mode.ROTATE:
-		_last_angle = (mouse - _screen(_start.origin)).angle()
-		_turned = 0.0
+		_begin_turn(rings[h - Handle.X], mouse)
 		return
 	var view := camera.project_ray_normal(mouse)
 	var normal: Vector3
@@ -119,18 +133,12 @@ func drag(mouse: Vector2, snap: bool) -> Transform3D:
 		return target
 	var result := _start
 	if mode == Mode.ROTATE:
-		var a := (mouse - _screen(_start.origin)).angle()
-		_turned += wrapf(a - _last_angle, -PI, PI)
-		_last_angle = a
-		var axis := _axis(_active)
-		# Screen angles grow clockwise; a right-handed turn about an axis that
-		# points at you looks anticlockwise, so flip when it does.
-		var facing := axis.dot(camera.global_position - _start.origin) > 0.0
-		var angle := -_turned if facing else _turned
+		var angle := _turn_angle(mouse)
 		if snap:
 			angle = snappedf(angle, deg_to_rad(ROTATE_STEP))
-		result.basis = (Basis(axis, angle) * _start.basis).orthonormalized()
-		_readout = "%+.0f°" % rad_to_deg(angle)
+		_angle = angle
+		result = _ring.turned(_start, angle)
+		_readout = "%s %+.0f°" % [_ring.label(), rad_to_deg(angle)]
 	else:
 		var hit: Variant = _plane.intersects_ray(camera.project_ray_origin(mouse), camera.project_ray_normal(mouse))
 		if hit == null:
@@ -161,8 +169,53 @@ func drag(mouse: Vector2, snap: bool) -> Transform3D:
 
 func end_drag() -> void:
 	_active = Handle.NONE
+	_ring = null
 	_readout = ""
 	queue_redraw()
+
+
+## Start turning about `ring`. Seen face on, the turn follows the cursor round
+## the pivot; seen side on (the ring is a thin line on screen, like a truss
+## tube pointing across the view), dragging along the line turns it instead.
+func _begin_turn(ring: MountRotation.Axis, mouse: Vector2) -> void:
+	_ring = ring
+	_angle = 0.0
+	_turned = 0.0
+	_grab_mouse = mouse
+	var view := (ring.pivot - camera.global_position).normalized()
+	_ring_edge_on = absf(ring.dir.dot(view)) < 0.3
+	_last_angle = (mouse - _screen(ring.pivot)).angle()
+	if not _ring_edge_on:
+		return
+	# The point on the ring nearest the cursor, and which way it goes on screen.
+	var radius := _world_len_at(ring.pivot) * RING_SCALE
+	var u := _perpendicular(ring.dir)
+	var v := ring.dir.cross(u)
+	var grab := ring.pivot + u * radius
+	var best := INF
+	for i in 64:
+		var t := TAU * i / 64.0
+		var p := ring.pivot + (u * cos(t) + v * sin(t)) * radius
+		var d := _screen(p).distance_to(mouse)
+		if d < best:
+			best = d
+			grab = p
+	var tangent := ring.dir.cross(grab - ring.pivot).normalized()
+	var moved := _screen(grab + tangent * radius * 0.1) - _screen(grab)
+	_ring_px_per_rad = maxf(moved.length() * 10.0, 20.0)
+	_ring_tangent = moved.normalized() if moved.length() > 0.01 else Vector2.RIGHT
+
+
+func _turn_angle(mouse: Vector2) -> float:
+	if _ring_edge_on:
+		return (mouse - _grab_mouse).dot(_ring_tangent) / _ring_px_per_rad
+	var a := (mouse - _screen(_ring.pivot)).angle()
+	_turned += wrapf(a - _last_angle, -PI, PI)
+	_last_angle = a
+	# Screen angles grow clockwise; a right-handed turn about an axis that
+	# points at you looks anticlockwise, so flip when it does.
+	var facing := _ring.dir.dot(camera.global_position - _ring.pivot) > 0.0
+	return -_turned if facing else _turned
 
 
 # ---------------------------------------------------------------- drawing
@@ -195,17 +248,64 @@ func _draw() -> void:
 			var axis := AXES[_active - Handle.X]
 			draw_line(_screen(_start.origin - axis * 50.0), _screen(_start.origin + axis * 50.0), Color(_color(_active), 0.35), 1.0, true)
 	else:
-		for i in 3:
-			var h := (Handle.X + i) as Handle
-			if _active != Handle.NONE and _active != h:
-				continue
-			draw_polyline(_ring(i, span * RING_SCALE), _color(h), 3.0 if _lit(h) else 2.0, true)
-		draw_circle(o, 3.0, Color.WHITE)
+		_draw_rings()
 	if not _readout.is_empty():
 		var font := get_theme_default_font()
 		var pos := o + Vector2(18, -18)
 		draw_string(font, pos + Vector2(1, 1), _readout, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.7))
 		draw_string(font, pos, _readout, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIPalette.TEXT)
+
+
+func _draw_rings() -> void:
+	if rings.is_empty():
+		_draw_label(_screen(target.origin) + Vector2(14, -14), "Can't turn: locked in place")
+		return
+	for i in mini(rings.size(), 3):
+		var h := (Handle.X + i) as Handle
+		if _active != Handle.NONE and _active != h:
+			continue
+		var ring := rings[i]
+		var c := _color(h)
+		if _active == h:
+			# The axis it turns about (the tube, the bolt, the floor normal),
+			# and a wedge from where it started to where it is now.
+			var reach := _world_len_at(ring.pivot) * 1.6
+			draw_line(_screen(ring.pivot - ring.dir * reach), _screen(ring.pivot + ring.dir * reach), Color(c, 0.5), 1.5, true)
+			_draw_wedge(ring, Color(c, 0.18))
+		draw_polyline(_ring_points(ring), c, 3.0 if _lit(h) else 2.0, true)
+		draw_circle(_screen(ring.pivot), 3.0, Color.WHITE)
+		if _active == Handle.NONE and hovered == h:
+			_draw_label(_screen(ring.pivot) + Vector2(18, 18), ring.hint())
+
+
+## Filled slice of the ring from the start of the turn to now.
+func _draw_wedge(ring: MountRotation.Axis, c: Color) -> void:
+	if absf(_angle) < 0.01:
+		return
+	var radius := _world_len_at(ring.pivot) * RING_SCALE
+	var start_dir := _start_dir(ring)
+	var pts := PackedVector2Array([_screen(ring.pivot)])
+	var steps := maxi(2, int(absf(_angle) / TAU * 64.0))
+	for i in steps + 1:
+		var a := _angle * i / steps
+		pts.append(_screen(ring.pivot + Basis(ring.dir, a) * start_dir * radius))
+	if pts.size() >= 3:
+		draw_colored_polygon(pts, c)
+
+
+## Where the wedge starts: the fixture's beam direction flattened onto the ring.
+func _start_dir(ring: MountRotation.Axis) -> Vector3:
+	var beam := -_start.basis.y
+	var flat := beam - ring.dir * beam.dot(ring.dir)
+	if flat.length() < 0.05:
+		return _perpendicular(ring.dir)
+	return flat.normalized()
+
+
+func _draw_label(pos: Vector2, text: String) -> void:
+	var font := get_theme_default_font()
+	draw_string(font, pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.7))
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIPalette.TEXT)
 
 
 func _lit(h: Handle) -> bool:
@@ -215,6 +315,12 @@ func _lit(h: Handle) -> bool:
 func _color(h: Handle) -> Color:
 	if _lit(h):
 		return UIPalette.ACCENT
+	if mode == Mode.ROTATE:
+		var i := h - Handle.X
+		if i >= 0 and i < rings.size():
+			# Coloured like the world axis the ring turns about most.
+			var d := rings[i].dir.abs()
+			return AXIS_COLORS[0 if d.x >= d.y and d.x >= d.z else (1 if d.y >= d.z else 2)]
 	match h:
 		Handle.X, Handle.YZ: return AXIS_COLORS[0]
 		Handle.Y, Handle.XZ: return AXIS_COLORS[1]
@@ -237,7 +343,11 @@ func _behind() -> bool:
 
 ## World length that shows up as SIZE_PX on screen at the target's depth.
 func _world_len() -> float:
-	var depth := -(camera.global_transform.affine_inverse() * target.origin).z
+	return _world_len_at(target.origin)
+
+
+func _world_len_at(p: Vector3) -> float:
+	var depth := -(camera.global_transform.affine_inverse() * p).z
 	var h := camera.get_viewport().get_visible_rect().size.y
 	return maxf(depth, 0.1) * 2.0 * tan(deg_to_rad(camera.fov) * 0.5) * SIZE_PX / maxf(h, 1.0)
 
@@ -263,12 +373,19 @@ func _plane_quad(h: Handle, span: float) -> PackedVector2Array:
 		_screen(o + a * hi + b * hi), _screen(o + a * lo + b * hi)])
 
 
-func _ring(axis_index: int, radius: float) -> PackedVector2Array:
-	var axis := AXES[axis_index]
-	var u := AXES[(axis_index + 1) % 3]
-	var v := axis.cross(u)
+## A ring around `ring.pivot`, square to its axis, as a closed screen polyline.
+func _ring_points(ring: MountRotation.Axis) -> PackedVector2Array:
+	var radius := _world_len_at(ring.pivot) * RING_SCALE
+	var u := _perpendicular(ring.dir)
+	var v := ring.dir.cross(u)
 	var pts := PackedVector2Array()
 	for i in 65:
 		var t := TAU * i / 64.0
-		pts.append(_screen(target.origin + (u * cos(t) + v * sin(t)) * radius))
+		pts.append(_screen(ring.pivot + (u * cos(t) + v * sin(t)) * radius))
 	return pts
+
+
+## Some unit vector square to `dir`.
+static func _perpendicular(dir: Vector3) -> Vector3:
+	var other := Vector3.UP if absf(dir.y) < 0.9 else Vector3.RIGHT
+	return dir.cross(other).normalized()

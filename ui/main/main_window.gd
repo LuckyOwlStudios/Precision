@@ -7,6 +7,7 @@ extends Control
 ##
 ## Shortcuts: Space = play/pause, Esc = blackout, Delete = remove selected fixture,
 ## F2 = rename selected fixture, W/E = move/rotate gizmo (stage view),
+## Ctrl+Z / Ctrl+Shift+Z = undo / redo a fixture move or turn,
 ## 1/2/3 = Stage/Program/Live workspace (when no text field has focus).
 
 @onready var ctx: StudioContext = %Studio
@@ -83,7 +84,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if get_viewport().gui_get_focus_owner() is LineEdit:
 		return
-	match (event as InputEventKey).keycode:
+	var key := event as InputEventKey
+	if key.keycode in [KEY_Z, KEY_Y] and (key.ctrl_pressed or key.meta_pressed):
+		# Ctrl+Z undoes a fixture move or turn; Ctrl+Shift+Z or Ctrl+Y redoes it.
+		if key.keycode == KEY_Y or key.shift_pressed:
+			ctx.redo()
+		else:
+			ctx.undo()
+		get_viewport().set_input_as_handled()
+		return
+	match key.keycode:
 		KEY_SPACE:
 			ctx.toggle_play()
 		KEY_ESCAPE:

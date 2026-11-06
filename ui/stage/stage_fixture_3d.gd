@@ -13,7 +13,9 @@ extends Node3D
 ## The lens, halo, beam and marker materials are "local to scene", so every
 ## fixture on stage gets its own copies to colour.
 ## Its MountPoint nodes are the truss clamps: they say where the fixture grips
-## a tube when hung, and show only while it is (see set_rigged).
+## a tube when hung, and show only while it is (see set_rigged). How many
+## clamps it has also decides which ways it can be turned on stage (see
+## MountRotation); "Rotating on stage" below overrides that per scene.
 
 const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
 const BAR_PIXELS := 8
@@ -31,13 +33,22 @@ const SPOT_MOVER_SCENE := "res://ui/stage/fixtures/spot_mover.tscn"
 const WASH_MOVER_SCENE := "res://ui/stage/fixtures/wash_mover.tscn"
 
 static var _iris: Texture2D
-static var _mounts_cache: Dictionary = {} ## scene path -> PackedVector3Array
 
 @export var body: FixtureCatalog.Body = FixtureCatalog.Body.PAR
 @export var lens_material: StandardMaterial3D ## glass that glows in the fixture's colour
 @export var glow_material: ShaderMaterial ## halo around each lit lens
 @export var beam_material: ShaderMaterial ## the beam cone
 @export var marker_material: ShaderMaterial ## selection brackets
+
+@export_group("Rotating on stage")
+## Swing around the truss tube it hangs from. Auto: yes, if it has clamps.
+@export var swing_on_truss: MountRotation.Allow = MountRotation.Allow.AUTO
+## Turn under its clamp, on the clamp's bolt. Auto: only with a single clamp
+## (and that clamp's MountPoint has `swivel` on); two clamps lock it.
+@export var spin_on_clamp: MountRotation.Allow = MountRotation.Allow.AUTO
+## Turn about the floor or wall it stands on (feet stay planted). Auto: yes.
+@export var spin_on_surface: MountRotation.Allow = MountRotation.Allow.AUTO
+@export_group("")
 
 var fixture: DMXFixture
 var ctx: StudioContext
@@ -72,29 +83,32 @@ static func scene_path_of(fx: DMXFixture) -> String:
 ## Where a body scene's clamps grip the tube, in the fixture's own space: one
 ## position per MountPoint. Read from the scene once and remembered.
 static func mounts_of(path: String) -> PackedVector3Array:
-	if _mounts_cache.has(path):
-		return _mounts_cache[path]
-	var list := PackedVector3Array()
-	var root := (load(path) as PackedScene).instantiate()
-	for n in root.find_children("*", "", true, false):
-		if n is MountPoint:
-			var t := (n as Node3D).transform
-			var p := n.get_parent()
-			while p != root:
-				t = (p as Node3D).transform * t
-				p = p.get_parent()
-			list.append(t.origin)
-	root.free()
-	_mounts_cache[path] = list
-	return list
+	return MountRotation.rules_of(path).mounts
 
 
 ## Show the clamps (and brackets under them) while the fixture hangs on a
 ## truss; hide them while it stands on the floor, a wall or the booth.
-func set_rigged(on: bool) -> void:
+## `pipe` is the tube it hangs from, or null. Each clamp's jaw is turned to
+## run along the tube, so a fixture spun under a single clamp still shows the
+## clamp gripping the tube properly.
+func set_rigged(pipe: StageRoom.Pipe) -> void:
 	for n in find_children("*", "", true, false):
 		if n is MountPoint:
-			(n as MountPoint).visible = on
+			var mp := n as MountPoint
+			mp.visible = pipe != null
+			if pipe == null:
+				mp.jaw_turn = 0.0
+				continue
+			# The tube's direction in the clamp's own space, flattened onto its
+			# XZ plane: the jaw turns about the bolt (local Y) to line up with it.
+			var a := mp.global_basis.orthonormalized().inverse() * pipe.axis()
+			var turn := atan2(-a.z, a.x)
+			# The jaw looks the same half a turn round, so take the smaller turn.
+			if turn > PI * 0.5:
+				turn -= PI
+			elif turn < -PI * 0.5:
+				turn += PI
+			mp.jaw_turn = turn
 
 
 ## Call once it is in the tree.

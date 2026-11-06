@@ -38,6 +38,21 @@ const CLAMP_HALF_WIDTH := 0.03
 	set(v):
 		screw_side = v
 		_rebuild()
+## The fixture can turn under this clamp on its bolt (local Y), like a par
+## on a hook clamp. Only matters when it is the fixture's only clamp; see
+## MountRotation for how clamps decide which ways a fixture turns.
+@export var swivel := true
+
+## How far the jaw is turned about the bolt (radians, local Y), so it keeps
+## running along the tube when the fixture is spun under it. Set by
+## StageFixture3D.set_rigged; only the clamp's own mesh turns, not the
+## brackets under it (they are bolted to the fixture).
+var jaw_turn := 0.0:
+	set(v):
+		if is_equal_approx(v, jaw_turn):
+			return
+		jaw_turn = v
+		_rebuild()
 
 
 func _ready() -> void:
@@ -74,7 +89,19 @@ func _rebuild() -> void:
 	# Bolt and washer down into the bracket.
 	_cylinder(st, Vector3(0, body_bottom, 0), Vector3(0, -drop, 0), 0.006)
 	_cylinder(st, Vector3(0, -drop + 0.004, 0), Vector3(0, -drop, 0), 0.016)
-	mesh = st.commit()
+	var arrays := st.commit_to_arrays()
+	if jaw_turn != 0.0:
+		var turn := Basis(Vector3.UP, jaw_turn)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		for i in verts.size():
+			verts[i] = turn * verts[i]
+			normals[i] = turn * normals[i]
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = normals
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh = m
 
 
 ## A band around the X axis between two radii, from angle a0 to a1 (radians,

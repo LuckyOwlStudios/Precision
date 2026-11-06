@@ -130,6 +130,13 @@ func _pull() -> void:
 	_tilt.value = fx.tilt
 	var xf := StudioContext.fixture_transform(fx)
 	var euler := xf.basis.get_euler()
+	# Hung or standing fixtures only turn the ways their mounting allows (the
+	# Rotate gizmo's rings); typing angles would twist them off the truss or
+	# floor, so the boxes only take typing for fixtures placed freely.
+	var free := _mount(fx, xf) == MountRotation.Mount.FREE
+	for sb in _turn:
+		sb.editable = free
+		sb.tooltip_text = "" if free else "Mounted fixtures turn with the Rotate gizmo (E) in the stage view."
 	for i in 3:
 		# Leave a box alone while you're typing in it.
 		if not _place[i].get_line_edit().has_focus():
@@ -137,6 +144,12 @@ func _pull() -> void:
 		if not _turn[i].get_line_edit().has_focus():
 			_turn[i].value = rad_to_deg(euler[i])
 	_syncing = false
+
+
+func _mount(p_fx: DMXFixture, xf: Transform3D) -> MountRotation.Mount:
+	var body: FixtureCatalog.Body = p_fx.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
+	return MountRotation.mount_of(xf, MountRotation.rules_of(StageFixture3D.scene_path_of(p_fx)),
+		StageFixture3D.mount_offset(body), ctx.truss_pipes, ctx.stage_surfaces)
 
 
 func _process(_delta: float) -> void:

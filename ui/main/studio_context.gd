@@ -48,6 +48,11 @@ var selected: DMXFixture
 ## The truss tubes on stage (kept up to date by the stage view), for hanging
 ## fixtures from code.
 var truss_pipes: Array[StageRoom.Pipe] = []
+## The floor, wall and booth boxes fixtures stand on (also from the stage view),
+## so the inspector can tell how a fixture is mounted.
+var stage_surfaces: Array[StageRoom.Surface] = []
+## Undo / redo for moving and turning fixtures on the stage (Ctrl+Z, Ctrl+Shift+Z).
+var history := UndoRedo.new()
 var workspace: Workspace = Workspace.PROGRAM
 
 # Transport
@@ -146,6 +151,7 @@ func remove_fixture(fx: DMXFixture) -> void:
 		select(null)
 	rig.remove_child(fx)
 	fx.queue_free()
+	history.clear_history() # its moves can't be undone once it is gone
 	_clear_universe()
 	fixtures_changed.emit()
 
@@ -161,6 +167,36 @@ func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
 	fx.set_meta(META_POSITION, xform.origin)
 	fx.set_meta(META_BASIS, xform.basis.orthonormalized())
 	fixture_moved.emit(fx)
+
+
+## Remember a finished drag of `fx` from `before` to where it is now, so it
+## can be undone. A click that didn't move it records nothing.
+func record_move(fx: DMXFixture, before: Transform3D, action: String) -> void:
+	var after := fixture_transform(fx)
+	if after.is_equal_approx(before):
+		return
+	history.create_action(action)
+	history.add_do_method(_restore_placement.bind(fx, after))
+	history.add_undo_method(_restore_placement.bind(fx, before))
+	history.commit_action(false) # it is already there
+
+
+func undo() -> void:
+	history.undo()
+
+
+func redo() -> void:
+	history.redo()
+
+
+func _restore_placement(fx: DMXFixture, xform: Transform3D) -> void:
+	if is_instance_valid(fx) and fx.is_inside_tree():
+		move_fixture(fx, xform)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and history:
+		history.free()
 
 
 ## Front bottom bars of the two default trusses (stage_room.tscn's Set).
