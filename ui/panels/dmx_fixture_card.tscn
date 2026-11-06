@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/dmx_fixture_card.gd" id="1_card"]
+[ext_resource type="Script" path="res://ui/panels/dmx_card_header.gd" id="2_head"]
+
+[node name="DMXFixtureCard" type="PanelContainer"]
+clip_contents = true
+script = ExtResource("1_card")
+
+[node name="Box" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="Control" parent="Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+script = ExtResource("2_head")
+
+[node name="ProblemBox" type="MarginContainer" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 6
+
+[node name="Problem" type="Label" parent="Box/ProblemBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+theme_override_colors/font_color = Color(1, 0.33, 0.41, 1)
+autowrap_mode = 3
+
+[node name="Rows" type="VBoxContainer" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 0
