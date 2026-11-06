@@ -350,7 +350,7 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	if not mounts.is_empty():
 		var grab := _pipe_at(at)
 		if not grab.is_empty():
-			return StageRoom.hang(grab[0], grab[1], mounts)
+			return StageRoom.hang(grab[0], grab[1], mounts, (grab[0] as StageRoom.Pipe).side_towards(origin, float(grab[1])))
 	var hit := StageRoom.raycast(_surfaces, origin, dir)
 	if hit == null:
 		return null
