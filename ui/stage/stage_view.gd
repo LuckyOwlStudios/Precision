@@ -116,6 +116,9 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _haze_label: ResetLabel = %HazeLabel
 @onready var _quality_label: ResetLabel = %QualityLabel
 @onready var _empty_hint: Control = %EmptyHint
+## The empty-stage welcome (with "Load demo rig") is a startup nicety: once the user
+## clicks the stage or places anything it stays gone, even if the stage empties again.
+var _empty_hint_done := false
 @onready var _help: Label = %Help
 
 
@@ -175,7 +178,9 @@ func _ready() -> void:
 	look.changed.connect(_sync_look_controls)
 	_sync_look_controls()
 
-	%LoadDemo.pressed.connect(func() -> void: ctx.load_demo_rig())
+	%LoadDemo.pressed.connect(func() -> void:
+		_dismiss_empty_hint()
+		ctx.load_demo_rig())
 
 	look.changed.connect(_apply_look)
 	_apply_look()
@@ -241,8 +246,15 @@ func _sync_fixtures() -> void:
 			v.setup(fx, ctx, look)
 			_visuals[fx] = v
 			_update_rigging(fx)
-	_empty_hint.visible = live.is_empty()
+	if not live.is_empty():
+		_empty_hint_done = true # once anything is placed, the welcome never returns this session
+	_empty_hint.visible = live.is_empty() and not _empty_hint_done
 	_update_gizmo()
+
+
+func _dismiss_empty_hint() -> void:
+	_empty_hint_done = true
+	_empty_hint.visible = false
 
 
 func _on_workspace_changed(_ws: StudioContext.Workspace) -> void:
@@ -509,6 +521,8 @@ func _ray_plane(plane: Plane, at: Vector2) -> Variant:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		if mb.pressed:
+			_dismiss_empty_hint() # any click on the stage except the demo button (which eats its own)
 		match mb.button_index:
 			MOUSE_BUTTON_LEFT:
 				if mb.pressed and mb.alt_pressed:
