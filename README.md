@@ -41,6 +41,14 @@ long as the unique names stay.
 - **Gizmo** (Stage workspace): **W** move (arrows = one axis, squares = a plane), **E** rotate (rings).
   Turn on **Snap**, or hold **Ctrl** while dragging, for 0.25 m / 15° steps.
   The inspector's **Placement** fields take exact numbers.
+- **Rotate rings follow the mounting**: a fixture only turns the ways it really could where it is.
+  Hung on a truss it **swings around the tube**; with a single clamp (par, strobe) it can also
+  **spin under the clamp**, while two clamps (light bar, moving head) lock that. Standing on the floor,
+  a wall or the booth it only **spins on the spot**. Placed freely (Alt) it turns about any axis.
+  Hover a ring to see what it does. Motorised pan and tilt stay in the inspector's **Aim** section.
+  New fixtures get this from their MountPoints; override it per scene on the root node
+  (**Rotating on stage**), or untick **Swivel** on a MountPoint.
+- **Undo**: **Ctrl+Z** / **Ctrl+Shift+Z** undo and redo moving or turning a fixture.
 - **Rename**: F2, double-click the fixture, or type in the inspector's **Name** field.
   Double-click a row in **On stage** to rename it in place. An empty name goes back to "Par 3".
   Your name is display only; cues still find the fixture by its node name.
@@ -79,6 +87,8 @@ Shared materials: `ui/stage/materials/black_metal.tres` (truss, brackets) and `f
 (fixture bodies).
 
 ![Move gizmo](docs/ui/stage_move.png)
+
+![Rotate rings for a par on a truss: swing around the tube (orange, hovered) and spin under its clamp (green)](docs/ui/stage_rotate.png)
 
 ### How the stage looks
 Best in **Godot 4.7+ with the Forward+ renderer**. Visual only: none of this changes DMX.
