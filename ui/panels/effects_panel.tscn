@@ -1,0 +1,63 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/effects_panel.gd" id="1_fx"]
+
+[node name="EffectsPanel" type="MarginContainer"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+script = ExtResource("1_fx")
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Column" type="VBoxContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Scroll/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Effects"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Scroll/Column"]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="Scroll/Column"]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Drag an effect onto a fixture's lane in the timeline, or onto the music lane for every fixture that can do it. Effects that overlap all run at once."
+autowrap_mode = 3
+
+[node name="Presets" type="ItemList" parent="Scroll/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+tooltip_text = "Drag onto the timeline. Double-click to add at the playhead."
+
+[node name="PresetButtons" type="HBoxContainer" parent="Scroll/Column"]
+layout_mode = 2
+
+[node name="AddAtPlayhead" type="Button" parent="Scroll/Column/PresetButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Add the selected effect at the playhead, on the selected fixture (or every fixture if none is selected)"
+text = "Add at playhead"
+
+[node name="DeletePreset" type="Button" parent="Scroll/Column/PresetButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete this preset from the shelf (built-in presets stay)"
+text = "Delete"
+
+[node name="ShelfNote" type="Label" parent="Scroll/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3

@@ -31,7 +31,7 @@ horizontal_alignment = 1
 [node name="Snap" type="OptionButton" parent="Header/Row" unique_id=1783106614]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Grid snap for clips (clips coming soon)"
+tooltip_text = "Grid that effect clips snap to when you drop, move or stretch them"
 selected = 0
 item_count = 5
 popup/item_0/text = "Snap: 1 beat"
@@ -66,3 +66,8 @@ clip_contents = true
 layout_mode = 2
 size_flags_vertical = 3
 script = ExtResource("2_3yi0o")
+
+[node name="HScroll" type="HScrollBar" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Scroll through the song (Home jumps back to the start)"

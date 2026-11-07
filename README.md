@@ -177,6 +177,24 @@ Each song has a `show_id` / `show_name`. `StudioContext.show_started(song)` fire
 starts playing; the show player will hook in there once shows are saved as files
 (`SongLibrary.show_path_for(song)` is where they'll go).
 
+## Effects on the song timeline (shows/)
+
+In the **Program** workspace, open the **Effects** tab on the left.
+
+- **Add:** drag an effect onto a fixture's lane in the timeline, or onto the music lane to put
+  it on every fixture. Double-click an effect (or **Add at playhead**) to add it on the selected
+  fixture, or on all of them when none is selected.
+- **Edit:** drag a clip to move it (a single-fixture clip can be dragged onto another fixture's
+  lane), drag its ends to stretch it. The **Snap** menu sets the grid. Select a clip to change its
+  settings (size, speed in beats, spread...), fades, and which fixtures it runs on.
+  Right-click or Delete / Ctrl+D for delete and duplicate.
+- **Parallel:** clips that overlap all run together. Overlaps stack in rows inside a lane. Each
+  effect changes only what it is about, so a Circle and a Strobe on one mover add up.
+- **Presets:** **Save as preset** puts the selected clip's effect and settings on the shelf.
+- The show is saved with the song (`user://library/shows/`) after every change and loads with
+  it, also when the DJ loads the song. Effects run on top of whatever look is on stage and stop
+  when their clip ends. Scrubbing previews them.
+
 ## Following the DJ (djsync/)
 The **DJ** tab on the right makes the lights follow whoever is DJing: when they start a new
 track, that song's show loads; pause, play, scrubbing and pitch changes move the timeline
@@ -203,6 +221,8 @@ DJ setups can be supported and in what order.
 | `FixtureProfile` | Resource listing a fixture's channels. Save one `.tres` per fixture model. |
 | `DMXFixture` | A light. `dimmer`, `color`, `pan`, `tilt` etc. are ordinary properties. Use `set_raw()` for anything else. |
 | `Look` + `LookLibrary` (`shows/`) | A saved static look (every fixture's colour, dimmer, pan/tilt) plus a fade time. Looks live on the Looks shelf at the top of the **Cues** tab, one file each in `user://library/looks/`. Double-click to fade the stage to it. |
+| `EffectTemplates`, `EffectPreset`, `EffectPresetLibrary` (`shows/`) | Effect recipes (circle, sweep, strobe, pulse, chase, rainbow, colour, dimmer), presets of them (15 built in, yours saved in `user://library/effects/`). |
+| `ShowClip`, `SongShow`, `ShowPlayer` (`shows/`) | A song's show: effect clips on the beat grid, saved per song in `user://library/shows/`. The player layers every clip under the playhead into each fixture's `live` values (output only), so effects run on top of the look and in parallel. |
 | `CueStack` + `LightCue` | Console-style cue list with fade times. Use `record_cue()` to snapshot the current look. |
 
 ## Using the timeline in the editor

@@ -1,7 +1,8 @@
 class_name InspectorPanel
 extends ScrollContainer
 ## Properties of the selected fixture: name, patch, placement, look and aim.
-## A selected structure piece gets its own sections instead (StructureInfo).
+## A selected structure piece gets its own sections instead (StructureInfo),
+## and so does an effect clip selected on the timeline (ClipInfo).
 ## Edits go straight to the DMXFixture, so the 3D stage and real lights follow.
 ## Every edit is one undo step (Ctrl+Z): a whole slider drag or colour-picker
 ## session counts once, and quick typing / wheel / arrow nudges merge.
@@ -24,6 +25,7 @@ var _color_before := Color.WHITE
 
 @onready var _content: VBoxContainer = %Content
 @onready var _empty: Control = %Empty
+@onready var _clip_info: ClipInfo = %ClipInfo ## shown instead of everything else while a timeline clip is selected
 @onready var _structure: StructureInfo = %StructureInfo ## shown instead of the fixture sections for a truss, corner box or base plate
 @onready var _title: Label = %FixtureTitle
 @onready var _detail: Label = %FixtureDetail
@@ -62,6 +64,8 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.selection_changed.connect(_show)
 	ctx.piece_selection_changed.connect(func(_p: StructurePiece) -> void: _show(ctx.selected))
 	_structure.setup(ctx)
+	_clip_info.setup(ctx)
+	ctx.clip_selected.connect(func(_c: ShowClip) -> void: _show(ctx.selected))
 	ctx.fixtures_changed.connect(func() -> void: _show(ctx.selected))
 	ctx.workspace_changed.connect(func(_ws: StudioContext.Workspace) -> void: _show(ctx.selected))
 	# Deferred: the window first switches to this tab so the field can take focus.
@@ -179,6 +183,14 @@ func _show(p_fx: DMXFixture) -> void:
 		ctx.record_fixture_value(fx, _drag_prop, _drag_before) # selection changed mid-drag
 		_drag_prop = ""
 	fx = p_fx
+	# An effect clip selected on the timeline takes over the inspector.
+	var clip := ctx.selected_clip
+	_clip_info.visible = clip != null
+	_clip_info.show_clip(clip)
+	if clip:
+		_structure.visible = false
+		_content.visible = false
+		return
 	# A structure piece is selected on its own, never together with a fixture.
 	var piece := ctx.selected_piece if fx == null else null
 	_structure.visible = piece != null

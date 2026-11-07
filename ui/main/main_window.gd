@@ -26,10 +26,10 @@ extends Control
 func _ready() -> void:
 	if LuckyTheme.touch_wanted():
 		theme = LuckyTheme.build(true) # bigger buttons, rows and scrollbars for fingers
-	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Cues, %DMX, %DJ]:
+	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Cues, %DMX, %DJ, %Effects]:
 		panel.call("setup", ctx)
 
-	_title_tabs(left_tabs, ["Library", "Songs"])
+	_title_tabs(left_tabs, ["Library", "Songs", "Effects"])
 	_title_tabs(right_tabs, ["Inspector", "Cues", "DMX", "DJ"])
 
 	workspace_tabs.current_tab = ctx.workspace
@@ -37,6 +37,10 @@ func _ready() -> void:
 	ctx.workspace_changed.connect(_apply_workspace)
 	ctx.fixtures_changed.connect(_update_footers)
 	ctx.blackout_changed.connect(func(_on: bool) -> void: _update_footers())
+	# Selecting an effect clip on the timeline shows it in the Inspector tab.
+	ctx.clip_selected.connect(func(clip: ShowClip) -> void:
+		if clip and not right_tabs.is_tab_hidden(right_tabs.get_tab_idx_from_control(%Inspector)):
+			right_tabs.current_tab = right_tabs.get_tab_idx_from_control(%Inspector))
 	# Renaming happens in the inspector's Name field, so bring it to the front
 	# (that field lives in Stage and Program; from Live, go to Stage).
 	ctx.rename_requested.connect(func(_fx: DMXFixture) -> void:
@@ -71,7 +75,7 @@ func _title_tabs(tabs: TabContainer, titles: Array[String]) -> void:
 ##   job (a tab strip that only holds that workspace's tab).
 ##   Stage   - build the rig: On stage over Library on the left; Inspector (name,
 ##             patch, placement) + DMX patch map on the right. No timeline.
-##   Program - write a song's show: On stage over Songs on the left; Inspector
+##   Program - write a song's show: On stage over Effects + Songs on the left; Inspector
 ##             (look and aim) + Cues on the right, with the timeline below.
 ##   Live    - run the night: no left dock; DJ sync + Cues on the right, timeline below.
 func _apply_workspace(ws: StudioContext.Workspace) -> void:
@@ -83,7 +87,7 @@ func _apply_workspace(ws: StudioContext.Workspace) -> void:
 			left = [%Library]
 			right = [%Inspector, %DMX]
 		StudioContext.Workspace.PROGRAM:
-			left = [%Songs]
+			left = [%Effects, %Songs]
 			right = [%Inspector, %Cues]
 		StudioContext.Workspace.LIVE:
 			right = [%DJ, %Cues]
@@ -123,6 +127,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_SPACE:
 			ctx.toggle_play()
+		KEY_HOME:
+			ctx.seek(0.0) # back to the start; the timeline scrolls there too
 		KEY_ESCAPE:
 			ctx.blackout = not ctx.blackout
 		KEY_DELETE:

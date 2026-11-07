@@ -41,7 +41,9 @@ func _init() -> void:
 	# Names are unique (ignoring case and spaces).
 	_expect(ctx.save_look(" doors OPEN ") == null, "a duplicate name is refused")
 	_expect(ctx.looks.looks.size() == 2, "nothing was added for the duplicate")
-	var other: Look = ctx.looks.looks[0] if ctx.looks.looks[0] != look else ctx.looks.looks[1]
+	# load_looks() made fresh Look objects, so find them again by name.
+	look = ctx.looks.looks[0] if ctx.looks.looks[0].look_name == "Doors open" else ctx.looks.looks[1]
+	var other: Look = ctx.looks.looks[1] if look == ctx.looks.looks[0] else ctx.looks.looks[0]
 	ctx.rename_look(other, "Doors open")
 	_expect(other.look_name != "Doors open", "rename to a taken name is refused")
 
