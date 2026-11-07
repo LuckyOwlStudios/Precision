@@ -151,12 +151,13 @@ func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3, stage_bas
 	if not symmetry.active() or symmetry.on_plane(xf):
 		return _add_fixture_one(entry, stage_position, stage_basis)
 	# Mirror mode: the twin goes down with it, as one undo step.
-	var twin_xf := symmetry.mirror_transform(xf)
+	var flip := symmetry.default_flip(xf)
+	var twin_xf := symmetry.mirror_transform(xf, flip)
 	begin_step("Add mirrored fixtures")
 	var fx := _add_fixture_one(entry, stage_position, stage_basis)
 	var twin := _add_fixture_one(entry, twin_xf.origin, twin_xf.basis)
 	end_step()
-	StageSymmetry.link(fx, twin)
+	StageSymmetry.link(fx, twin, flip)
 	select(fx)
 	return fx
 
@@ -300,7 +301,7 @@ func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
 	var twin := StageSymmetry.partner_of(fx) if symmetry.active() else null
 	if twin is DMXFixture:
 		symmetry.suspended = true # the twin moving must not drag this one back
-		move_fixture(twin as DMXFixture, symmetry.mirror_transform(xform))
+		move_fixture(twin as DMXFixture, symmetry.twin_transform(fx, xform))
 		symmetry.suspended = false
 
 
@@ -324,8 +325,8 @@ func record_move(fx: DMXFixture, before: Transform3D, action: String, merge := f
 		history.create_action(action)
 	history.add_do_method(_restore_placement.bind(fx, after))
 	history.add_undo_method(_restore_placement.bind(fx, before))
-	history.add_do_method(_restore_placement.bind(twin, symmetry.mirror_transform(after)))
-	history.add_undo_method(_restore_placement.bind(twin, symmetry.mirror_transform(before)))
+	history.add_do_method(_restore_placement.bind(twin, symmetry.twin_transform(fx, after)))
+	history.add_undo_method(_restore_placement.bind(twin, symmetry.twin_transform(fx, before)))
 	history.commit_action(false)
 
 

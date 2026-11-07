@@ -10,6 +10,7 @@ signal changed
 enum Axis { X, Z }
 
 const META_PARTNER := &"mirror_partner" ## the other half of a mirrored pair (Node)
+const META_FLIP := &"mirror_flip" ## the local axis the pair flips (see default_flip)
 const ON_PLANE := 0.02 ## metres: something this close to the plane is its own twin
 
 var enabled := false:
@@ -66,27 +67,39 @@ func mirror_dir(d: Vector3) -> Vector3:
 	return d - 2.0 * d.dot(n) * n
 
 
+## Which local axis (0 = x, 2 = z) to flip so a reflected basis is a proper
+## rotation again. Never the local Y: that is the beam, and a twin's beam must
+## be the mirror of the original's, not its opposite. Picks the one closest to
+## the plane's normal as the object is placed now, and the pair keeps it from
+## then on (see `link`): choosing it again on every turn made the twin jump
+## when the other axis became the closer one.
+func default_flip(xf: Transform3D) -> int:
+	var b := xf.basis.orthonormalized()
+	var n := normal()
+	return 0 if absf(b.x.dot(n)) >= absf(b.z.dot(n)) else 2
+
+
 ## The placement of the twin of something placed at `xf`. Its position is
 ## reflected; its turn is the reflected turn: a tilt towards the plane becomes a
 ## tilt towards it on the other side. (Reflecting a basis gives a left-handed
-## one, so the object's own mirror image is swapped back in: the local axis
-## closest to the plane's normal is flipped. Truss and fixtures are symmetric
-## about it, so the twin looks like a true reflection.)
-func mirror_transform(xf: Transform3D) -> Transform3D:
+## one, so the object's own mirror image is swapped back in by flipping local
+## axis `flip`. Truss and fixtures are symmetric about it, so the twin looks
+## like a true reflection.) `flip` -1 picks `default_flip`.
+func mirror_transform(xf: Transform3D, flip := -1) -> Transform3D:
 	var b := xf.basis.orthonormalized()
-	var n := normal()
-	var best := 0
-	var best_dot := -1.0
-	for i in 3:
-		var d := absf(b[i].dot(n))
-		if d > best_dot + 0.001:
-			best_dot = d
-			best = i
+	if flip < 0:
+		flip = default_flip(xf)
 	var cols: Array[Vector3] = []
 	for i in 3:
 		cols.append(mirror_dir(b[i]))
-	cols[best] = -cols[best]
+	cols[flip] = -cols[flip]
 	return Transform3D(Basis(cols[0], cols[1], cols[2]), mirror_point(xf.origin))
+
+
+## The placement of `node`'s twin when `node` is at `xf` (uses the pair's flip).
+func twin_transform(node: Object, xf: Transform3D) -> Transform3D:
+	var flip := int(node.get_meta(META_FLIP, -1)) if node else -1
+	return mirror_transform(xf, flip)
 
 
 ## Is something at `xf` sitting on the plane, so it is its own twin?
@@ -95,9 +108,11 @@ func on_plane(xf: Transform3D) -> bool:
 
 
 ## Pair two nodes up.
-static func link(a: Node, b: Node) -> void:
+static func link(a: Node, b: Node, flip: int) -> void:
 	a.set_meta(META_PARTNER, b)
 	b.set_meta(META_PARTNER, a)
+	a.set_meta(META_FLIP, flip)
+	b.set_meta(META_FLIP, flip)
 
 
 ## The twin of `o`, if it has one that is still on stage.

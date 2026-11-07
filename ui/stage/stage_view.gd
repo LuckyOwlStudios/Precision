@@ -839,7 +839,7 @@ func _twin_piece(piece: Object) -> StructurePiece:
 func _follow_piece(piece: StructurePiece) -> void:
 	var twin := _twin_piece(piece)
 	if twin and is_instance_valid(piece) and piece.is_inside_tree():
-		twin.global_transform = ctx.symmetry.mirror_transform(piece.global_transform)
+		twin.global_transform = ctx.symmetry.twin_transform(piece, piece.global_transform)
 
 
 ## `items` plus the twin of each, when mirroring (no duplicates).
@@ -954,8 +954,9 @@ func _drop_piece(at: Vector2, path: String) -> void:
 	if ctx.symmetry.active() and not ctx.symmetry.on_plane(xf):
 		var twin := (load(path) as PackedScene).instantiate() as StructurePiece
 		_set.add_child(twin)
-		twin.global_transform = ctx.symmetry.mirror_transform(xf)
-		StageSymmetry.link(piece, twin)
+		var flip := ctx.symmetry.default_flip(xf)
+		twin.global_transform = ctx.symmetry.mirror_transform(xf, flip)
+		StageSymmetry.link(piece, twin, flip)
 		pieces.append(twin)
 		xfs.append(twin.global_transform)
 	_rebuild_pipes()

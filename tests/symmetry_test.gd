@@ -40,6 +40,7 @@ func _init() -> void:
 	test_math()
 	test_fixtures()
 	test_pieces()
+	test_turning_on_vertical_truss()
 	test_z_axis_and_centre()
 	test_demo_rig_not_doubled()
 	test_ui()
@@ -75,7 +76,8 @@ func test_math() -> void:
 	var m := s.mirror_transform(xf)
 	check(is_equal_approx(m.basis.determinant(), 1.0), "the twin's basis is a proper rotation")
 	check(near(-m.basis.y, s.mirror_dir(-xf.basis.y)), "its beam points the mirrored way")
-	check(near(s.mirror_transform(m).origin, xf.origin) and near(-s.mirror_transform(m).basis.y, -xf.basis.y), "mirroring twice gives the original back")
+	var back := s.mirror_transform(m, s.default_flip(xf))
+	check(near(back.origin, xf.origin) and back.basis.is_equal_approx(xf.basis), "mirroring twice gives the original back")
 	var ident := s.mirror_transform(Transform3D(Basis.IDENTITY, Vector3(-4, 0, 0)))
 	check(ident.basis.is_equal_approx(Basis.IDENTITY), "an upright piece's twin is upright, unturned")
 	s.axis = StageSymmetry.Axis.Z
@@ -166,6 +168,34 @@ func test_pieces() -> void:
 	ctx.undo()
 	check(view._pieces().size() == n + 2 or view._pieces().size() == n, "(history intact)")
 	while ctx.undo() and view._pieces().size() > n:
+		pass
+
+
+func test_turning_on_vertical_truss() -> void:
+	print("turning a bar on vertical truss")
+	ctx.symmetry.enabled = true
+	ctx.symmetry.axis = StageSymmetry.Axis.X
+	var entry: FixtureCatalog.Entry = FixtureCatalog.entries()[1]
+	var steps := ctx.fixtures().size()
+	# Beam horizontal (towards +Z), long axis (local X) vertical, as on an upright tube.
+	var base := Basis(Vector3.RIGHT, deg_to_rad(90))
+	var fx := ctx.add_fixture(entry, Vector3(-4, 2, 0), base)
+	var twin := StageSymmetry.partner_of(fx) as DMXFixture
+	var prev := StudioContext.fixture_transform(twin).basis
+	var worst := 0.0
+	var beam_ok := true
+	var pivot := Vector3(-4, 2, 0)
+	for deg in range(0, 181, 3):
+		var r := Basis(Vector3.UP, deg_to_rad(deg))
+		ctx.move_fixture(fx, Transform3D(r * base, pivot))
+		var t := StudioContext.fixture_transform(twin)
+		var f := StudioContext.fixture_transform(fx)
+		beam_ok = beam_ok and near(-t.basis.y, ctx.symmetry.mirror_dir(-f.basis.y)) and is_equal_approx(t.basis.determinant(), 1.0)
+		worst = maxf(worst, (t.basis.get_rotation_quaternion().angle_to(prev.get_rotation_quaternion())))
+		prev = t.basis
+	check(beam_ok, "the twin's beam is the mirror of the beam at every angle")
+	check(worst < deg_to_rad(4), "the twin turns smoothly, no jumps (largest step %.1f°)" % rad_to_deg(worst))
+	while ctx.fixtures().size() > steps and ctx.undo():
 		pass
 
 
