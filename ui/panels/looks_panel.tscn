@@ -1,0 +1,170 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/looks_panel.gd" id="1_looks"]
+
+[node name="LooksPanel" type="MarginContainer"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+script = ExtResource("1_looks")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Heading" type="HBoxContainer" parent="Column"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column/Heading"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Looks"
+uppercase = true
+
+[node name="Hint" type="Label" parent="Column/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Subtitle"
+horizontal_alignment = 2
+clip_text = true
+
+[node name="EditBanner" type="PanelContainer" parent="Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Box" type="VBoxContainer" parent="Column/EditBanner"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="EditTitle" type="Label" parent="Column/EditBanner/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Editing look"
+autowrap_mode = 3
+
+[node name="EditHint" type="Label" parent="Column/EditBanner/Box"]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Changes you make on stage go into this look when you press Save changes."
+autowrap_mode = 3
+
+[node name="FadeRow" type="HBoxContainer" parent="Column/EditBanner/Box"]
+layout_mode = 2
+
+[node name="FadeLabel" type="Label" parent="Column/EditBanner/Box/FadeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Fade in"
+
+[node name="EditFade" type="SpinBox" parent="Column/EditBanner/Box/FadeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Seconds to fade to this look when it is applied"
+max_value = 30.0
+step = 0.1
+value = 2.0
+suffix = "s"
+
+[node name="EditButtons" type="HBoxContainer" parent="Column/EditBanner/Box"]
+layout_mode = 2
+
+[node name="EditCancel" type="Button" parent="Column/EditBanner/Box/EditButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Leave the look as it was and put the stage back"
+text = "Cancel"
+
+[node name="EditDone" type="Button" parent="Column/EditBanner/Box/EditButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Store what is on stage now into this look"
+theme_type_variation = &"AccentButton"
+text = "Save changes"
+
+[node name="Scroll" type="ScrollContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Grid" type="HFlowContainer" parent="Column/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="Empty" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"Subtitle"
+text = "Light the stage the way you want, name it, and press Save look. Great for setting the mood before the first song."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Design" type="VBoxContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Rule" type="HSeparator" parent="Column/Design"]
+layout_mode = 2
+
+[node name="LookName" type="LineEdit" parent="Column/Design"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Look name (optional)"
+
+[node name="NameTaken" type="Label" parent="Column/Design"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "A look with that name already exists."
+autowrap_mode = 3
+
+[node name="SaveLook" type="Button" parent="Column/Design"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Save what the fixtures are doing now as a look"
+theme_type_variation = &"AccentButton"
+text = "Save look"
+
+[node name="LookButtons" type="HBoxContainer" parent="Column/Design"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="FireLook" type="Button" parent="Column/Design/LookButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Fade the whole stage to the selected look (double-click a look does the same)"
+text = "Fire"
+
+[node name="EditLook" type="Button" parent="Column/Design/LookButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Put the selected look on stage and change it. Nothing you do changes a saved look until you press Edit."
+text = "Edit"
+
+[node name="RenameLook" type="Button" parent="Column/Design/LookButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Give the selected look the name typed in the box"
+text = "Rename"
+
+[node name="DeleteLook" type="Button" parent="Column/Design/LookButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Delete the selected look"
+text = "Delete"
