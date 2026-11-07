@@ -1,7 +1,7 @@
 extends SceneTree
 ## Dev helper: renders the 3D stage alone with the demo rig and saves a PNG,
 ## for checking the look at a given haze and quality.
-##   godot --path . --script res://ui/stage/stage_shot_cli.gd -- out.png [haze 0-1] [quality 0-3] [yaw] [pitch] [distance] [work|show]
+##   godot --path . --script res://ui/stage/stage_shot_cli.gd -- out.png [haze 0-1] [quality 0-3] [yaw] [pitch] [distance] [work|show] [Perspective|Top|Front|Side]
 
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -29,6 +29,8 @@ func _init() -> void:
 		view.set_orbit(float(args[3]), float(args[4]), float(args[5]))
 	if args.size() > 6:
 		view.look.shading = StageLook.Shading.WORK if args[6] == "work" else StageLook.Shading.SHOW
+	if args.size() > 7:
+		view.show_view(args[7])
 	for i in 40:
 		await process_frame
 	var img := root.get_texture().get_image()

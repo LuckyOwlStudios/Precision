@@ -348,8 +348,10 @@ func _world_len() -> float:
 
 
 func _world_len_at(p: Vector3) -> float:
-	var depth := -(camera.global_transform.affine_inverse() * p).z
 	var h := camera.get_viewport().get_visible_rect().size.y
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		return camera.size * SIZE_PX / maxf(h, 1.0) # the same size everywhere: no depth
+	var depth := -(camera.global_transform.affine_inverse() * p).z
 	return maxf(depth, 0.1) * 2.0 * tan(deg_to_rad(camera.fov) * 0.5) * SIZE_PX / maxf(h, 1.0)
 
 

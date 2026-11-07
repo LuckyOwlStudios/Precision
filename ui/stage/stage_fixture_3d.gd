@@ -19,6 +19,8 @@ extends Node3D
 
 const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
 const BAR_PIXELS := 8
+const DEFAULT_BEAM_LENGTH := 6.0 ## metres
+const DEFAULT_BEAM_HALF_ANGLE := 25.0 ## degrees, for a light with no spot cone (the bars)
 
 ## Body scenes (loaded, not preloaded: they use this script themselves).
 const SCENES := {
@@ -200,6 +202,31 @@ static func mount_offset(p_body: FixtureCatalog.Body) -> float:
 ## Middle of the body in world space: what you click on, and where the gizmo sits.
 func center() -> Vector3:
 	return to_global(Vector3(0, -0.08, 0))
+
+
+## Where the beam leaves the fixture, in world space.
+func beam_origin() -> Vector3:
+	return _head.global_position
+
+
+## Which way the beam points, in world space (follows pan and tilt).
+func beam_dir() -> Vector3:
+	return (-_head.global_basis.y).normalized()
+
+
+## Half the beam's width in degrees: the spot light's cone angle, or a wide
+## default for the area-light bars.
+func beam_half_angle() -> float:
+	for l in _lights:
+		if l is SpotLight3D:
+			return (l as SpotLight3D).spot_angle
+	return DEFAULT_BEAM_HALF_ANGLE
+
+
+## How far the drawn beam reaches, in metres.
+func beam_length() -> float:
+	var length: Variant = beam_material.get_shader_parameter("beam_length") if beam_material else null
+	return float(length) if length != null else DEFAULT_BEAM_LENGTH
 
 
 func set_selected(on: bool) -> void:

@@ -29,6 +29,12 @@ extends Control
 ##                                       Alt slower, wheel sets the fly speed
 ##   Alt+left drag                     -> orbit       Middle drag -> pan
 ##   Mouse wheel                       -> zoom        F -> frame the rig
+##   Top / Front / Side buttons        -> orthographic drawing views (numpad 7 / 1 / 3, numpad 5
+##                                       back to perspective): no perspective, true to scale,
+##                                       with grid, labels, trim heights and beam coverage
+##                                       (see DraftingOverlay). Middle drag pans, wheel zooms to
+##                                       the cursor, D measures, Alt+left or right drag go back
+##                                       to a free perspective view
 ##   T / Point at button               -> aim the selected moving heads: click or drag on the
 ##                                       stage and every selected head points there (one undo
 ##                                       step), Esc or T again to finish
@@ -50,9 +56,17 @@ const LOOK_DEG_PER_PX := 0.25
 const TOUCH_ORBIT_DEG_PER_PX := 0.3
 const TOUCH_PAN_PER_PX := 0.0016 ## of the camera distance
 const TOUCH_PICK_PX := 24.0 ## gizmo handle reach for a fingertip (a mouse uses TransformGizmo.PICK_PX)
+const ORTHO_DISTANCE := 60.0 ## the drawing camera sits well outside the room
+const ORTHO_SIZE_MIN := 1.5 ## metres of height on screen
+const ORTHO_SIZE_MAX := 40.0
+const ORTHO_VIEWS := {
+	"Top": {"kind": DraftingOverlay.Kind.PLAN, "yaw": 0.0, "pitch": -90.0, "pivot": Vector3(0, 0, -0.5), "size": 14.0},
+	"Front": {"kind": DraftingOverlay.Kind.FRONT, "yaw": 0.0, "pitch": 0.0, "pivot": Vector3(0, 2.6, -0.5), "size": 9.0},
+	"Side": {"kind": DraftingOverlay.Kind.SIDE, "yaw": -90.0, "pitch": 0.0, "pivot": Vector3(0, 2.6, -0.5), "size": 9.0},
+}
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
-const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\n? or F1  this list"
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · middle drag  pan · wheel  zoom to cursor\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -67,6 +81,12 @@ var _panning := false
 var _drag_threshold := DRAG_THRESHOLD_PX ## set per press: bigger for a finger
 var _touches := TouchGestures.new()
 var _touch_locked := false ## a gesture is going (or just ended): ignore the leftover finger's mouse events
+var _view_preset := "Perspective" ## which of the view buttons is on
+var _last_ortho := "Top" ## numpad 5 returns to this
+var _ortho_size := 14.0 ## metres of height the drawing views show
+var _persp_saved: Dictionary = {} ## the free camera, kept while a drawing view is up
+var _note := "" ## a message that replaces the hint for a few seconds
+var _note_until := 0
 var _flying := false ## right mouse held: look around in place, WASD/QE move
 var _fly_speed := FLY_SPEED_DEFAULT
 var _surfaces: Array[StageRoom.Surface] = []
@@ -125,6 +145,9 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _pivot: Node3D = %Pivot
 @onready var _camera: Camera3D = %Camera
 @onready var _grid: MeshInstance3D = %Grid
+@onready var _drafting: DraftingOverlay = %Drafting
+@onready var _draft_bar: Control = %DraftBar
+@onready var _draft_measure: Button = %DraftMeasure
 @onready var _drop_marker: MeshInstance3D = %DropMarker
 @onready var _gizmo: TransformGizmo = %Gizmo
 @onready var _box_select: Panel = %BoxSelect
@@ -150,6 +173,7 @@ var _empty_hint_done := false
 
 func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
+	_drafting.ctx = ctx
 	ctx.fixtures_changed.connect(_sync_fixtures)
 	ctx.selection_changed.connect(_on_selection_changed)
 	ctx.pick_requested.connect(func(list: Array) -> void: _set_selection(list))
@@ -182,9 +206,18 @@ func _ready() -> void:
 	_box_select.add_theme_stylebox_override("panel", box_style)
 
 	# View presets, top left.
-	_view_buttons = {"Perspective": %Perspective, "Front": %Front, "Top": %Top}
+	_view_buttons = {"Perspective": %Perspective, "Front": %Front, "Side": %Side, "Top": %Top}
 	for preset: String in _view_buttons:
 		(_view_buttons[preset] as Button).pressed.connect(_set_view.bind(preset))
+	_drafting.camera = _camera
+	_drafting.ctx = ctx
+	_drafting.visuals = _visuals
+	_drafting.surfaces = _surfaces
+	%DraftGrid.toggled.connect(func(on: bool) -> void: _drafting.show_grid = on)
+	%DraftLabels.toggled.connect(func(on: bool) -> void: _drafting.show_labels = on)
+	%DraftBeams.toggled.connect(func(on: bool) -> void: _drafting.show_beams = on)
+	_draft_measure.toggled.connect(_set_measuring)
+	%DraftExport.pressed.connect(_export_plot)
 
 	# Gizmo mode and snapping, top right.
 	_mode_buttons = {TransformGizmo.Mode.MOVE: %Move, TransformGizmo.Mode.ROTATE: %Rotate}
@@ -258,19 +291,88 @@ func _sync_look_controls() -> void:
 
 
 func _set_view(preset: String) -> void:
+	if ORTHO_VIEWS.has(preset):
+		var v: Dictionary = ORTHO_VIEWS[preset]
+		if not _is_ortho():
+			_persp_saved = {"yaw": _yaw, "pitch": _pitch, "distance": _distance, "pivot": _pivot.position}
+		_yaw = v["yaw"]
+		_pitch = v["pitch"]
+		_pivot.position = v["pivot"]
+		_ortho_size = v["size"]
+		_last_ortho = preset
+	elif _is_ortho() and not _persp_saved.is_empty():
+		_yaw = _persp_saved["yaw"]
+		_pitch = _persp_saved["pitch"]
+		_distance = _persp_saved["distance"]
+		_pivot.position = _persp_saved["pivot"]
+	else:
+		_yaw = 0.0
+		_pitch = -14.0
+	_view_preset = preset
+	_sync_view()
+
+
+## Show a view by name ("Perspective", "Top", "Front", "Side"). Used by the screenshot helper.
+func show_view(preset: String) -> void:
+	_set_view(preset)
+
+
+func _is_ortho() -> bool:
+	return ORTHO_VIEWS.has(_view_preset)
+
+
+## Orbiting or flying from a drawing view: carry on in perspective from where it stood.
+func _leave_ortho() -> void:
+	if not _is_ortho():
+		return
+	_view_preset = "Perspective"
+	_sync_view()
+
+
+## The view changed: buttons, drawing layer, grid, and the wall that would block the camera.
+func _sync_view() -> void:
 	for key: String in _view_buttons:
-		(_view_buttons[key] as Button).button_pressed = key == preset
-	match preset:
-		"Perspective":
-			_yaw = 0.0
-			_pitch = -14.0
-		"Front":
-			_yaw = 0.0
-			_pitch = -2.0
-		"Top":
-			_yaw = 0.0
-			_pitch = -88.0
+		(_view_buttons[key] as Button).set_pressed_no_signal(key == _view_preset)
+	var ortho := _is_ortho()
+	_drafting.kind = ORTHO_VIEWS[_view_preset]["kind"] if ortho else DraftingOverlay.Kind.NONE
+	_draft_bar.visible = ortho
+	if not ortho:
+		_draft_measure.button_pressed = false
+	# From house left the side view would stare at the wall: take it away.
+	var near_wall := _room.get_node_or_null("LeftWall") as Node3D
+	if near_wall:
+		near_wall.visible = _view_preset != "Side"
+	# Seen edge on, the floor slab only shows reflections of the beams: the grid's floor line is enough.
+	var floor_slab := _room.get_node_or_null("Floor") as Node3D
+	if floor_slab:
+		floor_slab.visible = _view_preset != "Front" and _view_preset != "Side"
 	_update_camera()
+	_update_gizmo()
+
+
+## Zoom by a factor (below 1 closer): the orbit distance, or the height a drawing view shows.
+func _zoom(factor: float) -> void:
+	if _is_ortho():
+		_ortho_size = clampf(_ortho_size * factor, ORTHO_SIZE_MIN, ORTHO_SIZE_MAX)
+	else:
+		_distance = clampf(_distance * factor, 3.0, 40.0)
+	_update_camera()
+
+
+func _set_measuring(on: bool) -> void:
+	_drafting.measuring = on
+	mouse_default_cursor_shape = Control.CURSOR_CROSS if on else Control.CURSOR_ARROW
+
+
+func _export_plot() -> void:
+	var path: String = await _drafting.export_png()
+	_say("Saved plot to " + path if not path.is_empty() else "Couldn't save the plot", 6000)
+
+
+## Show a message in place of the hint for a while.
+func _say(text: String, millis := 4000) -> void:
+	_note = text
+	_note_until = Time.get_ticks_msec() + millis
 
 
 # ---------------------------------------------------------------- fixtures
@@ -334,7 +436,7 @@ func _update_gizmo() -> void:
 	# Handles only while setting up the stage, so programming can't nudge the rig.
 	var fx := ctx.selected if ctx else null
 	var staging := ctx != null and ctx.workspace == StudioContext.Workspace.STAGE
-	_grid.visible = staging # a placement aid; the show looks cleaner without it
+	_grid.visible = staging and not _is_ortho() # a placement aid (drawing views have their own grid)
 	# Programming only needs the Point at button; the rest builds the rig.
 	for c in _tools.get_children():
 		(c as Control).visible = staging or c == _aim_button
@@ -481,6 +583,7 @@ func _drop_data(at: Vector2, data: Variant) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END or what == NOTIFICATION_MOUSE_EXIT:
+		_drafting.cursor = Vector2(-1, -1)
 		_drop_marker.visible = false
 		_clear_ghost()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_VISIBILITY_CHANGED:
@@ -496,6 +599,8 @@ func _pick_at(at: Vector2) -> Object:
 		var hit := StagePick.ray_node(_camera, at, _visuals[fx], fx)
 		if hit and hit.beats(best):
 			best = hit
+	if best and _is_ortho():
+		return best.target # in a plan the truss covers the lights hung under it: lights win
 	if ctx.workspace == StudioContext.Workspace.STAGE:
 		for p in _pieces():
 			var hit := StagePick.ray_node(_camera, at, p, p, p.bounds)
@@ -595,6 +700,7 @@ func _gui_input(event: InputEvent) -> void:
 		match mb.button_index:
 			MOUSE_BUTTON_LEFT:
 				if mb.pressed and mb.alt_pressed:
+					_leave_ortho()
 					_orbiting = true
 				elif mb.pressed:
 					_on_left_press(mb)
@@ -623,6 +729,8 @@ func _gui_input(event: InputEvent) -> void:
 								"Turn fixture" if _gizmo.mode == TransformGizmo.Mode.ROTATE else "Move fixture")
 						_update_gizmo()
 			MOUSE_BUTTON_RIGHT:
+				if mb.pressed:
+					_leave_ortho() # flying is a perspective thing
 				_set_flying(mb.pressed)
 			MOUSE_BUTTON_MIDDLE:
 				_panning = mb.pressed
@@ -630,17 +738,16 @@ func _gui_input(event: InputEvent) -> void:
 				if mb.pressed and _flying:
 					_set_fly_speed(_fly_speed * 1.2)
 				elif mb.pressed:
-					_distance = maxf(3.0, _distance * 0.9)
-					_update_camera()
+					_wheel_zoom(0.9, mb.position)
 			MOUSE_BUTTON_WHEEL_DOWN:
 				if mb.pressed and _flying:
 					_set_fly_speed(_fly_speed / 1.2)
 				elif mb.pressed:
-					_distance = minf(40.0, _distance * 1.1)
-					_update_camera()
+					_wheel_zoom(1.1, mb.position)
 		accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
+		_drafting.cursor = mm.position
 		if _flying:
 			_look(mm.relative)
 		elif _orbiting:
@@ -648,6 +755,11 @@ func _gui_input(event: InputEvent) -> void:
 			# Orbiting never dips the camera under the floor, but it won't snap
 			# down a view that flying left looking up, either.
 			_pitch = clampf(_pitch - mm.relative.y * 0.3, -89.0, maxf(5.0, _pitch))
+			_update_camera()
+		elif _panning and _is_ortho():
+			# Slide the drawing under the cursor: one pixel is the same distance everywhere.
+			var per_px := _ortho_size / maxf(size.y, 1.0)
+			_pivot.position += (-_camera.global_basis.x * mm.relative.x + _camera.global_basis.y * mm.relative.y) * per_px
 			_update_camera()
 		elif _panning:
 			var right := _camera.global_transform.basis.x
@@ -682,7 +794,23 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			return
 		match k.keycode:
+			KEY_KP_1:
+				_set_view("Front")
+			KEY_KP_3:
+				_set_view("Side")
+			KEY_KP_7:
+				_set_view("Top")
+			KEY_KP_5:
+				_set_view("Perspective" if _is_ortho() else _last_ortho)
+			KEY_D:
+				if not _is_ortho():
+					return
+				_draft_measure.button_pressed = not _draft_measure.button_pressed
 			KEY_F:
+				if _is_ortho():
+					_set_view(_view_preset) # back to the whole stage
+					accept_event()
+					return
 				_pivot.position = Vector3(0, 1.4, -0.5)
 				_distance = 12.5
 				_update_camera()
@@ -699,6 +827,13 @@ func _gui_input(event: InputEvent) -> void:
 					return
 				_aim_button.button_pressed = not _aiming
 			KEY_ESCAPE:
+				if _drafting.measuring:
+					if _drafting.has_measurement():
+						_drafting.clear_measurement() # first Esc clears the line, the next leaves measuring
+					else:
+						_draft_measure.button_pressed = false
+					accept_event()
+					return
 				if _aiming:
 					_aim_button.button_pressed = false # leave Point at first; Esc again deselects
 					accept_event()
@@ -732,6 +867,9 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 	var finger := _from_touch(mb)
 	_gizmo.pick_px = TOUCH_PICK_PX if finger else TransformGizmo.PICK_PX
 	_drag_threshold = TOUCH_DRAG_THRESHOLD_PX if finger else DRAG_THRESHOLD_PX
+	if _drafting.measuring:
+		_drafting.measure_click(mb.position, _snap_button.button_pressed != mb.ctrl_pressed)
+		return
 	if _aiming:
 		_begin_aim(mb.position)
 		return
@@ -806,12 +944,16 @@ func _touch_input(event: InputEvent) -> bool:
 
 func _apply_gesture(pan: Vector2, pinch: float, fingers: int) -> void:
 	if pinch != 1.0:
-		_distance = clampf(_distance / pinch, 3.0, 40.0)
-	if fingers >= 3:
+		_zoom(1.0 / pinch)
+	if fingers >= 3 and _is_ortho():
+		var per_px := _ortho_size / maxf(size.y, 1.0)
+		_pivot.position += (-_camera.global_basis.x * pan.x + _camera.global_basis.y * pan.y) * per_px
+	elif fingers >= 3:
 		var right := _camera.global_transform.basis.x
 		var fwd := Vector3(_camera.global_transform.basis.z.x, 0, _camera.global_transform.basis.z.z).normalized()
 		_pivot.position += (-right * pan.x + -fwd * pan.y) * _distance * TOUCH_PAN_PER_PX
 	else:
+		_leave_ortho()
 		_yaw -= pan.x * TOUCH_ORBIT_DEG_PER_PX
 		_pitch = clampf(_pitch - pan.y * TOUCH_ORBIT_DEG_PER_PX, -89.0, maxf(5.0, _pitch))
 	_update_camera()
@@ -864,7 +1006,11 @@ func _set_fly_speed(speed: float) -> void:
 ## The bottom hint shows only what applies right now; the rest is behind "?".
 func _update_help() -> void:
 	var text: String
-	if _aiming:
+	if Time.get_ticks_msec() < _note_until:
+		text = _note
+	elif _drafting.measuring:
+		text = "Click two points to measure (fixtures snap, Snap rounds to the grid) · Esc clears · D when done"
+	elif _aiming:
 		text = "Click or drag where the lights should point · Esc or T when done"
 		if _aim_unreachable > 0:
 			text += " · %d can't reach it" % _aim_unreachable
@@ -876,6 +1022,8 @@ func _update_help() -> void:
 		text = "Drag to move · R turn · Delete remove · Esc deselect" + HINT_MORE
 	elif ctx and ctx.selected:
 		text = "W move · E rotate · F2 rename · Delete remove" + HINT_MORE
+	elif _is_ortho():
+		text = "Drag to box select · Middle drag pan · Wheel zoom · D measure · Numpad 5 perspective"
 	else:
 		text = "Drag to box select · Right drag to fly" + HINT_MORE
 	if text != _help.text:
@@ -939,6 +1087,17 @@ func _process(delta: float) -> void:
 	_update_camera()
 
 
+## Wheel zoom. A drawing view zooms towards the cursor, so what is under it stays put.
+func _wheel_zoom(factor: float, at: Vector2) -> void:
+	if not _is_ortho():
+		_zoom(factor)
+		return
+	var before := _drafting.point_at(at)
+	_zoom(factor)
+	_pivot.position += before - _drafting.point_at(at)
+	_update_camera()
+
+
 ## Point the orbit camera (degrees, metres). Used by the screenshot helper.
 func set_orbit(yaw: float, pitch: float, distance: float) -> void:
 	_yaw = yaw
@@ -949,7 +1108,11 @@ func set_orbit(yaw: float, pitch: float, distance: float) -> void:
 
 func _update_camera() -> void:
 	_pivot.rotation_degrees = Vector3(_pitch, _yaw, 0)
-	_camera.position = Vector3(0, 0, _distance)
+	var ortho := _is_ortho()
+	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL if ortho else Camera3D.PROJECTION_PERSPECTIVE
+	_camera.size = _ortho_size
+	_camera.far = 250.0 if ortho else 4000.0
+	_camera.position = Vector3(0, 0, ORTHO_DISTANCE if ortho else _distance)
 	_camera.rotation = Vector3.ZERO
 	_gizmo.queue_redraw()
 
