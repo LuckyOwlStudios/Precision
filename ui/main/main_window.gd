@@ -24,6 +24,8 @@ extends Control
 
 
 func _ready() -> void:
+	if LuckyTheme.touch_wanted():
+		theme = LuckyTheme.build(true) # bigger buttons, rows and scrollbars for fingers
 	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Cues, %DMX, %DJ]:
 		panel.call("setup", ctx)
 
