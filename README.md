@@ -202,6 +202,7 @@ DJ setups can be supported and in what order.
 | `DMXUniverse` | 512-channel buffer, sent at 40 Hz. |
 | `FixtureProfile` | Resource listing a fixture's channels. Save one `.tres` per fixture model. |
 | `DMXFixture` | A light. `dimmer`, `color`, `pan`, `tilt` etc. are ordinary properties. Use `set_raw()` for anything else. |
+| `Look` + `LookLibrary` (`shows/`) | A saved static look (every fixture's colour, dimmer, pan/tilt) plus a fade time. Looks live on the Looks shelf at the top of the **Cues** tab, one file each in `user://library/looks/`. Double-click to fade the stage to it. |
 | `CueStack` + `LightCue` | Console-style cue list with fade times. Use `record_cue()` to snapshot the current look. |
 
 ## Using the timeline in the editor

@@ -13,6 +13,55 @@ script = ExtResource("1_ad5ud")
 layout_mode = 2
 theme_override_constants/separation = 12
 
+[node name="LooksTitle" type="Label" parent="Column" unique_id=910000001]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Looks"
+uppercase = true
+
+[node name="Looks" type="ItemList" parent="Column" unique_id=910000002]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+tooltip_text = "Double-click a look to fade the whole stage to it"
+
+[node name="LooksEmpty" type="Label" parent="Column" unique_id=910000003]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Light the stage the way you want, name it, and press Save look. Great for setting the mood before the first song."
+autowrap_mode = 3
+
+[node name="LookName" type="LineEdit" parent="Column" unique_id=910000004]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Look name (optional)"
+
+[node name="LookButtons" type="HBoxContainer" parent="Column" unique_id=910000005]
+layout_mode = 2
+
+[node name="SaveLook" type="Button" parent="Column/LookButtons" unique_id=910000006]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Save what the fixtures are doing now as a look"
+text = "Save look"
+
+[node name="RenameLook" type="Button" parent="Column/LookButtons" unique_id=910000007]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Give the selected look the name typed above"
+text = "Rename"
+
+[node name="DeleteLook" type="Button" parent="Column/LookButtons" unique_id=910000008]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete the selected look"
+text = "Delete"
+
+[node name="LooksRule" type="HSeparator" parent="Column" unique_id=910000009]
+layout_mode = 2
+
 [node name="Heading" type="VBoxContainer" parent="Column" unique_id=1706396097]
 layout_mode = 2
 theme_override_constants/separation = 10

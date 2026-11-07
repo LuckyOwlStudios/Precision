@@ -22,6 +22,8 @@ signal transport_changed
 signal blackout_changed(active: bool)
 signal workspace_changed(workspace: Workspace)
 signal cues_changed
+## A look was applied, saved, renamed or deleted (the shelf listens).
+signal looks_changed
 signal song_changed(song: Song)
 ## The linked show should start: fired when a song starts playing from
 ## stopped or paused. The show player will listen to this once shows exist.
@@ -45,6 +47,7 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var rig: Node = $Rig ## parent of every DMXFixture
 @onready var cue_stack: CueStack = $Cues
 @onready var library: SongLibrary = $Songs
+@onready var looks: LookLibrary = $Looks ## the Looks shelf
 @onready var music_player: AudioStreamPlayer = $Music
 @onready var dj: DJSync = $DJSync ## follows the DJ software; off until a source is picked
 
@@ -95,6 +98,7 @@ const HISTORY_STEPS := 300
 func _ready() -> void:
 	history.max_steps = HISTORY_STEPS
 	library.songs_changed.connect(_on_library_changed)
+	looks.looks_changed.connect(looks_changed.emit)
 
 	music_player.finished.connect(_on_music_finished)
 	dj.ctx = self
@@ -768,6 +772,78 @@ func go_cue(index: int = -1) -> void:
 	else:
 		cue_stack.go_to(index)
 	cues_changed.emit()
+
+
+# ---------------------------------------------------------------- looks
+
+var _look_tween: Tween
+var _applied_look: Look ## the look most recently applied, for the shelf highlight
+
+
+## Store what the fixtures are doing now as a new look on the shelf.
+func save_look(look_name: String = "") -> Look:
+	var name_to_use := look_name.strip_edges()
+	if name_to_use.is_empty():
+		name_to_use = looks.next_name()
+	var look := Look.capture(rig, name_to_use)
+	_applied_look = look # it is what is on stage right now
+	looks.add(look)
+	record("Save look", looks.add.bind(look), looks.remove.bind(look))
+	return look
+
+
+func delete_look(look: Look) -> void:
+	if _applied_look == look:
+		_applied_look = null
+	looks.remove(look)
+	record("Delete look", looks.remove.bind(look), looks.add.bind(look))
+
+
+func rename_look(look: Look, new_name: String) -> void:
+	var before := look.look_name
+	looks.rename(look, new_name)
+	if look.look_name != before:
+		record("Rename look", looks.rename.bind(look, look.look_name), looks.rename.bind(look, before))
+
+
+## Fade the fixtures to a look (its own fade time unless `fade` is given),
+## one undo step. Fixtures the look doesn't know about are left alone.
+func apply_look(look: Look, fade: float = -1.0) -> void:
+	var secs := look.fade_time if fade < 0.0 else fade
+	var before := look.current_values(rig)
+	_applied_look = look
+	record("Apply look", _set_looks_values.bind(look.values, secs, look), _set_looks_values.bind(before, 0.0, null), true)
+
+
+func applied_look() -> Look:
+	return _applied_look
+
+
+func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
+	if _look_tween:
+		_look_tween.kill()
+		_look_tween = null
+	cue_stack.stop() # a cue fade would fight the look
+	var fade := secs > 0.0
+	if fade:
+		_look_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE)
+	var added := 0
+	for path in values:
+		var fx := rig.get_node_or_null(NodePath(str(path))) as DMXFixture
+		if fx == null:
+			continue # that fixture was removed since the look was saved
+		var props: Dictionary = values[path]
+		for prop in props:
+			if fade:
+				_look_tween.tween_property(fx, NodePath(str(prop)), props[prop], secs)
+				added += 1
+			else:
+				fx.set(prop, props[prop])
+	if fade and added == 0: # an empty Tween throws an error when it starts
+		_look_tween.kill()
+		_look_tween = null
+	_applied_look = look
+	looks_changed.emit()
 
 
 # ---------------------------------------------------------------- demo
