@@ -52,7 +52,7 @@ func _refresh() -> void:
 	# Plain label at default: let clicks fall through and keep the theme colour.
 	mouse_filter = Control.MOUSE_FILTER_STOP if modified else Control.MOUSE_FILTER_PASS
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if modified else Control.CURSOR_ARROW
-	tooltip_text = ("Click to reset to %s" % default_text) if modified else _plain_tooltip
+	tooltip_text = (tr("Click to reset to %s") % default_text) if modified else _plain_tooltip
 	if modified and _hovered:
 		add_theme_color_override("font_color", UIPalette.ACCENT)
 	elif modified:

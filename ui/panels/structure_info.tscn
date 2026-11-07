@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://ui/panels/structure_info.gd" id="1_info"]
+[ext_resource type="Script" path="res://ui/settings/unit_spin_box.gd" id="99_unitbox"]
 
 [node name="StructureInfo" type="VBoxContainer"]
 visible = false
@@ -177,6 +178,7 @@ step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="PositionY" type="SpinBox" parent="PositionField/Axes"]
 unique_name_in_owner = true
@@ -188,6 +190,7 @@ step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="PositionZ" type="SpinBox" parent="PositionField/Axes"]
 unique_name_in_owner = true
@@ -199,6 +202,7 @@ step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="RotationField" type="VBoxContainer" parent="."]
 layout_mode = 2

@@ -47,6 +47,7 @@ func _ready() -> void:
 		if ctx.workspace == StudioContext.Workspace.LIVE:
 			ctx.set_workspace(StudioContext.Workspace.STAGE)
 		right_tabs.current_tab = right_tabs.get_tab_idx_from_control(%Inspector))
+	%SettingsButton.pressed.connect(%SettingsWindow.open)
 	_apply_workspace(ctx.workspace)
 	# First launch: Stage with the fixture Library in front of the left dock.
 	left_tabs.current_tab = left_tabs.get_tab_idx_from_control(%Library)

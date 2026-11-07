@@ -161,7 +161,7 @@ func drag(mouse: Vector2, snap: bool) -> Transform3D:
 		var d := result.origin - _start.origin
 		var parts: PackedStringArray = []
 		for i in moved:
-			parts.append("%s %+.2f m" % ["XYZ"[i], d[i]])
+			parts.append("%s %s" % ["XYZ"[i], Units.delta_text(d[i])])
 		_readout = "   ".join(parts)
 	target = result
 	queue_redraw()

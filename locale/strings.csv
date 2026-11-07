@@ -1,0 +1,27 @@
+keys,en
+LANGUAGE_NAME,English
+Settings,Settings
+Open settings,Open settings
+Graphics,Graphics
+Quality,Quality
+Low,Low
+Medium,Medium
+High,High
+Ultra,Ultra
+"Fastest: beam cones only, no shadows or volumetric haze","Fastest: beam cones only, no shadows or volumetric haze"
+"Volumetric haze, moving head shadows, ambient occlusion","Volumetric haze, moving head shadows, ambient occlusion"
+"Every light casts shadows, floor reflections, smoother haze","Every light casts shadows, floor reflections, smoother haze"
+"Highest detail haze, soft shadows, light bounce. Needs a strong GPU","Highest detail haze, soft shadows, light bounce. Needs a strong GPU"
+Haze and shadows need the Forward+ renderer,Haze and shadows need the Forward+ renderer
+Units,Units
+Lengths,Lengths
+Metric,Metric
+Imperial,Imperial
+"Metres and centimetres, e.g. 3.20 m","Metres and centimetres, e.g. 3.20 m"
+"Feet and inches, e.g. 10' 6""","Feet and inches, e.g. 10' 6"""
+Language,Language
+"Restores graphics quality, units and language","Restores graphics quality, units and language"
+Reset all,Reset all
+Close,Close
+"Click to reset to %s","Click to reset to %s"
+Move in %s steps and rotate in %d° steps. Hold Ctrl while dragging to flip this.,Move in %s steps and rotate in %d° steps. Hold Ctrl while dragging to flip this.

@@ -37,7 +37,7 @@ var _color_befores: Array = []
 @onready var _name: LineEdit = %NameEdit
 @onready var _address: SpinBox = %Address
 @onready var _channels: Label = %Channels
-@onready var _place: Array[SpinBox] = [%PositionX, %PositionY, %PositionZ] ## metres
+@onready var _place: Array[UnitSpinBox] = [%PositionX, %PositionY, %PositionZ] ## metres inside; show metres or feet
 @onready var _turn: Array[SpinBox] = [%RotationX, %RotationY, %RotationZ] ## degrees
 @onready var _dimmer: HSlider = %Dimmer
 @onready var _dimmer_value: SpinBox = %DimmerValue
@@ -97,7 +97,9 @@ func _ready() -> void:
 	_address.value_changed.connect(func(v: float) -> void:
 		if not _syncing and fx:
 			ctx.set_address(fx, int(v)))
-	for sb: SpinBox in _place + _turn:
+	for sb: UnitSpinBox in _place:
+		sb.metres_changed.connect(func(_m: float) -> void: _push_placement())
+	for sb: SpinBox in _turn:
 		sb.value_changed.connect(func(_v: float) -> void: _push_placement())
 		# Let the X/Y/Z boxes share the dock's width instead of each asking for
 		# room for four characters, which made the inspector wider than its dock.
@@ -234,7 +236,7 @@ func _apply_name(t: String) -> void:
 func _push_placement() -> void:
 	if _syncing or fx == null:
 		return
-	var pos := Vector3(_place[0].value, _place[1].value, _place[2].value)
+	var pos := Vector3(_place[0].get_metres(), _place[1].get_metres(), _place[2].get_metres())
 	var rot := Vector3(deg_to_rad(_turn[0].value), deg_to_rad(_turn[1].value), deg_to_rad(_turn[2].value))
 	var before := StudioContext.fixture_transform(fx)
 	ctx.move_fixture(fx, Transform3D(Basis.from_euler(rot), pos))
@@ -335,7 +337,7 @@ func _pull() -> void:
 	for i in 3:
 		# Leave a box alone while you're typing in it.
 		if not _place[i].get_line_edit().has_focus():
-			_place[i].value = xf.origin[i]
+			_place[i].set_metres(xf.origin[i])
 		if not _turn[i].get_line_edit().has_focus():
 			_turn[i].value = rad_to_deg(euler[i])
 	_syncing = false

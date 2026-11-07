@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://ui/stage/transform_gizmo.gd" id="4_1eond"]
 [ext_resource type="Script" path="res://ui/widgets/reset_label.gd" id="5_rstlb"]
 [ext_resource type="Shader" path="res://ui/stage/mirror_plane.gdshader" id="6_mirpl"]
+[ext_resource type="Script" path="res://ui/settings/unit_spin_box.gd" id="99_unitbox"]
 
 [sub_resource type="Environment" id="Environment_onnio"]
 background_mode = 1
@@ -355,13 +356,14 @@ text = "At X  "
 [node name="Center" type="SpinBox" parent="Overlay/MirrorOptions"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Where the mirror plane crosses the floor, in metres from the middle of the stage"
+tooltip_text = "Where the mirror plane crosses the floor, from the middle of the stage"
 min_value = -30.0
 max_value = 30.0
 step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="CenterToSelection" type="Button" parent="Overlay/MirrorOptions"]
 unique_name_in_owner = true
@@ -413,63 +415,6 @@ focus_mode = 0
 max_value = 1.0
 step = 0.01
 value = 0.45
-
-[node name="Gap" type="Control" parent="Overlay/LookControls" unique_id=984644216]
-custom_minimum_size = Vector2(6, 0)
-layout_mode = 2
-
-[node name="QualityLabel" type="Label" parent="Overlay/LookControls" unique_id=1840562377]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Caption"
-theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
-theme_override_constants/outline_size = 4
-text = "Quality"
-script = ExtResource("5_rstlb")
-
-[node name="Low" type="Button" parent="Overlay/LookControls" unique_id=1595457844]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Fastest: beam cones only, no shadows or volumetric haze"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Low"
-
-[node name="Medium" type="Button" parent="Overlay/LookControls" unique_id=132788527]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Volumetric haze, moving head shadows, ambient occlusion"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Medium"
-
-[node name="High" type="Button" parent="Overlay/LookControls" unique_id=300121373]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Every light casts shadows, floor reflections, smoother haze"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-button_pressed = true
-text = "High"
-
-[node name="Ultra" type="Button" parent="Overlay/LookControls" unique_id=514387932]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Highest detail haze, soft shadows, light bounce. Needs a strong GPU"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Ultra"
-
-[node name="ForwardPlusNote" type="Label" parent="Overlay/LookControls" unique_id=1476330128]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"Caption"
-text = "Haze and shadows need the Forward+ renderer"
 
 [node name="HelpBar" type="HBoxContainer" parent="Overlay"]
 layout_mode = 0
