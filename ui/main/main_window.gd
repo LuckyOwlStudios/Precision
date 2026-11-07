@@ -37,6 +37,10 @@ func _ready() -> void:
 	ctx.workspace_changed.connect(_apply_workspace)
 	ctx.fixtures_changed.connect(_update_footers)
 	ctx.blackout_changed.connect(func(_on: bool) -> void: _update_footers())
+	# Selecting an effect clip on the timeline shows it in the Inspector tab.
+	ctx.clip_selected.connect(func(clip: ShowClip) -> void:
+		if clip and not right_tabs.is_tab_hidden(right_tabs.get_tab_idx_from_control(%Inspector)):
+			right_tabs.current_tab = right_tabs.get_tab_idx_from_control(%Inspector))
 	# Renaming happens in the inspector's Name field, so bring it to the front
 	# (that field lives in Stage and Program; from Live, go to Stage).
 	ctx.rename_requested.connect(func(_fx: DMXFixture) -> void:
@@ -123,6 +127,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_SPACE:
 			ctx.toggle_play()
+		KEY_HOME:
+			ctx.seek(0.0) # back to the start; the timeline scrolls there too
 		KEY_ESCAPE:
 			ctx.blackout = not ctx.blackout
 		KEY_DELETE:

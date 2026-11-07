@@ -33,8 +33,8 @@ func evaluate(show: SongShow, b: float) -> void:
 			var n := clip.targets.size()
 			for i in n:
 				var fx := ctx.rig.get_node_or_null(NodePath(clip.targets[i])) as DMXFixture
-				if fx == null:
-					continue # removed from the rig since the clip was made
+				if fx == null or not EffectTemplates.supports(clip.template, fx):
+					continue # removed from the rig, or re-patched into something that can't do it
 				var v: Dictionary = results.get(fx, {})
 				if v.is_empty():
 					v = fx.capture()

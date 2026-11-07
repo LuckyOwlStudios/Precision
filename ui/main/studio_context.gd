@@ -11,6 +11,10 @@ signal selection_changed(fixture: DMXFixture)
 ## Two or more fixtures are picked together (box select), or none. The inspector
 ## then edits all of them at once.
 signal group_changed
+## A panel (the On stage list) asks the stage view to select exactly these fixtures.
+signal pick_requested(list: Array)
+## A panel asks the stage view to delete whatever is selected (one fixture or a group).
+signal delete_requested
 ## The saved colour swatches changed (the inspector's swatch row listens).
 signal swatches_changed
 ## A fixture was moved or rotated on the stage (drag, gizmo or inspector).
@@ -255,6 +259,8 @@ func attach_fixtures(list: Array, indices: Array) -> void:
 
 
 func select(fx: DMXFixture) -> void:
+	if fx and selected_clip:
+		select_clip(null) # picking a fixture puts it back in the inspector
 	if selected == fx:
 		return
 	selected = fx
@@ -276,7 +282,14 @@ func set_group(list: Array) -> void:
 	group_changed.emit()
 
 
+## Select exactly these fixtures (none, one or several), on the stage and in the panels.
+func pick(list: Array) -> void:
+	pick_requested.emit(list)
+
+
 func select_piece(piece: StructurePiece) -> void:
+	if piece and selected_clip:
+		select_clip(null)
 	if selected_piece == piece:
 		return
 	selected_piece = piece
@@ -1078,10 +1091,15 @@ func select_clip(clip: ShowClip) -> void:
 
 
 ## Drop a preset on the timeline: a new clip at `at` beats on these fixtures.
+## Fixtures that can't do the effect (a sweep on a par) are left out; returns
+## null if none of them can.
 func add_clip(preset: EffectPreset, at: float, fixtures: Array[DMXFixture]) -> ShowClip:
 	var paths := PackedStringArray()
 	for fx in fixtures:
-		paths.append(str(rig.get_path_to(fx)))
+		if EffectTemplates.supports(preset.template, fx):
+			paths.append(str(rig.get_path_to(fx)))
+	if paths.is_empty():
+		return null
 	var clip := ShowClip.from_preset(preset, maxf(0.0, at), paths)
 	var sh := show
 	record("Add effect", _attach_clip.bind(sh, clip, sh.clips.size()), _detach_clip.bind(sh, clip), true)
@@ -1138,6 +1156,15 @@ func delete_preset(p: EffectPreset) -> void:
 	if p.built_in:
 		return
 	record("Delete effect preset", effects.remove.bind(p), effects.add.bind(p), true)
+
+
+## Fixtures in the rig that can run this effect.
+func fixtures_supporting(template: String) -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	for fx in fixtures():
+		if EffectTemplates.supports(template, fx):
+			list.append(fx)
+	return list
 
 
 ## The fixtures a clip runs on (skipping any removed from the rig).
