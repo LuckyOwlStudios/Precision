@@ -342,19 +342,15 @@ func _draw_beam(fx: DMXFixture) -> void:
 		var width := 0.0
 		for i in RIM_RAYS / 2:
 			width = maxf(width, rim[i].distance_to(rim[i + RIM_RAYS / 2]))
-		_text(to + Vector2(6, 14), "Ø %s m" % _metres(width), Color(c, 0.95), SMALL_FONT_SIZE)
+		var tag := "Ø %s m" % _metres(width) # centred above where it lands, clear of the label below the fixture
+		_text(to + Vector2(-_text_width(tag, SMALL_FONT_SIZE) * 0.5, -10.0), tag, Color(c, 0.95), SMALL_FONT_SIZE)
 	else:
 		var mid := from.lerp(to, 0.62)
 		_text(mid + Vector2(6, 0), "%s m throw" % _metres(origin.distance_to(centre)), Color(c, 0.95), SMALL_FONT_SIZE)
 
 
 func _draw_fixtures(fixtures: Array[DMXFixture]) -> void:
-	# Left to right, so neighbours on one truss can take turns above and below.
-	var order := fixtures.duplicate()
-	order.sort_custom(func(a: DMXFixture, b: DMXFixture) -> bool:
-		return camera.unproject_position((visuals[a] as StageFixture3D).center()).x < camera.unproject_position((visuals[b] as StageFixture3D).center()).x)
-	for i in order.size():
-		var fx: DMXFixture = order[i]
+	for fx in fixtures:
 		var v: StageFixture3D = visuals[fx]
 		var chosen := fx == ctx.selected if ctx else false
 		var at := camera.unproject_position(v.center())
@@ -374,9 +370,9 @@ func _draw_fixtures(fixtures: Array[DMXFixture]) -> void:
 		var lines: Array[String] = [StudioContext.display_name(fx), _address_of(fx)]
 		if kind == Kind.PLAN:
 			lines.append("h %s m" % _metres(mount.y))
-		var above := i % 2 == 0
+		# Always centred just below the dot, so fixtures in a row have labels in a row.
 		var line_h := float(FONT_SIZE) + 2.0
-		var y := at.y - 10.0 - line_h * (lines.size() - 1) if above else at.y + 18.0
+		var y := at.y + 18.0
 		for l in lines.size():
 			var first := l == 0
 			_text(Vector2(at.x - _text_width(lines[l], FONT_SIZE if first else SMALL_FONT_SIZE) * 0.5, y + line_h * l),
