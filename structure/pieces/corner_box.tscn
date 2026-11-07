@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://dij8a58xxrs4f"]
 
-[ext_resource type="Script" uid="uid://d0aqu3te668gx" path="res://structure/structure_piece.gd" id="1_piece"]
+[ext_resource type="Script" uid="uid://dp4p1bk6oykpu" path="res://structure/structure_piece.gd" id="1_piece"]
 [ext_resource type="Script" uid="uid://5cryhtcyjseg" path="res://structure/truss_connector.gd" id="2_conn"]
-[ext_resource type="Script" uid="uid://cehxjfusbm355" path="res://structure/truss_mesh.gd" id="4_mesh"]
+[ext_resource type="Script" uid="uid://dftcl57k8qjao" path="res://structure/truss_mesh.gd" id="4_mesh"]
 [ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="5_metal"]
 
 [node name="CornerBox" type="Node3D" unique_id=460180538]

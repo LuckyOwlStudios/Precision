@@ -46,6 +46,7 @@ text = "A look with that name already exists."
 autowrap_mode = 3
 
 [node name="LookButtons" type="HBoxContainer" parent="Column" unique_id=910000005]
+unique_name_in_owner = true
 layout_mode = 2
 
 [node name="SaveLook" type="Button" parent="Column/LookButtons" unique_id=910000006]
