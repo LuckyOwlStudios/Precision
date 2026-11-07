@@ -112,6 +112,13 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _box_select: Panel = %BoxSelect
 @onready var _tools: Control = %Tools
 @onready var _snap_button: Button = %Snap
+@onready var _mirror_button: Button = %Mirror
+@onready var _mirror_options: Control = %MirrorOptions ## axis and centre, shown while mirroring
+@onready var _mirror_plane: MeshInstance3D = %MirrorPlane
+@onready var _axis_x: Button = %AxisX
+@onready var _axis_z: Button = %AxisZ
+@onready var _center_label: Label = %CenterLabel
+@onready var _center_box: SpinBox = %Center
 @onready var _haze: HSlider = %Haze
 @onready var _haze_label: ResetLabel = %HazeLabel
 @onready var _quality_label: ResetLabel = %QualityLabel
@@ -128,7 +135,10 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.selection_changed.connect(_on_selection_changed)
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
-	ctx.piece_moved.connect(func(_p: StructurePiece) -> void: _rebuild_pipes())
+	ctx.piece_moved.connect(func(p: StructurePiece) -> void:
+		_follow_piece(p)
+		_rebuild_pipes())
+	ctx.symmetry.changed.connect(_sync_mirror)
 	ctx.set_root = _set
 	ctx.truss_pipes = _pipes
 	ctx.stage_surfaces = _surfaces
@@ -159,6 +169,15 @@ func _ready() -> void:
 		(_mode_buttons[m] as Button).pressed.connect(set_gizmo_mode.bind(m))
 	_snap_button.tooltip_text = "Move in %.2f m steps and rotate in %d° steps. Hold Ctrl while dragging to flip this." % [TransformGizmo.MOVE_STEP, int(TransformGizmo.ROTATE_STEP)]
 	set_gizmo_mode(TransformGizmo.Mode.MOVE)
+
+	# Mirror mode, beside Snap: toggle, axis and where the plane crosses the floor.
+	_mirror_button.toggled.connect(func(on: bool) -> void: ctx.symmetry.enabled = on)
+	_axis_x.pressed.connect(func() -> void: ctx.symmetry.axis = StageSymmetry.Axis.X)
+	_axis_z.pressed.connect(func() -> void: ctx.symmetry.axis = StageSymmetry.Axis.Z)
+	_center_box.value_changed.connect(func(v: float) -> void: ctx.symmetry.set_offset(v))
+	%CenterReset.pressed.connect(func() -> void: ctx.symmetry.reset())
+	%CenterToSelection.pressed.connect(_center_on_selection)
+	_sync_mirror()
 
 	# Work / Show shading, top left beside the view presets.
 	_shading_buttons = [%Work, %Show]
@@ -261,6 +280,7 @@ func _dismiss_empty_hint() -> void:
 
 func _on_workspace_changed(_ws: StudioContext.Workspace) -> void:
 	_update_gizmo()
+	_sync_mirror() # the plane is a stage-building aid, like the grid
 	# Pieces are only edited while setting up the stage: let go of them.
 	if _group.is_empty():
 		_select_piece(null)
@@ -630,6 +650,8 @@ func _gui_input(event: InputEvent) -> void:
 				set_gizmo_mode(TransformGizmo.Mode.MOVE)
 			KEY_E:
 				set_gizmo_mode(TransformGizmo.Mode.ROTATE)
+			KEY_M:
+				ctx.symmetry.enabled = not ctx.symmetry.enabled
 			KEY_Z:
 				look.shading = StageLook.Shading.SHOW if look.work_lights() else StageLook.Shading.WORK
 			KEY_ESCAPE:
@@ -650,6 +672,7 @@ func _gui_input(event: InputEvent) -> void:
 					return
 				var before := _selected_piece.global_transform
 				_selected_piece.global_transform = StructureSnap.turned(_selected_piece, _pieces())
+				_follow_piece(_selected_piece)
 				_rebuild_pipes()
 				_record_piece_move(_selected_piece, before, "Turn truss piece")
 			_:
@@ -771,6 +794,65 @@ func _update_camera() -> void:
 	_gizmo.queue_redraw()
 
 
+# ---------------------------------------------------------------- mirror mode
+
+## Mirror mode, its axis or its centre changed: update the buttons and the plane.
+func _sync_mirror() -> void:
+	if ctx == null:
+		return
+	var sym := ctx.symmetry
+	_mirror_button.set_pressed_no_signal(sym.enabled)
+	_axis_x.set_pressed_no_signal(sym.axis == StageSymmetry.Axis.X)
+	_axis_z.set_pressed_no_signal(sym.axis == StageSymmetry.Axis.Z)
+	_center_label.text = "At %s  " % ("X" if sym.axis == StageSymmetry.Axis.X else "Z")
+	if not is_equal_approx(_center_box.value, sym.offset()):
+		_center_box.set_value_no_signal(sym.offset())
+	var staging := ctx.workspace == StudioContext.Workspace.STAGE
+	_mirror_options.visible = sym.enabled and staging
+	_mirror_plane.visible = sym.enabled and staging
+	if sym.axis == StageSymmetry.Axis.X:
+		_mirror_plane.transform = Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(sym.center.x, 3.0, sym.center.z))
+	else:
+		_mirror_plane.transform = Transform3D(Basis.IDENTITY, Vector3(sym.center.x, 3.0, sym.center.z))
+
+
+## Put the mirror plane through the middle of what is selected.
+func _center_on_selection() -> void:
+	var items := _selection()
+	if items.is_empty():
+		return
+	var sum := Vector3.ZERO
+	for o in items:
+		sum += _transform_of(o).origin
+	var c := sum / items.size()
+	ctx.symmetry.set_offset(c.x if ctx.symmetry.axis == StageSymmetry.Axis.X else c.z)
+
+
+## The twin of a truss piece while mirroring, else null.
+func _twin_piece(piece: Object) -> StructurePiece:
+	if not ctx.symmetry.active():
+		return null
+	return StageSymmetry.partner_of(piece) as StructurePiece
+
+
+## Keep a piece's twin where the mirror says it should be.
+func _follow_piece(piece: StructurePiece) -> void:
+	var twin := _twin_piece(piece)
+	if twin and is_instance_valid(piece) and piece.is_inside_tree():
+		twin.global_transform = ctx.symmetry.mirror_transform(piece.global_transform)
+
+
+## `items` plus the twin of each, when mirroring (no duplicates).
+func _with_twins(items: Array) -> Array:
+	var all := items.duplicate()
+	if ctx.symmetry.active():
+		for o: Object in items:
+			var twin := StageSymmetry.partner_of(o)
+			if twin and not all.has(twin):
+				all.append(twin)
+	return all
+
+
 # ---------------------------------------------------------------- structure pieces (the truss set)
 
 func _pieces(ignore: StructurePiece = null) -> Array[StructurePiece]:
@@ -866,9 +948,32 @@ func _drop_piece(at: Vector2, path: String) -> void:
 	var piece := (load(path) as PackedScene).instantiate() as StructurePiece
 	_set.add_child(piece)
 	piece.global_transform = xf
+	# Mirror mode: a twin goes down across the plane (unless this one is on it).
+	var pieces: Array = [piece]
+	var xfs: Array = [xf]
+	if ctx.symmetry.active() and not ctx.symmetry.on_plane(xf):
+		var twin := (load(path) as PackedScene).instantiate() as StructurePiece
+		_set.add_child(twin)
+		twin.global_transform = ctx.symmetry.mirror_transform(xf)
+		StageSymmetry.link(piece, twin)
+		pieces.append(twin)
+		xfs.append(twin.global_transform)
 	_rebuild_pipes()
 	# Not selected: once it is down it looks like the rest of the set. Click it to edit it.
-	ctx.record_added("Add truss piece", piece, _attach_piece.bind(piece, xf, false), _detach_piece.bind(piece))
+	if pieces.size() == 1:
+		ctx.record_added("Add truss piece", piece, _attach_piece.bind(piece, xf, false), _detach_piece.bind(piece))
+	else:
+		ctx.record_added_all("Add mirrored truss pieces", pieces, _attach_pieces.bind(pieces, xfs), _detach_pieces.bind(pieces))
+
+
+func _attach_pieces(pieces: Array, xfs: Array) -> void:
+	for i in pieces.size():
+		_attach_piece(pieces[i], xfs[i], false)
+
+
+func _detach_pieces(pieces: Array) -> void:
+	for p: Object in pieces:
+		_detach_piece(p)
 
 
 func _update_piece_drag(at: Vector2) -> void:
@@ -880,10 +985,14 @@ func _update_piece_drag(at: Vector2) -> void:
 	var xf: Variant = _piece_placement(at, _piece_drag)
 	if xf != null:
 		_piece_drag.global_transform = xf
+		_follow_piece(_piece_drag)
 
 
 ## Delete a piece. Undo puts it back where it was (the history keeps it alive).
 func _delete_piece(piece: StructurePiece) -> void:
+	if _twin_piece(piece):
+		_delete_items(_with_twins([piece]))
+		return
 	ctx.record_removed("Delete truss piece", piece, _attach_piece.bind(piece, piece.global_transform),
 		_detach_piece.bind(piece))
 
@@ -923,6 +1032,7 @@ func _record_piece_move(piece: StructurePiece, before: Transform3D, action: Stri
 func _place_piece(piece: Object, xf: Transform3D) -> void:
 	if is_instance_valid(piece) and (piece as Node).is_inside_tree():
 		(piece as StructurePiece).global_transform = xf
+		_follow_piece(piece as StructurePiece)
 		_rebuild_pipes()
 
 
@@ -1045,14 +1155,20 @@ func _transform_of(o: Object) -> Transform3D:
 ## Put each of `items` at its transform in `xfs` (fixtures and pieces alike).
 func _place_group(items: Array, xfs: Array) -> void:
 	var pieces_moved := false
+	var followed: Array[Object] = [] ## mirror mode: a twin that comes along with its pair is not moved itself
 	for i in items.size():
 		var o: Object = items[i]
-		if not is_instance_valid(o) or not (o as Node).is_inside_tree():
+		if not is_instance_valid(o) or not (o as Node).is_inside_tree() or followed.has(o):
 			continue
+		if ctx.symmetry.active():
+			var twin := StageSymmetry.partner_of(o)
+			if twin and items.has(twin):
+				followed.append(twin)
 		if o is DMXFixture:
 			ctx.move_fixture(o as DMXFixture, xfs[i])
 		else:
 			(o as StructurePiece).global_transform = xfs[i]
+			_follow_piece(o as StructurePiece)
 			pieces_moved = true
 	if pieces_moved:
 		_rebuild_pipes()
@@ -1112,9 +1228,13 @@ func _end_group_drag() -> void:
 ## Delete everything in the group as one undo step; undo brings it all back
 ## (fixtures to their places in the rig, same patch) and selects it again.
 func _delete_group() -> void:
+	_delete_items(_with_twins(_group))
+
+
+func _delete_items(items: Array) -> void:
 	var fxs: Array[DMXFixture] = []
 	var pieces: Array[StructurePiece] = []
-	for o in _group:
+	for o in items:
 		if o is DMXFixture:
 			fxs.append(o)
 		elif o is StructurePiece:
@@ -1126,7 +1246,7 @@ func _delete_group() -> void:
 	var xfs: Array[Transform3D] = []
 	for p in pieces:
 		xfs.append(p.global_transform)
-	ctx.record_removed_all("Delete %d things" % _group.size(), _group.duplicate(),
+	ctx.record_removed_all("Delete %d things" % items.size(), items.duplicate(),
 		_attach_group.bind(fxs, indices, pieces, xfs), _detach_group.bind(fxs, pieces))
 
 
