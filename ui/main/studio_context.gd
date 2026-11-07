@@ -31,6 +31,11 @@ signal cues_changed
 signal looks_changed
 ## Editing a look started or ended (`look` is null when it ended).
 signal look_editing_changed(look: Look)
+## The show on the timeline changed: a clip was added, removed or edited, or
+## another song's show was loaded.
+signal show_changed
+## A clip on the timeline was selected (null = none).
+signal clip_selected(clip: ShowClip)
 signal song_changed(song: Song)
 ## The linked show should start: fired when a song starts playing from
 ## stopped or paused. The show player will listen to this once shows exist.
@@ -55,6 +60,8 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var cue_stack: CueStack = $Cues
 @onready var library: SongLibrary = $Songs
 @onready var looks: LookLibrary = $Looks ## the Looks shelf
+@onready var effects: EffectPresetLibrary = $Effects ## the Effects shelf
+@onready var show_player: ShowPlayer = $ShowPlayer
 @onready var music_player: AudioStreamPlayer = $Music
 @onready var dj: DJSync = $DJSync ## follows the DJ software; off until a source is picked
 
@@ -113,6 +120,7 @@ func _ready() -> void:
 	load_swatches()
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
+	show_player.ctx = self
 
 	music_player.finished.connect(_on_music_finished)
 	dj.ctx = self
@@ -247,6 +255,8 @@ func attach_fixtures(list: Array, indices: Array) -> void:
 
 
 func select(fx: DMXFixture) -> void:
+	if fx and selected_clip:
+		select_clip(null) # picking a fixture puts it back in the inspector
 	if selected == fx:
 		return
 	selected = fx
@@ -269,6 +279,8 @@ func set_group(list: Array) -> void:
 
 
 func select_piece(piece: StructurePiece) -> void:
+	if piece and selected_clip:
+		select_clip(null)
 	if selected_piece == piece:
 		return
 	selected_piece = piece
@@ -822,6 +834,7 @@ func load_song(s: Song) -> void:
 		show_name = s.show_name
 		length_beats = seconds_to_beats(s.duration)
 		library.ensure_peaks(s)
+	_load_show(s)
 	song_changed.emit(s)
 	transport_changed.emit()
 	if was_playing and s:
@@ -1019,6 +1032,170 @@ func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
 		_look_tween = null
 	_applied_look = look
 	looks_changed.emit()
+
+
+# ---------------------------------------------------------------- show (timeline clips)
+
+## The loaded song's show. With no song loaded it is a scratch show that is not
+## saved, so you can still try effects out.
+var show: SongShow = SongShow.new()
+var selected_clip: ShowClip
+
+
+func _load_show(s: Song) -> void:
+	select_clip(null)
+	show_player.release_all()
+	show = SongShow.new()
+	if s and not s.show_id.is_empty():
+		var path := library.show_path_for(s)
+		if FileAccess.file_exists(path):
+			var loaded := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE) as SongShow
+			if loaded:
+				show = loaded
+		show.file_path = path
+	show_changed.emit()
+
+
+## Write a show to its file. The song's first clip gives it a show file.
+func save_show(target: SongShow = null) -> void:
+	var sh := target if target else show
+	if sh.file_path.is_empty():
+		if sh != show or song == null:
+			return # scratch show
+		if song.show_id.is_empty():
+			song.show_id = song.id
+			if song.show_name.is_empty():
+				song.show_name = song.display_title()
+			library.update(song)
+		sh.file_path = library.show_path_for(song)
+	DirAccess.make_dir_recursive_absolute(sh.file_path.get_base_dir())
+	var err := ResourceSaver.save(sh, sh.file_path)
+	if err != OK:
+		push_warning("Could not save the show (error %d)" % err)
+
+
+func select_clip(clip: ShowClip) -> void:
+	if clip == selected_clip:
+		return
+	selected_clip = clip
+	clip_selected.emit(clip)
+
+
+## Drop a preset on the timeline: a new clip at `at` beats on these fixtures.
+## Fixtures that can't do the effect (a sweep on a par) are left out; returns
+## null if none of them can.
+func add_clip(preset: EffectPreset, at: float, fixtures: Array[DMXFixture]) -> ShowClip:
+	var paths := PackedStringArray()
+	for fx in fixtures:
+		if EffectTemplates.supports(preset.template, fx):
+			paths.append(str(rig.get_path_to(fx)))
+	if paths.is_empty():
+		return null
+	var clip := ShowClip.from_preset(preset, maxf(0.0, at), paths)
+	var sh := show
+	record("Add effect", _attach_clip.bind(sh, clip, sh.clips.size()), _detach_clip.bind(sh, clip), true)
+	select_clip(clip)
+	return clip
+
+
+func remove_clip(clip: ShowClip) -> void:
+	var sh := show
+	var i := sh.clips.find(clip)
+	if i < 0:
+		return
+	record("Delete effect", _detach_clip.bind(sh, clip), _attach_clip.bind(sh, clip, i), true)
+
+
+## Copy of a clip right after it (same fixtures), selected.
+func duplicate_clip(clip: ShowClip) -> ShowClip:
+	var copy := ShowClip.new()
+	copy.set_data(clip.to_data())
+	copy.start = clip.end()
+	var sh := show
+	record("Duplicate effect", _attach_clip.bind(sh, copy, sh.clips.find(clip) + 1), _detach_clip.bind(sh, copy), true)
+	select_clip(copy)
+	return copy
+
+
+## The clip was already changed (dragged, stretched, a setting moved): store the
+## change from `before` (ShowClip.to_data()) as one undo step. Quick repeated
+## edits of the same clip merge.
+func record_clip_change(clip: ShowClip, before: Dictionary, action := "Edit effect", merge := false) -> void:
+	var after := clip.to_data()
+	if after == before:
+		return
+	var sh := show
+	save_show(sh)
+	show_changed.emit()
+	record(action, _set_clip_data.bind(sh, clip, after), _set_clip_data.bind(sh, clip, before),
+		false, ("clip%d" % clip.get_instance_id()) if merge else "")
+
+
+## Save a clip's effect and settings as your own preset on the Effects shelf.
+func save_clip_as_preset(clip: ShowClip, preset_name: String = "") -> EffectPreset:
+	var n := preset_name.strip_edges()
+	if n.is_empty():
+		n = effects.unique_name(clip.clip_name if not clip.clip_name.is_empty() else EffectTemplates.display_name(clip.template))
+	elif effects.is_name_taken(n):
+		return null
+	var p := EffectPreset.make(n, clip.template, clip.params.duplicate(true), clip.length)
+	record("Save effect preset", effects.add.bind(p), effects.remove.bind(p), true)
+	return p
+
+
+func delete_preset(p: EffectPreset) -> void:
+	if p.built_in:
+		return
+	record("Delete effect preset", effects.remove.bind(p), effects.add.bind(p), true)
+
+
+## Fixtures in the rig that can run this effect.
+func fixtures_supporting(template: String) -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	for fx in fixtures():
+		if EffectTemplates.supports(template, fx):
+			list.append(fx)
+	return list
+
+
+## The fixtures a clip runs on (skipping any removed from the rig).
+func clip_fixtures(clip: ShowClip) -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	for path in clip.targets:
+		var fx := rig.get_node_or_null(NodePath(path)) as DMXFixture
+		if fx:
+			list.append(fx)
+	return list
+
+
+func fixture_path(fx: DMXFixture) -> String:
+	return str(rig.get_path_to(fx))
+
+
+func _attach_clip(sh: SongShow, clip: ShowClip, index: int) -> void:
+	if not sh.clips.has(clip):
+		sh.clips.insert(clampi(index, 0, sh.clips.size()), clip)
+	save_show(sh)
+	if sh == show:
+		show_changed.emit()
+
+
+func _detach_clip(sh: SongShow, clip: ShowClip) -> void:
+	sh.clips.erase(clip)
+	save_show(sh)
+	if clip == selected_clip:
+		select_clip(null)
+	if sh == show:
+		show_changed.emit()
+
+
+func _set_clip_data(sh: SongShow, clip: ShowClip, data: Dictionary) -> void:
+	clip.set_data(data)
+	save_show(sh)
+	if sh == show:
+		show_changed.emit()
+		if clip == selected_clip:
+			clip_selected.emit(clip) # the settings panel re-reads it
 
 
 # ---------------------------------------------------------------- demo

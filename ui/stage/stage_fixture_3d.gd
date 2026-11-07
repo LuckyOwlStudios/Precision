@@ -274,14 +274,17 @@ static func _iris_texture() -> Texture2D:
 func _process(_delta: float) -> void:
 	if fixture == null or not is_instance_valid(fixture):
 		return
-	var level := 0.0 if (ctx and ctx.blackout) else fixture.dimmer
+	# out() = what is being sent, including effects running on the timeline.
+	var level := 0.0 if (ctx and ctx.blackout) else float(fixture.out("dimmer"))
 	level *= _strobe_gate()
-	var c := fixture.color
+	var c: Color = fixture.out("color")
+	var wh := float(fixture.out("white"))
+	var am := float(fixture.out("amber"))
 	# Add white/amber channels on top of RGB so RGBW fixtures preview sensibly.
 	c = Color(
-		minf(c.r + fixture.white + fixture.amber, 1.0),
-		minf(c.g + fixture.white + fixture.amber * 0.6, 1.0),
-		minf(c.b + fixture.white + fixture.uv * 0.5, 1.0))
+		minf(c.r + wh + am, 1.0),
+		minf(c.g + wh + am * 0.6, 1.0),
+		minf(c.b + wh + float(fixture.out("uv")) * 0.5, 1.0))
 	if body == FixtureCatalog.Body.STROBE:
 		c = Color.WHITE
 
@@ -299,15 +302,16 @@ func _process(_delta: float) -> void:
 		l.visible = level > 0.01
 
 	if body == FixtureCatalog.Body.MOVING_HEAD:
-		_yoke.rotation_degrees.y = (fixture.pan - 0.5) * fixture.profile.pan_range_deg
-		_head.rotation_degrees.x = -(fixture.tilt - 0.5) * fixture.profile.tilt_range_deg
+		_yoke.rotation_degrees.y = (float(fixture.out("pan")) - 0.5) * fixture.profile.pan_range_deg
+		_head.rotation_degrees.x = -(float(fixture.out("tilt")) - 0.5) * fixture.profile.tilt_range_deg
 
 
 ## The strobe channel as a flash pattern: 0-9 open, then 1 to 20 flashes a second.
 func _strobe_gate() -> float:
-	if fixture.strobe < 10:
+	var strobe := int(fixture.out("strobe"))
+	if strobe < 10:
 		return 1.0
-	var hz := lerpf(1.0, 20.0, (fixture.strobe - 10) / 245.0)
+	var hz := lerpf(1.0, 20.0, (strobe - 10) / 245.0)
 	return 1.0 if fmod(Time.get_ticks_msec() / 1000.0 * hz, 1.0) < 0.25 else 0.0
 
 

@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="1_apl61"]
 [ext_resource type="PackedScene" path="res://ui/panels/structure_info.tscn" id="2_structure"]
 [ext_resource type="Script" path="res://ui/widgets/swatch_row.gd" id="3_swatches"]
+[ext_resource type="PackedScene" path="res://ui/panels/clip_info.tscn" id="3_clip"]
 
 [node name="InspectorPanel" type="ScrollContainer" unique_id=941001158]
 horizontal_scroll_mode = 3
@@ -448,4 +449,9 @@ select_all_on_focus = true
 
 [node name="StructureInfo" parent="Padding" instance=ExtResource("2_structure")]
 unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ClipInfo" parent="Padding" instance=ExtResource("3_clip")]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2

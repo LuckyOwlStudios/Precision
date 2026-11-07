@@ -29,6 +29,9 @@ extends Control
 ##                                       Alt slower, wheel sets the fly speed
 ##   Alt+left drag                     -> orbit       Middle drag -> pan
 ##   Mouse wheel                       -> zoom        F -> frame the rig
+##   T / Point at button               -> aim the selected moving heads: click or drag on the
+##                                       stage and every selected head points there (one undo
+##                                       step), Esc or T again to finish
 ##   Z / Work, Show buttons            -> work lights on (evenly lit room) / dark show room
 
 const PICK_RADIUS_PX := 12.0 ## fallback only: a click this close to a fixture's middle picks it
@@ -102,6 +105,12 @@ var _group_plane := Plane() ## level plane through it: the group slides across t
 var _group_grab := Vector3.ZERO
 var _group_before: Array[Transform3D] = []
 
+# Point at: aim the selected moving heads at a spot on the stage.
+var _aiming := false
+var _aim_drag := false
+var _aim_before: Dictionary = {} ## DMXFixture -> Vector2(pan, tilt) when the press began, for undo
+var _aim_unreachable := 0 ## selected heads that can't reach the spot (shown in the hint)
+
 var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
 var _view_buttons: Dictionary = {} ## preset name -> Button
 var _quality_buttons: Array[Button] = []
@@ -121,6 +130,7 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _box_select: Panel = %BoxSelect
 @onready var _tools: Control = %Tools
 @onready var _snap_button: Button = %Snap
+@onready var _aim_button: Button = %Aim
 @onready var _mirror_button: Button = %Mirror
 @onready var _mirror_options: Control = %MirrorOptions ## axis and centre, shown while mirroring
 @onready var _mirror_plane: MeshInstance3D = %MirrorPlane
@@ -180,6 +190,7 @@ func _ready() -> void:
 		(_mode_buttons[m] as Button).pressed.connect(set_gizmo_mode.bind(m))
 	_snap_button.tooltip_text = "Move in %.2f m steps and rotate in %d° steps. Hold Ctrl while dragging to flip this." % [TransformGizmo.MOVE_STEP, int(TransformGizmo.ROTATE_STEP)]
 	set_gizmo_mode(TransformGizmo.Mode.MOVE)
+	_aim_button.toggled.connect(_set_aiming)
 
 	# Mirror mode, beside Snap: toggle, axis and where the plane crosses the floor.
 	_mirror_button.toggled.connect(func(on: bool) -> void: ctx.symmetry.enabled = on)
@@ -322,7 +333,10 @@ func _update_gizmo() -> void:
 	var fx := ctx.selected if ctx else null
 	var staging := ctx != null and ctx.workspace == StudioContext.Workspace.STAGE
 	_grid.visible = staging # a placement aid; the show looks cleaner without it
-	_tools.visible = staging
+	# Programming only needs the Point at button; the rest builds the rig.
+	for c in _tools.get_children():
+		(c as Control).visible = staging or c == _aim_button
+	_refresh_aim_button()
 	_gizmo.shown = staging and fx != null and _visuals.has(fx)
 	if _gizmo.shown:
 		_gizmo.target = StudioContext.fixture_transform(fx)
@@ -584,6 +598,8 @@ func _gui_input(event: InputEvent) -> void:
 					_on_left_press(mb)
 				else:
 					_orbiting = false
+					if _aim_drag:
+						_end_aim()
 					if _boxing:
 						_end_box(mb.position)
 					if _group_drag:
@@ -636,6 +652,8 @@ func _gui_input(event: InputEvent) -> void:
 			var fwd := Vector3(_camera.global_transform.basis.z.x, 0, _camera.global_transform.basis.z.z).normalized()
 			_pivot.position += (-right * mm.relative.x + -fwd * mm.relative.y) * _distance * 0.0016
 			_update_camera()
+		elif _aim_drag:
+			_update_aim(mm.position)
 		elif _boxing:
 			_update_box(mm.position)
 		elif _group_drag:
@@ -674,7 +692,15 @@ func _gui_input(event: InputEvent) -> void:
 				ctx.symmetry.enabled = not ctx.symmetry.enabled
 			KEY_Z:
 				look.shading = StageLook.Shading.SHOW if look.work_lights() else StageLook.Shading.WORK
+			KEY_T:
+				if _aim_button.disabled and not _aiming:
+					return
+				_aim_button.button_pressed = not _aiming
 			KEY_ESCAPE:
+				if _aiming:
+					_aim_button.button_pressed = false # leave Point at first; Esc again deselects
+					accept_event()
+					return
 				if _group.is_empty() and not _selected_piece and not ctx.selected:
 					return
 				_set_selection([])
@@ -704,6 +730,9 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 	var finger := _from_touch(mb)
 	_gizmo.pick_px = TOUCH_PICK_PX if finger else TransformGizmo.PICK_PX
 	_drag_threshold = TOUCH_DRAG_THRESHOLD_PX if finger else DRAG_THRESHOLD_PX
+	if _aiming:
+		_begin_aim(mb.position)
+		return
 	var handle := _gizmo.handle_at(mb.position)
 	if handle != TransformGizmo.Handle.NONE and ctx.selected:
 		_edit_before = StudioContext.fixture_transform(ctx.selected)
@@ -830,7 +859,11 @@ func _set_fly_speed(speed: float) -> void:
 ## The bottom hint shows only what applies right now; the rest is behind "?".
 func _update_help() -> void:
 	var text: String
-	if _flying:
+	if _aiming:
+		text = "Click or drag where the lights should point · Esc or T when done"
+		if _aim_unreachable > 0:
+			text += " · %d can't reach it" % _aim_unreachable
+	elif _flying:
 		text = "Flying %.1f m/s · WASD move · Q/E down/up · Shift faster · Alt slower · Wheel speed" % _fly_speed
 	elif not _group.is_empty():
 		text = "W move · E rotate · Delete remove · Esc deselect" + HINT_MORE
@@ -1181,6 +1214,7 @@ func _refresh_marks() -> void:
 	if ctx:
 		ctx.select_piece(_selected_piece if _group.is_empty() else null) # the inspector's details
 		ctx.set_group(_group) # the inspector edits a group's fixtures together
+	_refresh_aim_button()
 
 
 ## Everything selected right now, single or group.
@@ -1410,3 +1444,97 @@ func _show_look_edit_badge(look: Look) -> void:
 	badge.visible = look != null
 	if look:
 		%LookEditText.text = "EDITING LOOK: %s   ·   Save changes or Cancel in the Cues tab" % look.look_name.to_upper()
+
+
+# ---------------------------------------------------------------- point moving heads at a spot
+
+## The selected fixtures that can be aimed (they have pan and tilt), single or group.
+func _aimable() -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	if ctx == null:
+		return list
+	var picked: Array[Object] = _selection()
+	for o in picked:
+		if o is DMXFixture and Aim.can_aim(o as DMXFixture):
+			list.append(o as DMXFixture)
+	return list
+
+
+func _refresh_aim_button() -> void:
+	if _aim_button == null:
+		return
+	var n := _aimable().size()
+	_aim_button.disabled = n == 0
+	if n == 0 and _aiming:
+		_aim_button.button_pressed = false
+	_aim_button.tooltip_text = "Point the selected moving heads at a spot: click or drag on the stage and they all aim there (T).\n" + \
+		("Select one or more moving heads first." if n == 0 else "%d moving head%s selected." % [n, "" if n == 1 else "s"])
+
+
+func _set_aiming(on: bool) -> void:
+	_aiming = on
+	_aim_drag = false
+	_aim_unreachable = 0
+	if not on:
+		_drop_marker.visible = false
+	_update_help()
+
+
+## Where a screen point meets the room: the nearest surface, or the floor plane
+## when the ray misses every box. Null if it points at the sky.
+func _aim_hit(at: Vector2) -> StageRoom.Hit:
+	var origin := _camera.project_ray_origin(at)
+	var dir := _camera.project_ray_normal(at)
+	var hit := StageRoom.raycast(_surfaces, origin, dir)
+	if hit:
+		return hit
+	var p: Variant = Plane(Vector3.UP, 0.0).intersects_ray(origin, dir)
+	if p == null:
+		return null
+	var floor_point: Vector3 = p
+	return StageRoom.Hit.new(floor_point, Vector3.UP, StageRoom.Kind.FLOOR)
+
+
+func _begin_aim(at: Vector2) -> void:
+	_aim_before.clear()
+	for fx in _aimable():
+		_aim_before[fx] = Vector2(fx.pan, fx.tilt)
+	if _aim_before.is_empty():
+		return
+	_aim_drag = true
+	_update_aim(at)
+
+
+func _update_aim(at: Vector2) -> void:
+	var hit := _aim_hit(at)
+	if hit == null:
+		return
+	_aim_unreachable = 0
+	for fx: DMXFixture in _aim_before:
+		if not Aim.aim_at(fx, StudioContext.fixture_transform(fx), hit.position):
+			_aim_unreachable += 1
+	# Ring on the spot, lying flat on whatever surface it is on.
+	var b := StageRoom.mount_basis(hit.normal)
+	_drop_marker.global_transform = Transform3D(Basis(b.x, b.z, -b.y), hit.position + hit.normal * 0.02)
+	_drop_marker.visible = true
+	_update_help()
+
+
+## One undo step for the whole sweep: every head back to where it pointed.
+func _end_aim() -> void:
+	_aim_drag = false
+	var before := _aim_before.duplicate()
+	var after: Dictionary = {}
+	for fx: DMXFixture in before:
+		after[fx] = Vector2(fx.pan, fx.tilt)
+	if after == before:
+		return
+	ctx.record("Point lights", _set_pan_tilt.bind(after), _set_pan_tilt.bind(before))
+
+
+func _set_pan_tilt(values: Dictionary) -> void:
+	for fx: DMXFixture in values:
+		if is_instance_valid(fx):
+			var v: Vector2 = values[fx]
+			fx.pan = v.x
+			fx.tilt = v.y

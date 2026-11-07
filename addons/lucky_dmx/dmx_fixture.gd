@@ -23,6 +23,12 @@ extends Node
 @export_range(0.0, 1.0) var pan: float = 0.5
 @export_range(0.0, 1.0) var tilt: float = 0.5
 
+## What a running show is doing to this light right now (property -> value).
+## It sits on top of the properties above for output only: the properties are
+## what you programmed (inspector, looks, cues), `live` is what the timeline's
+## effects make of them. Empty when nothing is playing on this light.
+var live: Dictionary = {}
+
 ## Raw per-channel overrides (name -> 0..255). These take priority over everything else.
 var _raw: Dictionary = {}
 
@@ -38,6 +44,12 @@ func clear_raw(channel_name: String = "") -> void:
 		_raw.clear()
 	else:
 		_raw.erase(channel_name)
+
+
+## A look property as it is being output: the show's live value if an effect is
+## running on it, else the property itself. The 3D stage draws from this.
+func out(prop: String) -> Variant:
+	return live[prop] if live.has(prop) else get(prop)
 
 
 ## Snapshot of the current look, used by CueStack.record_cue().
@@ -61,20 +73,22 @@ func _value_for(channel_name: String) -> int:
 		return _raw[channel_name]
 
 	# Fixtures with no dimmer channel get a virtual dimmer applied to the colors.
-	var k := 1.0 if profile.has_channel("dimmer") else dimmer
+	var d: float = out("dimmer")
+	var c: Color = out("color")
+	var k := 1.0 if profile.has_channel("dimmer") else d
 	match channel_name:
-		"dimmer": return _u8(dimmer)
-		"red": return _u8(color.r * k)
-		"green": return _u8(color.g * k)
-		"blue": return _u8(color.b * k)
-		"white": return _u8(white * k)
-		"amber": return _u8(amber * k)
-		"uv": return _u8(uv * k)
-		"strobe": return strobe
-		"pan": return _coarse(pan)
-		"pan_fine": return _fine(pan)
-		"tilt": return _coarse(tilt)
-		"tilt_fine": return _fine(tilt)
+		"dimmer": return _u8(d)
+		"red": return _u8(c.r * k)
+		"green": return _u8(c.g * k)
+		"blue": return _u8(c.b * k)
+		"white": return _u8(float(out("white")) * k)
+		"amber": return _u8(float(out("amber")) * k)
+		"uv": return _u8(float(out("uv")) * k)
+		"strobe": return int(out("strobe"))
+		"pan": return _coarse(float(out("pan")))
+		"pan_fine": return _fine(float(out("pan")))
+		"tilt": return _coarse(float(out("tilt")))
+		"tilt_fine": return _fine(float(out("tilt")))
 
 	if profile.defaults.has(channel_name):
 		return clampi(int(profile.defaults[channel_name]), 0, 255)
