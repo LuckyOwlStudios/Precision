@@ -142,6 +142,8 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
 	ctx.fixtures_changed.connect(_sync_fixtures)
 	ctx.selection_changed.connect(_on_selection_changed)
+	ctx.pick_requested.connect(func(list: Array) -> void: _set_selection(list))
+	ctx.delete_requested.connect(_delete_selected)
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
 	ctx.piece_moved.connect(func(p: StructurePiece) -> void:
@@ -713,6 +715,9 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 	var picked := _pick_at(mb.position)
 	if picked == null:
 		_begin_box(mb.position, mb.shift_pressed)
+		return
+	if mb.ctrl_pressed or mb.meta_pressed:
+		_toggle_in_selection(picked) # Ctrl+click adds or removes just this one
 		return
 	if _group.has(picked) and ctx.workspace == StudioContext.Workspace.STAGE:
 		_begin_group_drag(picked, mb.position)
@@ -1351,6 +1356,24 @@ func _end_group_drag() -> void:
 
 ## Delete everything in the group as one undo step; undo brings it all back
 ## (fixtures to their places in the rig, same patch) and selects it again.
+## Ctrl+click: add `item` to the selection, or take it out if it is already in.
+func _toggle_in_selection(item: Object) -> void:
+	var items := _selection()
+	if items.has(item):
+		items.erase(item)
+	else:
+		items.append(item)
+	_set_selection(items)
+
+
+## Delete the selected fixture or group (the On stage list's Remove button).
+func _delete_selected() -> void:
+	if not _group.is_empty():
+		_delete_group()
+	elif ctx.selected:
+		ctx.remove_fixture(ctx.selected)
+
+
 func _delete_group() -> void:
 	_delete_items(_with_twins(_group))
 

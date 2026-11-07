@@ -2,12 +2,15 @@ class_name RigPanel
 extends MarginContainer
 ## Every fixture placed on the stage, with its DMX patch. Selecting here
 ## selects on the stage and in the inspector, and the other way round.
+## Click picks one, Shift+click everything in between, Ctrl+click adds or
+## removes a single fixture; the stage and inspector follow the whole selection.
 ## Double-click a row (or press F2 / Enter) to give the fixture your own name.
 
 var ctx: StudioContext
 
 var _syncing := false
 var _editing: DMXFixture
+var _push_queued := false
 
 @onready var _list: ItemList = %List
 @onready var _editor: LineEdit = %NameEditor ## floats over the row being renamed
@@ -17,13 +20,15 @@ var _editing: DMXFixture
 func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
 	ctx.fixtures_changed.connect(_rebuild)
-	ctx.selection_changed.connect(_on_selection_changed)
+	ctx.selection_changed.connect(func(_fx: DMXFixture) -> void: _sync_selection())
+	ctx.group_changed.connect(_sync_selection)
 	_rebuild()
 
 
 func _ready() -> void:
-	%RemoveButton.pressed.connect(func() -> void: ctx.remove_fixture(ctx.selected))
-	_list.item_selected.connect(_on_item_selected)
+	%RemoveButton.pressed.connect(func() -> void: ctx.delete_requested.emit())
+	_list.item_selected.connect(func(_i: int) -> void: _queue_push())
+	_list.multi_selected.connect(func(_i: int, _on: bool) -> void: _queue_push())
 	_list.item_activated.connect(_start_rename) # double-click or Enter
 	_list.gui_input.connect(_on_list_input)
 	_editor.text_submitted.connect(func(_t: String) -> void: _finish_rename(true))
@@ -49,20 +54,41 @@ func _rebuild() -> void:
 		_list.set_item_tooltip(i, tip + "\nDouble-click or F2 to rename")
 	_list.visible = not fixtures.is_empty()
 	_empty.visible = fixtures.is_empty()
-	_on_selection_changed(ctx.selected)
+	_sync_selection()
 
 
-func _on_item_selected(index: int) -> void:
-	if not _syncing:
-		ctx.select(_list.get_item_metadata(index))
+## A click in the list can fire several signals (a Shift range fires one per row):
+## wait for them all, then tell the stage once.
+func _queue_push() -> void:
+	if _syncing or _push_queued:
+		return
+	_push_queued = true
+	_push_selection.call_deferred()
 
 
-func _on_selection_changed(fx: DMXFixture) -> void:
+func _push_selection() -> void:
+	_push_queued = false
+	ctx.pick(selected_fixtures())
+
+
+## The fixtures highlighted in the list, in list order.
+func selected_fixtures() -> Array:
+	var list: Array = []
+	for i in _list.get_selected_items():
+		var fx: Variant = _list.get_item_metadata(i)
+		if is_instance_valid(fx):
+			list.append(fx)
+	return list
+
+
+## Highlight whatever is selected on the stage: the group, or the one fixture.
+func _sync_selection() -> void:
 	_syncing = true
 	_list.deselect_all()
 	for i in _list.item_count:
-		if _list.get_item_metadata(i) == fx:
-			_list.select(i)
+		var fx: DMXFixture = _list.get_item_metadata(i)
+		if fx == ctx.selected or ctx.selected_group.has(fx):
+			_list.select(i, false)
 	_syncing = false
 
 

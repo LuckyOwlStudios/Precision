@@ -11,6 +11,10 @@ signal selection_changed(fixture: DMXFixture)
 ## Two or more fixtures are picked together (box select), or none. The inspector
 ## then edits all of them at once.
 signal group_changed
+## A panel (the On stage list) asks the stage view to select exactly these fixtures.
+signal pick_requested(list: Array)
+## A panel asks the stage view to delete whatever is selected (one fixture or a group).
+signal delete_requested
 ## The saved colour swatches changed (the inspector's swatch row listens).
 signal swatches_changed
 ## A fixture was moved or rotated on the stage (drag, gizmo or inspector).
@@ -266,6 +270,11 @@ func set_group(list: Array) -> void:
 		return
 	selected_group = fresh
 	group_changed.emit()
+
+
+## Select exactly these fixtures (none, one or several), on the stage and in the panels.
+func pick(list: Array) -> void:
+	pick_requested.emit(list)
 
 
 func select_piece(piece: StructurePiece) -> void:
