@@ -65,6 +65,10 @@ var stage_surfaces: Array[StageRoom.Surface] = []
 ## edit goes through record() or one of the helpers below, so panels never
 ## keep their own.
 var history := UndoRedo.new()
+
+## Mirror mode for the stage (toolbar "Mirror"): fixtures and truss pieces are
+## copied across a plane and kept in step. See StageSymmetry.
+var symmetry := StageSymmetry.new()
 ## Opens on Stage so a first launch goes straight to building the rig.
 var workspace: Workspace = Workspace.STAGE
 
@@ -143,6 +147,21 @@ func fixtures() -> Array[DMXFixture]:
 
 
 func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3, stage_basis: Basis = Basis.IDENTITY) -> DMXFixture:
+	var xf := Transform3D(stage_basis, stage_position)
+	if not symmetry.active() or symmetry.on_plane(xf):
+		return _add_fixture_one(entry, stage_position, stage_basis)
+	# Mirror mode: the twin goes down with it, as one undo step.
+	var twin_xf := symmetry.mirror_transform(xf)
+	begin_step("Add mirrored fixtures")
+	var fx := _add_fixture_one(entry, stage_position, stage_basis)
+	var twin := _add_fixture_one(entry, twin_xf.origin, twin_xf.basis)
+	end_step()
+	StageSymmetry.link(fx, twin)
+	select(fx)
+	return fx
+
+
+func _add_fixture_one(entry: FixtureCatalog.Entry, stage_position: Vector3, stage_basis: Basis) -> DMXFixture:
 	var count := entry.profile.channels.size()
 	var fx := DMXFixture.new()
 	_counters[entry.short_name] = int(_counters.get(entry.short_name, 0)) + 1
@@ -166,6 +185,13 @@ func add_fixture(entry: FixtureCatalog.Entry, stage_position: Vector3, stage_bas
 ## (same patch, look and name), so recorded cues still find it.
 func remove_fixture(fx: DMXFixture) -> void:
 	if fx == null or fx.get_parent() != rig:
+		return
+	var twin := StageSymmetry.partner_of(fx) if symmetry.active() else null
+	if twin != null and twin.get_parent() == rig:
+		var pair: Array = [fx, twin]
+		pair.sort_custom(func(a: Node, b: Node) -> bool: return a.get_index() < b.get_index())
+		var indices: Array = pair.map(func(n: Node) -> int: return n.get_index())
+		record_removed_all("Remove mirrored fixtures", pair, attach_fixtures.bind(pair, indices), detach_fixtures.bind(pair))
 		return
 	record_removed("Remove fixture", fx, _attach_fixture.bind(fx, fx.get_index()), _detach_fixture.bind(fx))
 
@@ -271,6 +297,11 @@ func move_fixture(fx: DMXFixture, xform: Transform3D) -> void:
 	fx.set_meta(META_POSITION, xform.origin)
 	fx.set_meta(META_BASIS, xform.basis.orthonormalized())
 	fixture_moved.emit(fx)
+	var twin := StageSymmetry.partner_of(fx) if symmetry.active() else null
+	if twin is DMXFixture:
+		symmetry.suspended = true # the twin moving must not drag this one back
+		move_fixture(twin as DMXFixture, symmetry.mirror_transform(xform))
+		symmetry.suspended = false
 
 
 ## Remember a finished drag of `fx` from `before` to where it is now, so it
@@ -281,8 +312,21 @@ func record_move(fx: DMXFixture, before: Transform3D, action: String, merge := f
 	var after := fixture_transform(fx)
 	if after.is_equal_approx(before):
 		return
-	record(action, _restore_placement.bind(fx, after), _restore_placement.bind(fx, before),
-		false, _merge_key(fx, "place") if merge else "")
+	var twin := StageSymmetry.partner_of(fx) if symmetry.active() else null
+	if twin == null:
+		record(action, _restore_placement.bind(fx, after), _restore_placement.bind(fx, before),
+			false, _merge_key(fx, "place") if merge else "")
+		return
+	# Mirror mode: the twin's move is part of the same step.
+	if merge:
+		history.create_action("%s [%s]" % [action, _merge_key(fx, "place")], UndoRedo.MERGE_ENDS)
+	else:
+		history.create_action(action)
+	history.add_do_method(_restore_placement.bind(fx, after))
+	history.add_undo_method(_restore_placement.bind(fx, before))
+	history.add_do_method(_restore_placement.bind(twin, symmetry.mirror_transform(after)))
+	history.add_undo_method(_restore_placement.bind(twin, symmetry.mirror_transform(before)))
+	history.commit_action(false)
 
 
 func _restore_placement(fx: Object, xform: Transform3D) -> void:
@@ -354,6 +398,16 @@ func record_added(action: String, obj: Object, attach: Callable, detach: Callabl
 	history.add_do_method(attach)
 	history.add_undo_method(detach)
 	history.add_do_reference(obj)
+	history.commit_action(false)
+
+
+## Like record_added, for several things added together (a mirrored pair).
+func record_added_all(action: String, objs: Array, attach: Callable, detach: Callable) -> void:
+	history.create_action(action)
+	history.add_do_method(attach)
+	history.add_undo_method(detach)
+	for obj: Object in objs:
+		history.add_do_reference(obj)
 	history.commit_action(false)
 
 
@@ -724,6 +778,7 @@ func load_demo_rig() -> void:
 	var par: FixtureCatalog.Entry = catalog[1]
 	var mover: FixtureCatalog.Entry = catalog[4]
 	var colors: Array[Color] = [Color("ff3b6b"), Color("ffb547"), Color("38c6ff"), Color("8b5cff")]
+	symmetry.suspended = true # the demo rig is already laid out; don't double it
 	begin_step("Load demo rig") # one Ctrl+Z takes the whole rig away again
 	# Clamped onto the front tubes of the two trusses, as the stage view would hang them.
 	for i in 4:
@@ -741,4 +796,5 @@ func load_demo_rig() -> void:
 		var fx := add_fixture(bar, Vector3(-2.6 + i * 5.2, StageFixture3D.mount_offset(bar.body), -5.55), StageRoom.mount_basis(Vector3.UP) * Basis(Vector3.UP, PI)) # lean towards the wall
 		fx.color = Color("19d3c5")
 	end_step()
+	symmetry.suspended = false
 	select(null)

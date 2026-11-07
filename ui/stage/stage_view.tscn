@@ -5,6 +5,7 @@
 [ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="3_2mcbt"]
 [ext_resource type="Script" path="res://ui/stage/transform_gizmo.gd" id="4_1eond"]
 [ext_resource type="Script" path="res://ui/widgets/reset_label.gd" id="5_rstlb"]
+[ext_resource type="Shader" path="res://ui/stage/mirror_plane.gdshader" id="6_mirpl"]
 
 [sub_resource type="Environment" id="Environment_onnio"]
 background_mode = 1
@@ -64,6 +65,13 @@ shader_parameter/min_px = 16.0
 
 [sub_resource type="QuadMesh" id="QuadMesh_nb8rb"]
 size = Vector2(2, 2)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mirror"]
+render_priority = 5
+shader = ExtResource("6_mirpl")
+
+[sub_resource type="QuadMesh" id="QuadMesh_mirror"]
+size = Vector2(16, 6)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_box"]
 bg_color = Color(0.55, 0.36, 1, 0.12)
@@ -134,6 +142,15 @@ visible = false
 material_override = SubResource("ShaderMaterial_72e72")
 extra_cull_margin = 4.0
 mesh = SubResource("QuadMesh_nb8rb")
+
+[node name="MirrorPlane" type="MeshInstance3D" parent="ViewportContainer/Viewport/World"]
+unique_name_in_owner = true
+editor_description = "The mirror plane of symmetry mode (positioned and turned by StageView)."
+visible = false
+material_override = SubResource("ShaderMaterial_mirror")
+cast_shadow = 0
+extra_cull_margin = 4.0
+mesh = SubResource("QuadMesh_mirror")
 
 [node name="Fixtures" type="Node3D" parent="ViewportContainer/Viewport/World" unique_id=462440812]
 unique_name_in_owner = true
@@ -265,6 +282,88 @@ focus_mode = 0
 theme_type_variation = &"PillButton"
 toggle_mode = true
 text = "Snap"
+
+[node name="Mirror" type="Button" parent="Overlay/Tools"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Symmetry: whatever you place, move, turn or delete on the left is done on the right too (M)"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Mirror  M"
+
+[node name="MirrorOptions" type="HBoxContainer" parent="Overlay"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -16.0
+offset_top = 50.0
+offset_right = -16.0
+grow_horizontal = 0
+theme_override_constants/separation = 2
+
+[node name="AxisLabel" type="Label" parent="Overlay/MirrorOptions"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Across  "
+
+[node name="AxisX" type="Button" parent="Overlay/MirrorOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Mirror left and right: the plane faces along X"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+button_pressed = true
+text = "X"
+
+[node name="AxisZ" type="Button" parent="Overlay/MirrorOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Mirror front and back: the plane faces along Z"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Z"
+
+[node name="Gap" type="Control" parent="Overlay/MirrorOptions"]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+
+[node name="CenterLabel" type="Label" parent="Overlay/MirrorOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "At X  "
+
+[node name="Center" type="SpinBox" parent="Overlay/MirrorOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Where the mirror plane crosses the floor, in metres from the middle of the stage"
+min_value = -30.0
+max_value = 30.0
+step = 0.01
+suffix = " m"
+custom_arrow_step = 0.1
+select_all_on_focus = true
+
+[node name="CenterToSelection" type="Button" parent="Overlay/MirrorOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Put the mirror plane through the selected fixture or truss piece"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+text = "To selection"
+
+[node name="CenterReset" type="Button" parent="Overlay/MirrorOptions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Back to the middle of the stage"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+text = "Reset"
 
 [node name="LookControls" type="HBoxContainer" parent="Overlay" unique_id=1006845961]
 layout_mode = 0
