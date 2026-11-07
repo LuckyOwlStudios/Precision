@@ -8,6 +8,11 @@ extends Node
 
 signal fixtures_changed
 signal selection_changed(fixture: DMXFixture)
+## Two or more fixtures are picked together (box select), or none. The inspector
+## then edits all of them at once.
+signal group_changed
+## The saved colour swatches changed (the inspector's swatch row listens).
+signal swatches_changed
 ## A fixture was moved or rotated on the stage (drag, gizmo or inspector).
 signal fixture_moved(fixture: DMXFixture)
 ## Someone pressed F2 or double-clicked a fixture: the inspector focuses its name field.
@@ -56,6 +61,12 @@ const META_PROFILE_LABEL := &"profile_label"
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
+## Fixtures picked together (two or more, set by the stage view), else empty.
+## Never alongside `selected`.
+var selected_group: Array[DMXFixture] = []
+## Colours kept for reuse (Colour > Swatches): click one to put it on every
+## selected fixture. Saved to user://swatches.cfg.
+var swatches: Array[Color] = []
 var selected_piece: StructurePiece ## set by the stage view, never alongside `selected`
 ## The node holding every structure piece (the stage view sets it), so the
 ## inspector can tell what a piece is joined to.
@@ -99,6 +110,7 @@ const HISTORY_STEPS := 300
 
 func _ready() -> void:
 	history.max_steps = HISTORY_STEPS
+	load_swatches()
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
 
@@ -241,6 +253,21 @@ func select(fx: DMXFixture) -> void:
 	selection_changed.emit(fx)
 
 
+## Set the group of fixtures picked together (the stage view calls this).
+func set_group(list: Array) -> void:
+	var fresh: Array[DMXFixture] = []
+	if list.size() >= 2:
+		for o: Object in list:
+			if o is DMXFixture:
+				fresh.append(o as DMXFixture)
+	if fresh.size() < 2:
+		fresh.clear()
+	if fresh == selected_group:
+		return
+	selected_group = fresh
+	group_changed.emit()
+
+
 func select_piece(piece: StructurePiece) -> void:
 	if selected_piece == piece:
 		return
@@ -363,6 +390,88 @@ func record_fixture_value(fx: DMXFixture, prop: StringName, before: Variant, mer
 func _apply_value(fx: Object, prop: StringName, value: Variant) -> void:
 	if is_instance_valid(fx):
 		fx.set(prop, value)
+
+
+## Set one look property on several fixtures as one undo step. Quick repeats
+## on the same fixtures and property merge, as for a single fixture.
+func set_fixtures_value(list: Array, prop: StringName, value: Variant) -> void:
+	var befores: Array = []
+	for fx: DMXFixture in list:
+		befores.append(fx.get(prop))
+		fx.set(prop, value)
+	record_fixtures_values(list, prop, befores, true)
+
+
+## The property was already changed on all of `list` (a slider drag, the
+## colour picker): store the change from `befores` (one value per fixture) as
+## one step.
+func record_fixtures_values(list: Array, prop: StringName, befores: Array, merge := false) -> void:
+	if list.size() == 1:
+		record_fixture_value(list[0] as DMXFixture, prop, befores[0], merge)
+		return
+	var fixtures_: Array = list.duplicate()
+	var afters: Array = []
+	var changed := false
+	var ids := PackedInt64Array()
+	for i in fixtures_.size():
+		var fx := fixtures_[i] as DMXFixture
+		afters.append(fx.get(prop))
+		ids.append(fx.get_instance_id())
+		changed = changed or afters[i] != befores[i]
+	if not changed:
+		return
+	record("Change %s" % prop, _apply_values.bind(fixtures_, prop, afters), _apply_values.bind(fixtures_, prop, befores.duplicate()),
+		false, "%d:%s" % [hash(ids), prop] if merge else "")
+
+
+func _apply_values(list: Array, prop: StringName, values: Array) -> void:
+	for i in list.size():
+		_apply_value(list[i], prop, values[i])
+
+
+# ---------------------------------------------------------------- colour swatches
+
+const SWATCH_FILE := "user://swatches.cfg"
+const DEFAULT_SWATCHES: Array[Color] = [
+	Color.WHITE, Color("ff2d2d"), Color("ff8a1f"), Color("ffd21f"),
+	Color("2dff5a"), Color("1fe0ff"), Color("2d5bff"), Color("b02dff"), Color("ff2dac"),
+]
+
+
+func load_swatches() -> void:
+	swatches = DEFAULT_SWATCHES.duplicate()
+	var cfg := ConfigFile.new()
+	if cfg.load(SWATCH_FILE) == OK:
+		swatches.clear()
+		for html: String in cfg.get_value("swatches", "colours", PackedStringArray()):
+			swatches.append(Color.html(html))
+	swatches_changed.emit()
+
+
+## Keep a colour for reuse (ignored if it is already there).
+func add_swatch(c: Color) -> void:
+	c.a = 1.0
+	for s in swatches:
+		if s.is_equal_approx(c):
+			return
+	swatches.append(c)
+	_save_swatches()
+
+
+func remove_swatch(index: int) -> void:
+	if index >= 0 and index < swatches.size():
+		swatches.remove_at(index)
+		_save_swatches()
+
+
+func _save_swatches() -> void:
+	var list := PackedStringArray()
+	for c in swatches:
+		list.append(c.to_html(false))
+	var cfg := ConfigFile.new()
+	cfg.set_value("swatches", "colours", list)
+	cfg.save(SWATCH_FILE)
+	swatches_changed.emit()
 
 
 ## Re-patch a fixture to a new start address, with undo.

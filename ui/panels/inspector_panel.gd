@@ -3,6 +3,9 @@ extends ScrollContainer
 ## Properties of the selected fixture: name, patch, placement, look and aim.
 ## A selected structure piece gets its own sections instead (StructureInfo).
 ## Edits go straight to the DMXFixture, so the 3D stage and real lights follow.
+## With two or more fixtures picked together (box select) the Look and Aim
+## sections edit all of them: a change is written to every fixture as one undo
+## step, and a value the fixtures disagree on is dimmed and shows "—".
 ## Every edit is one undo step (Ctrl+Z): a whole slider drag or colour-picker
 ## session counts once, and quick typing / wheel / arrow nudges merge.
 ##
@@ -11,16 +14,18 @@ extends ScrollContainer
 ## Horizontal scrolling is set to "never" so content can't widen the dock.
 
 var ctx: StudioContext
-var fx: DMXFixture
+var fx: DMXFixture ## the one shown; with a group, its first fixture
+var _group: Array[DMXFixture] = [] ## two or more fixtures edited together, else empty
 
 var _syncing := false
 
 # A slider being dragged, or the colour picker being open: the value before it
 # started, stored as one undo step when it ends.
 var _drag_prop := ""
-var _drag_before: Variant
-var _color_fx: DMXFixture
-var _color_before := Color.WHITE
+var _drag_befores: Array = []
+var _drag_fixtures: Array[DMXFixture] = []
+var _color_fixtures: Array[DMXFixture] = []
+var _color_befores: Array = []
 
 @onready var _content: VBoxContainer = %Content
 @onready var _empty: Control = %Empty
@@ -35,6 +40,7 @@ var _color_before := Color.WHITE
 @onready var _dimmer: HSlider = %Dimmer
 @onready var _dimmer_value: SpinBox = %DimmerValue
 @onready var _color: ColorPickerButton = %Colour
+@onready var _swatches: SwatchRow = %Swatches
 @onready var _white_row: Control = %WhiteRow
 @onready var _white: HSlider = %White
 @onready var _white_value: SpinBox = %WhiteValue
@@ -50,7 +56,11 @@ var _color_before := Color.WHITE
 ## Which sections each workspace shows. Stage is about building the rig (name,
 ## patch, placement); Program is about how a fixture looks (look and aim).
 const STAGE_SECTIONS: Array[StringName] = [&"Title", &"NameField", &"PatchHeading", &"AddressField", &"Channels", &"PlacementHeading", &"PositionField", &"RotationField"]
-const PROGRAM_SECTIONS: Array[StringName] = [&"Title", &"NameField", &"LookHeading", &"DimmerField", &"ColourField", &"WhiteRow", &"StrobeRow", &"AimSection"]
+const PROGRAM_SECTIONS: Array[StringName] = [&"Title", &"NameField", &"LookHeading", &"DimmerField", &"ColourField", &"SwatchField", &"WhiteRow", &"StrobeRow", &"AimSection"]
+## Several fixtures at once: no name, and placement stays a one-at-a-time job.
+const GROUP_STAGE_SECTIONS: Array[StringName] = [&"Title"]
+const GROUP_PROGRAM_SECTIONS: Array[StringName] = [&"Title", &"LookHeading", &"DimmerField", &"ColourField", &"SwatchField", &"WhiteRow", &"StrobeRow", &"AimSection"]
+const MIXED := "—"
 
 ## Fixture property -> [slider, number box]. The box shows the value in the
 ## units you'd type (see _unit_scale); both write the same fixture property.
@@ -60,6 +70,12 @@ var _pairs: Dictionary = {}
 func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
 	ctx.selection_changed.connect(_show)
+	ctx.group_changed.connect(_show)
+	_swatches.setup(ctx)
+	_swatches.picked.connect(func(c: Color) -> void:
+		if not _fixtures().is_empty():
+			ctx.set_fixtures_value(_fixtures(), &"color", c))
+	_swatches.save_requested.connect(func() -> void: ctx.add_swatch(_color.color))
 	ctx.piece_selection_changed.connect(func(_p: StructurePiece) -> void: _show(ctx.selected))
 	_structure.setup(ctx)
 	ctx.fixtures_changed.connect(func() -> void: _show(ctx.selected))
@@ -83,15 +99,18 @@ func _ready() -> void:
 		# room for four characters, which made the inspector wider than its dock.
 		sb.get_line_edit().add_theme_constant_override("minimum_character_width", 0)
 	_color.color_changed.connect(func(c: Color) -> void:
-		if not _syncing and fx:
-			fx.color = c)
+		if not _syncing:
+			for f in _fixtures():
+				f.color = c)
 	_color.get_popup().about_to_popup.connect(func() -> void:
-		_color_fx = fx
-		_color_before = fx.color if fx else Color.WHITE)
+		_color_fixtures = _fixtures()
+		_color_befores = _color_fixtures.map(func(f: DMXFixture) -> Variant: return f.color))
 	_color.popup_closed.connect(func() -> void:
-		if _color_fx and is_instance_valid(_color_fx):
-			ctx.record_fixture_value(_color_fx, &"color", _color_before)
-		_color_fx = null)
+		var live := _color_fixtures.filter(is_instance_valid)
+		if live.size() == _color_fixtures.size() and not live.is_empty():
+			ctx.record_fixtures_values(live, &"color", _color_befores)
+		_color_fixtures = []
+		_color_befores = [])
 	# Each slider and its number box write straight to the fixture property of
 	# the same name; _pull copies the fixture back into both.
 	_bind(_dimmer, _dimmer_value, "dimmer")
@@ -114,10 +133,11 @@ func _bind(s: HSlider, box: SpinBox, prop: String) -> void:
 	s.drag_started.connect(func() -> void:
 		if fx:
 			_drag_prop = prop
-			_drag_before = fx.get(prop))
+			_drag_fixtures = _fixtures()
+			_drag_befores = _drag_fixtures.map(func(f: DMXFixture) -> Variant: return f.get(prop)))
 	s.drag_ended.connect(func(_changed: bool) -> void:
-		if _drag_prop == prop and fx:
-			ctx.record_fixture_value(fx, prop, _drag_before)
+		if _drag_prop == prop:
+			_end_drag()
 		_drag_prop = "")
 
 
@@ -125,10 +145,43 @@ func _bind(s: HSlider, box: SpinBox, prop: String) -> void:
 func _write(prop: String, v: float) -> void:
 	var value: Variant = roundi(v) if prop == "strobe" else clampf(v, 0.0, 1.0)
 	if _drag_prop == prop:
-		fx.set(prop, value) # recorded as one step when the drag ends
+		for f in _drag_fixtures:
+			f.set(prop, value) # recorded as one step when the drag ends
 	else:
-		ctx.set_fixture_value(fx, prop, value)
+		ctx.set_fixtures_value(_fixtures(), prop, value)
 	_sync_pair(prop)
+
+
+## The fixtures an edit applies to: the whole group, or just the selected one.
+func _fixtures() -> Array[DMXFixture]:
+	if not _group.is_empty():
+		return _group.duplicate()
+	var list: Array[DMXFixture] = []
+	if fx:
+		list.append(fx)
+	return list
+
+
+## Store a finished slider drag as one undo step.
+func _end_drag() -> void:
+	var live := _drag_fixtures.filter(is_instance_valid)
+	if live.size() == _drag_fixtures.size() and not live.is_empty():
+		ctx.record_fixtures_values(live, StringName(_drag_prop), _drag_befores)
+	_drag_fixtures = []
+	_drag_befores = []
+
+
+## True when the fixtures being edited together don't all have this value.
+func _mixed(prop: String) -> bool:
+	var first: Variant = fx.get(prop)
+	for f in _group:
+		var v: Variant = f.get(prop)
+		if v is float:
+			if not is_equal_approx(v, first):
+				return true
+		elif v != first:
+			return true
+	return false
 
 
 ## How the number box shows a property: dimmer and white in percent, pan and
@@ -145,12 +198,22 @@ func _sync_pair(prop: String) -> void:
 	var s: HSlider = _pairs[prop][0]
 	var box: SpinBox = _pairs[prop][1]
 	var v := float(fx.get(prop))
+	var mixed := _mixed(prop)
 	var was := _syncing
 	_syncing = true
 	s.value = v
+	s.modulate.a = 0.4 if mixed else 1.0
 	# Leave a box alone while you're typing in it.
-	if not box.get_line_edit().has_focus():
-		box.value = v * _unit_scale(prop)
+	var line := box.get_line_edit()
+	if not line.has_focus():
+		var shown := v * _unit_scale(prop)
+		if not mixed and line.text == MIXED:
+			# The box already holds this number, so setting it again would not
+			# redraw the text: nudge it off first.
+			box.value = box.min_value if shown != box.min_value else box.max_value
+		box.value = shown
+		if mixed:
+			line.text = MIXED
 	_syncing = was
 
 
@@ -174,11 +237,20 @@ func _push_placement() -> void:
 	ctx.record_move(fx, before, "Move fixture", true)
 
 
-func _show(p_fx: DMXFixture) -> void:
-	if p_fx != fx and _drag_prop != "" and fx and is_instance_valid(fx):
-		ctx.record_fixture_value(fx, _drag_prop, _drag_before) # selection changed mid-drag
+func _show(_changed: Variant = null) -> void:
+	var group: Array[DMXFixture] = []
+	if ctx.selected == null:
+		for f in ctx.selected_group:
+			if is_instance_valid(f):
+				group.append(f)
+	if group.size() < 2:
+		group.clear()
+	var p_fx: DMXFixture = ctx.selected if group.is_empty() else group[0]
+	if (p_fx != fx or group != _group) and _drag_prop != "":
+		_end_drag() # selection changed mid-drag
 		_drag_prop = ""
 	fx = p_fx
+	_group = group
 	# A structure piece is selected on its own, never together with a fixture.
 	var piece := ctx.selected_piece if fx == null else null
 	_structure.visible = piece != null
@@ -192,14 +264,24 @@ func _show(p_fx: DMXFixture) -> void:
 	_empty.visible = not has
 	if not has:
 		return
-	_title.text = StudioContext.display_name(fx)
-	_detail.text = String(fx.get_meta(StudioContext.META_PROFILE_LABEL, fx.profile.fixture_name))
-	var wanted := STAGE_SECTIONS if ctx.workspace == StudioContext.Workspace.STAGE else PROGRAM_SECTIONS
+	var stage := ctx.workspace == StudioContext.Workspace.STAGE
+	var grouped := not _group.is_empty()
+	if grouped:
+		_title.text = "%d fixtures" % _group.size()
+		_detail.text = "Switch to Program to edit their look together." if stage \
+			else "Changes apply to every selected fixture. Dimmed values differ."
+	else:
+		_title.text = StudioContext.display_name(fx)
+		_detail.text = String(fx.get_meta(StudioContext.META_PROFILE_LABEL, fx.profile.fixture_name))
+	var wanted := STAGE_SECTIONS if stage else PROGRAM_SECTIONS
+	if grouped:
+		wanted = GROUP_STAGE_SECTIONS if stage else GROUP_PROGRAM_SECTIONS
 	for c in _content.get_children():
 		(c as Control).visible = wanted.has(c.name)
-	_white_row.visible = _white_row.visible and fx.profile.has_channel("white")
-	_strobe_row.visible = _strobe_row.visible and fx.profile.has_channel("strobe")
-	_position_section.visible = _position_section.visible and (fx.profile.has_channel("pan") or fx.profile.has_channel("tilt"))
+	var all := _fixtures()
+	_white_row.visible = _white_row.visible and all.any(func(f: DMXFixture) -> bool: return f.profile.has_channel("white"))
+	_strobe_row.visible = _strobe_row.visible and all.any(func(f: DMXFixture) -> bool: return f.profile.has_channel("strobe"))
+	_position_section.visible = _position_section.visible and all.any(func(f: DMXFixture) -> bool: return f.profile.has_channel("pan") or f.profile.has_channel("tilt"))
 	_channels.text = "Channels %d–%d: %s" % [fx.start_address, fx.start_address + fx.profile.channels.size() - 1, ", ".join(fx.profile.channels)]
 	_syncing = true
 	# Inside _syncing: shrinking the range clamps the box, which would otherwise
@@ -221,8 +303,14 @@ func _pull() -> void:
 	_syncing = true
 	for prop: String in _pairs:
 		_sync_pair(prop)
+	var colour_mixed := _mixed("color")
+	_color.text = MIXED if colour_mixed else ""
+	_color.tooltip_text = "The selected fixtures have different colours. Pick one to set them all." if colour_mixed else ""
 	if not _color.get_popup().visible:
 		_color.color = fx.color
+	if not _group.is_empty():
+		_syncing = false
+		return # placement is edited one fixture at a time
 	var xf := StudioContext.fixture_transform(fx)
 	var euler := xf.basis.get_euler()
 	# Hung or standing fixtures only turn the ways their mounting allows (the

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://ui/panels/inspector_panel.gd" id="1_apl61"]
 [ext_resource type="PackedScene" path="res://ui/panels/structure_info.tscn" id="2_structure"]
+[ext_resource type="Script" path="res://ui/widgets/swatch_row.gd" id="3_swatches"]
 
 [node name="InspectorPanel" type="ScrollContainer" unique_id=941001158]
 horizontal_scroll_mode = 3
@@ -292,6 +293,24 @@ custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 size_flags_horizontal = 3
 edit_alpha = false
+
+[node name="SwatchField" type="HBoxContainer" parent="Padding/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Padding/Content/SwatchField"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"Subtitle"
+text = "Swatches"
+
+[node name="Swatches" type="HFlowContainer" parent="Padding/Content/SwatchField"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+script = ExtResource("3_swatches")
 
 [node name="WhiteRow" type="HBoxContainer" parent="Padding/Content" unique_id=351207695]
 unique_name_in_owner = true
