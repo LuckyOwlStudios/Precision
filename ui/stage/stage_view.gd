@@ -34,6 +34,8 @@ extends Control
 const PICK_RADIUS_PX := 12.0 ## fallback only: a click this close to a fixture's middle picks it
 const DRAG_THRESHOLD_PX := 4.0
 const PIPE_GRAB_PX := 26.0 ## a fixture snaps to a tube this close to the cursor on screen
+## How strongly a tube further from the camera loses to a nearer one (see _pipe_at).
+const FAR_TUBE_PENALTY := 1.5
 const CONNECTOR_GRAB_PX := 70.0 ## a piece snaps to a free connector this close on screen
 
 const FLY_SPEED_DEFAULT := 4.0 ## metres a second
@@ -67,6 +69,8 @@ var _selected_piece: StructurePiece
 var _piece_drag: StructurePiece
 var _piece_drag_started := false
 var _piece_before := Transform3D.IDENTITY ## where the dragged piece started, for undo
+var _carry: Array[Object] = [] ## what moves with the dragged piece (see _carried)
+var _carry_before: Array[Transform3D] = []
 
 # Dragging a fixture by its body (not the gizmo).
 var _dragging: DMXFixture
@@ -368,8 +372,9 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 func _pipe_at(at: Vector2) -> Array:
 	var origin := _camera.project_ray_origin(at)
 	var dir := _camera.project_ray_normal(at)
-	var best: Array = []
-	var best_score := INF
+	# Every tube near the cursor on screen: [pipe, along, pixels, depth].
+	var near: Array = []
+	var nearest_depth := INF
 	for pipe in _pipes:
 		var r := pipe.closest_to_ray(origin, dir)
 		var p := pipe.point(float(r[0]))
@@ -378,11 +383,24 @@ func _pipe_at(at: Vector2) -> Array:
 		var px := _camera.unproject_position(p).distance_to(at)
 		if px > PIPE_GRAB_PX:
 			continue
-		var score := px + float(r[2]) * 2.0 # pixels, plus a nudge towards the front
+		near.append([pipe, float(r[0]), px, float(r[2])])
+		nearest_depth = minf(nearest_depth, float(r[2]))
+	if near.is_empty():
+		return []
+	# The tubes on the side of the truss facing you win: a tube further back
+	# pays for its extra depth as if it were that much further off on screen
+	# (times FAR_TUBE_PENALTY), so you only get it by clearly aiming at it.
+	var px_per_m := float(_viewport.size.y) / (2.0 * nearest_depth * tan(deg_to_rad(_camera.fov) * 0.5))
+	var best: Array = []
+	var best_score := INF
+	for c: Array in near:
+		var score: float = float(c[2]) + (float(c[3]) - nearest_depth) * px_per_m * FAR_TUBE_PENALTY
 		if score < best_score:
 			best_score = score
-			best = [pipe, float(r[0]), pipe.face_for(_aim_round(pipe, p, origin, dir, float(r[2])))]
-	return best
+			best = c
+	var pipe: StageRoom.Pipe = best[0]
+	var along: float = best[1]
+	return [pipe, along, pipe.face_for(_aim_round(pipe, pipe.point(along), origin, dir, float(best[3])))]
 
 
 ## Which way round a tube the cursor points, for choosing its face: from the
@@ -558,7 +576,7 @@ func _gui_input(event: InputEvent) -> void:
 						_dragging = null
 					if _piece_drag:
 						if _piece_drag_started:
-							_record_piece_move(_piece_drag, _piece_before, "Move truss piece")
+							_record_carry_move(_piece_drag, _piece_before, "Move truss piece")
 						_piece_drag = null
 						_show_free_arrows(null)
 						_rebuild_pipes()
@@ -649,9 +667,11 @@ func _gui_input(event: InputEvent) -> void:
 				if not _selected_piece:
 					return
 				var before := _selected_piece.global_transform
+				_begin_carry(_selected_piece)
 				_selected_piece.global_transform = StructureSnap.turned(_selected_piece, _pieces())
+				_move_carry(_selected_piece, before)
 				_rebuild_pipes()
-				_record_piece_move(_selected_piece, before, "Turn truss piece")
+				_record_carry_move(_selected_piece, before, "Turn truss piece")
 			_:
 				return
 		accept_event()
@@ -680,6 +700,7 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 			_piece_drag = piece
 			_piece_drag_started = false
 			_piece_before = piece.global_transform
+			_begin_carry(piece)
 			_press_pos = mb.position
 		return
 	if mb.double_click:
@@ -880,6 +901,7 @@ func _update_piece_drag(at: Vector2) -> void:
 	var xf: Variant = _piece_placement(at, _piece_drag)
 	if xf != null:
 		_piece_drag.global_transform = xf
+		_move_carry(_piece_drag, _piece_before)
 
 
 ## Delete a piece. Undo puts it back where it was (the history keeps it alive).
@@ -911,6 +933,102 @@ func _detach_piece(piece: Object) -> void:
 	(piece as StructurePiece).set_highlight(false) # so it comes back plain if undone
 	_set.remove_child(piece as Node)
 	_rebuild_pipes()
+
+
+# ---------------------------------------------------------------- moving a rig as one
+
+## What moves along with `piece`: everything built on a base plate (every
+## piece joined to it, directly or through other pieces, and the fixtures hung
+## on them), or for a truss or corner the fixtures hung on that piece. Not
+## `piece` itself.
+func _carried(piece: StructurePiece) -> Array[Object]:
+	var pieces: Array[StructurePiece] = [piece]
+	if piece.kind == StructurePiece.Kind.BASE_PLATE:
+		var all := _pieces()
+		var i := 0
+		while i < pieces.size():
+			for other in all:
+				if not pieces.has(other) and _joined(pieces[i], other):
+					pieces.append(other)
+			i += 1
+	var list: Array[Object] = []
+	for p in pieces:
+		if p != piece:
+			list.append(p)
+	for fx in _fixtures_on(pieces):
+		list.append(fx)
+	return list
+
+
+## True when two pieces share a joint (a connector of each in the same place).
+func _joined(a: StructurePiece, b: StructurePiece) -> bool:
+	for c in a.connectors():
+		for d in b.connectors():
+			if c.global_position.distance_to(d.global_position) < StructureSnap.JOIN_TOLERANCE:
+				return true
+	return false
+
+
+## Fixtures with a clamp on a tube of any of `pieces`.
+func _fixtures_on(pieces: Array[StructurePiece]) -> Array[DMXFixture]:
+	var tubes: Array[StageRoom.Pipe] = []
+	for p in pieces:
+		for t in p.tubes():
+			tubes.append(StageRoom.Pipe.new(t.world_start(), t.world_end(), t.world_faces()))
+	var list: Array[DMXFixture] = []
+	if tubes.is_empty():
+		return list
+	for fx: DMXFixture in _visuals:
+		var xf := StudioContext.fixture_transform(fx)
+		var on := false
+		for m: Vector3 in _mounts(fx):
+			for t in tubes:
+				if t.distance_to(xf * m) <= StageRoom.ON_PIPE_TOLERANCE * 2.0:
+					on = true
+					break
+			if on:
+				break
+		if on:
+			list.append(fx)
+	return list
+
+
+## Remember what moves with `piece` and where it all is now.
+func _begin_carry(piece: StructurePiece) -> void:
+	_carry = _carried(piece)
+	_carry_before.clear()
+	for o in _carry:
+		_carry_before.append(_transform_of(o))
+
+
+## `piece` has moved from `before`: move what it carries by the same amount.
+func _move_carry(piece: StructurePiece, before: Transform3D) -> void:
+	if _carry.is_empty():
+		return
+	var delta := piece.global_transform * before.affine_inverse()
+	var xfs: Array[Transform3D] = []
+	for xf in _carry_before:
+		xfs.append((delta * xf).orthonormalized())
+	_place_group(_carry, xfs)
+
+
+## Record a finished move of `piece` and what it carried as one undo step.
+func _record_carry_move(piece: StructurePiece, before: Transform3D, action: String) -> void:
+	if _carry.is_empty():
+		_record_piece_move(piece, before, action)
+		return
+	if piece.global_transform.is_equal_approx(before):
+		return
+	var items: Array[Object] = [piece]
+	items.append_array(_carry)
+	var xfs_before: Array[Transform3D] = [before]
+	xfs_before.append_array(_carry_before)
+	var xfs_after: Array[Transform3D] = []
+	for o in items:
+		xfs_after.append(_transform_of(o))
+	ctx.record(action, _place_group.bind(items, xfs_after), _place_group.bind(items, xfs_before))
+	_carry = []
+	_carry_before = []
 
 
 func _record_piece_move(piece: StructurePiece, before: Transform3D, action: String) -> void:

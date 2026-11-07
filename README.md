@@ -90,7 +90,12 @@ Each piece is a scene with the `StructurePiece` script and three kinds of child 
   in steps of **Step** degrees (0 = free). The cursor picks the face: beside the tube on the left
   means its left face, above it means its top. Drawn as an orange line with a tick per face (or a
   ring) in the editor. Tubes that line up end to end with the same faces count as one run, so
-  fixtures slide across joints.
+  fixtures slide across joints. Of tubes near the cursor, the ones on the side of the truss facing
+  the camera win; a tube further back only wins when you clearly aim at it.
+
+Moving a base plate (drag, or R to turn it) carries everything built on it: every piece joined to
+it, directly or through other pieces, and the fixtures hung on them. Moving a truss or corner
+carries the fixtures hung on it. Either is one undo step.
 - `TrussMesh`: draws the lattice (straight or corner) from its settings; not saved into the scene.
 
 ### Truss clamps
