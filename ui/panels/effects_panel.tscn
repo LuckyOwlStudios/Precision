@@ -1,0 +1,142 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/effects_panel.gd" id="1_fx"]
+
+[node name="EffectsPanel" type="MarginContainer"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+script = ExtResource("1_fx")
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Column" type="VBoxContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Scroll/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Effects"
+uppercase = true
+
+[node name="Rule" type="HSeparator" parent="Scroll/Column"]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="Scroll/Column"]
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Drag an effect onto a fixture's lane in the timeline, or onto the music lane for every fixture. Effects that overlap all run at once."
+autowrap_mode = 3
+
+[node name="Presets" type="ItemList" parent="Scroll/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+tooltip_text = "Drag onto the timeline. Double-click to add at the playhead."
+
+[node name="PresetButtons" type="HBoxContainer" parent="Scroll/Column"]
+layout_mode = 2
+
+[node name="AddAtPlayhead" type="Button" parent="Scroll/Column/PresetButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Add the selected effect at the playhead, on the selected fixture (or every fixture if none is selected)"
+text = "Add at playhead"
+
+[node name="DeletePreset" type="Button" parent="Scroll/Column/PresetButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete this preset from the shelf (built-in presets stay)"
+text = "Delete"
+
+[node name="ClipBox" type="VBoxContainer" parent="Scroll/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ClipRule" type="HSeparator" parent="Scroll/Column/ClipBox"]
+layout_mode = 2
+
+[node name="ClipTitle" type="Label" parent="Scroll/Column/ClipBox"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Selected effect"
+uppercase = true
+
+[node name="ClipName" type="LineEdit" parent="Scroll/Column/ClipBox"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Effect name"
+
+[node name="ClipKind" type="Label" parent="Scroll/Column/ClipBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="Timing" type="GridContainer" parent="Scroll/Column/ClipBox"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
+[node name="Params" type="VBoxContainer" parent="Scroll/Column/ClipBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TargetsTitle" type="HBoxContainer" parent="Scroll/Column/ClipBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Scroll/Column/ClipBox/TargetsTitle"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Caption"
+text = "Runs on (in order, for spread and chases)"
+autowrap_mode = 3
+
+[node name="AllFixtures" type="Button" parent="Scroll/Column/ClipBox/TargetsTitle"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FlatButton"
+text = "All"
+
+[node name="Targets" type="VBoxContainer" parent="Scroll/Column/ClipBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ClipButtons" type="HBoxContainer" parent="Scroll/Column/ClipBox"]
+layout_mode = 2
+
+[node name="SavePreset" type="Button" parent="Scroll/Column/ClipBox/ClipButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Save this effect and its settings to the shelf, named as above"
+theme_type_variation = &"AccentButton"
+text = "Save as preset"
+
+[node name="Duplicate" type="Button" parent="Scroll/Column/ClipBox/ClipButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Copy this effect right after itself (Ctrl+D)"
+text = "Duplicate"
+
+[node name="DeleteClip" type="Button" parent="Scroll/Column/ClipBox/ClipButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete this effect from the timeline (Delete)"
+text = "Delete"
+
+[node name="PresetNote" type="Label" parent="Scroll/Column/ClipBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3

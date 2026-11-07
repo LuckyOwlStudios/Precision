@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://ui/panels/cue_panel.tscn" id="10_cues"]
 [ext_resource type="PackedScene" path="res://ui/panels/dmx_monitor_panel.tscn" id="11_dmx"]
 [ext_resource type="PackedScene" path="res://ui/panels/dj_panel.tscn" id="12_dj"]
+[ext_resource type="PackedScene" path="res://ui/panels/effects_panel.tscn" id="13_fx"]
 
 [sub_resource type="StyleBoxFlat" id="Background"]
 bg_color = Color(0.051, 0.059, 0.071, 1)
@@ -140,6 +141,12 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 1
+
+[node name="Effects" parent="Layout/Body/LeftDock/Column/LeftSplit/LeftTabs" instance=ExtResource("13_fx")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
 
 [node name="LeftFooter" type="PanelContainer" parent="Layout/Body/LeftDock/Column" unique_id=13885142]
 custom_minimum_size = Vector2(0, 40)
