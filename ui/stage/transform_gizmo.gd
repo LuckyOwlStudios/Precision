@@ -60,6 +60,7 @@ var _ring_px_per_rad := 100.0
 var _grab_mouse := Vector2.ZERO
 var _angle := 0.0 ## current turn while rotating, radians
 var _readout := ""
+var pick_px := PICK_PX ## how near a handle must be to grab it (bigger for a fingertip)
 
 
 func _ready() -> void:
@@ -83,7 +84,7 @@ func handle_at(p: Vector2) -> Handle:
 			if Geometry2D.is_point_in_polygon(p, _plane_quad(h, span)):
 				return h
 		var best := Handle.NONE
-		var best_d := PICK_PX
+		var best_d := pick_px
 		for i in 3:
 			var tip := _screen(target.origin + AXES[i] * span)
 			var d := p.distance_to(Geometry2D.get_closest_point_to_segment(p, o, tip))
@@ -92,7 +93,7 @@ func handle_at(p: Vector2) -> Handle:
 				best = (Handle.X + i) as Handle
 		return best
 	var best_r := Handle.NONE
-	var best_rd := PICK_PX
+	var best_rd := pick_px
 	for i in mini(rings.size(), 3):
 		var pts := _ring_points(rings[i])
 		for j in pts.size() - 1:

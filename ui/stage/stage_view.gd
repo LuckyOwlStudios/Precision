@@ -33,6 +33,8 @@ extends Control
 
 const PICK_RADIUS_PX := 12.0 ## fallback only: a click this close to a fixture's middle picks it
 const DRAG_THRESHOLD_PX := 4.0
+const TOUCH_DRAG_THRESHOLD_PX := 12.0 ## a fingertip wobbles more than a mouse
+
 const PIPE_GRAB_PX := 26.0 ## a fixture snaps to a tube this close to the cursor on screen
 const CONNECTOR_GRAB_PX := 70.0 ## a piece snaps to a free connector this close on screen
 
@@ -42,8 +44,11 @@ const FLY_SPEED_MAX := 40.0
 const FLY_FAST := 3.0 ## Shift
 const FLY_SLOW := 0.25 ## Alt
 const LOOK_DEG_PER_PX := 0.25
+const TOUCH_ORBIT_DEG_PER_PX := 0.3
+const TOUCH_PAN_PER_PX := 0.0016 ## of the camera distance
+const TOUCH_PICK_PX := 24.0 ## gizmo handle reach for a fingertip (a mouse uses TransformGizmo.PICK_PX)
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
-const HELP_TEXT := "Drag empty space box select (Shift adds) · Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
+const HELP_TEXT := "Drag empty space box select (Shift adds) · Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · Touch: two fingers pinch zoom / orbit, three pan · F frame · Shift drag re-stick · F2 rename · Z work lights"
 
 var ctx: StudioContext
 
@@ -55,6 +60,9 @@ var _pitch := -14.0
 var _distance := 12.5
 var _orbiting := false
 var _panning := false
+var _drag_threshold := DRAG_THRESHOLD_PX ## set per press: bigger for a finger
+var _touches := TouchGestures.new()
+var _touch_locked := false ## a gesture is going (or just ended): ignore the leftover finger's mouse events
 var _flying := false ## right mouse held: look around in place, WASD/QE move
 var _fly_speed := FLY_SPEED_DEFAULT
 var _surfaces: Array[StageRoom.Surface] = []
@@ -514,7 +522,7 @@ func _begin_body_drag(fx: DMXFixture, at: Vector2, restick: bool) -> void:
 
 func _update_body_drag(at: Vector2, ctrl_held: bool) -> void:
 	if not _drag_started:
-		if at.distance_to(_press_pos) < DRAG_THRESHOLD_PX:
+		if at.distance_to(_press_pos) < _drag_threshold:
 			return # a click, not a drag: don't nudge the fixture
 		_drag_started = true
 	var body: FixtureCatalog.Body = _dragging.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
@@ -556,6 +564,9 @@ func _ray_plane(plane: Plane, at: Vector2) -> Variant:
 # ---------------------------------------------------------------- input
 
 func _gui_input(event: InputEvent) -> void:
+	if _touch_input(event):
+		accept_event()
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed:
@@ -681,6 +692,9 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _on_left_press(mb: InputEventMouseButton) -> void:
+	var finger := _from_touch(mb)
+	_gizmo.pick_px = TOUCH_PICK_PX if finger else TransformGizmo.PICK_PX
+	_drag_threshold = TOUCH_DRAG_THRESHOLD_PX if finger else DRAG_THRESHOLD_PX
 	var handle := _gizmo.handle_at(mb.position)
 	if handle != TransformGizmo.Handle.NONE and ctx.selected:
 		_edit_before = StudioContext.fixture_transform(ctx.selected)
@@ -709,6 +723,83 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		ctx.request_rename(fx)
 		return
 	_begin_body_drag(fx, mb.position, mb.shift_pressed)
+
+
+# ---------------------------------------------------------------- touch
+
+## A finger's mouse click is told apart by its device id, which Godot sets to
+## DEVICE_ID_EMULATION for events it makes from touches.
+func _from_touch(event: InputEvent) -> bool:
+	return event.device == InputEvent.DEVICE_ID_EMULATION
+
+
+## Camera gestures. Returns true when the event was a touch gesture's (or the
+## mouse echo of a finger that is part of one) and must not reach the mouse code.
+func _touch_input(event: InputEvent) -> bool:
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			_touches.press(st.index, st.position)
+			if _touches.count() >= 2:
+				if not _touch_locked:
+					_cancel_pointer_edit() # the first finger was the start of a gesture, not an edit
+				_touch_locked = true
+		else:
+			_touches.release(st.index)
+			if _touches.count() == 0:
+				_touch_locked = false
+		return false # the first finger's own click still takes its normal path
+	if event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		var g := _touches.drag(sd.index, sd.position)
+		if g.is_empty():
+			return false
+		_apply_gesture(g["pan"], g["pinch"], _touches.count())
+		return true
+	if _touch_locked and event is InputEventMouse and _from_touch(event):
+		return true
+	return false
+
+
+func _apply_gesture(pan: Vector2, pinch: float, fingers: int) -> void:
+	if pinch != 1.0:
+		_distance = clampf(_distance / pinch, 3.0, 40.0)
+	if fingers >= 3:
+		var right := _camera.global_transform.basis.x
+		var fwd := Vector3(_camera.global_transform.basis.z.x, 0, _camera.global_transform.basis.z.z).normalized()
+		_pivot.position += (-right * pan.x + -fwd * pan.y) * _distance * TOUCH_PAN_PER_PX
+	else:
+		_yaw -= pan.x * TOUCH_ORBIT_DEG_PER_PX
+		_pitch = clampf(_pitch - pan.y * TOUCH_ORBIT_DEG_PER_PX, -89.0, maxf(5.0, _pitch))
+	_update_camera()
+
+
+## Put back whatever a single finger had started (a drag, a box, a gizmo turn)
+## when a second one lands: the user meant to move the camera.
+func _cancel_pointer_edit() -> void:
+	if _boxing:
+		_boxing = false
+		_box_select.visible = false
+	if _group_drag:
+		_group_drag = false
+		if _group_drag_started:
+			_place_group(_group, _group_before)
+	if _dragging:
+		if _drag_started:
+			ctx.move_fixture(_dragging, _edit_before)
+		_dragging = null
+	if _piece_drag:
+		if _piece_drag_started:
+			_piece_drag.global_transform = _piece_before
+			_follow_piece(_piece_drag)
+		_piece_drag = null
+		_show_free_arrows(null)
+		_rebuild_pipes()
+	if _gizmo.is_dragging():
+		_gizmo.end_drag()
+		if ctx.selected:
+			ctx.move_fixture(ctx.selected, _edit_before)
+		_update_gizmo()
 
 
 # ---------------------------------------------------------------- fly camera (hold right mouse)
@@ -979,7 +1070,7 @@ func _detach_pieces(pieces: Array) -> void:
 
 func _update_piece_drag(at: Vector2) -> void:
 	if not _piece_drag_started:
-		if at.distance_to(_press_pos) < DRAG_THRESHOLD_PX:
+		if at.distance_to(_press_pos) < _drag_threshold:
 			return
 		_piece_drag_started = true
 		_show_free_arrows(_piece_drag)
@@ -1107,7 +1198,7 @@ func _box_rect(at: Vector2) -> Rect2:
 
 
 func _update_box(at: Vector2) -> void:
-	var dragged := at.distance_to(_box_from) >= DRAG_THRESHOLD_PX
+	var dragged := at.distance_to(_box_from) >= _drag_threshold
 	_box_select.visible = dragged
 	if dragged:
 		var r := _box_rect(at)
@@ -1118,7 +1209,7 @@ func _update_box(at: Vector2) -> void:
 func _end_box(at: Vector2) -> void:
 	_boxing = false
 	_box_select.visible = false
-	if at.distance_to(_box_from) < DRAG_THRESHOLD_PX:
+	if at.distance_to(_box_from) < _drag_threshold:
 		return # just a click
 	var items: Array[Object] = []
 	if _box_add:
@@ -1196,7 +1287,7 @@ func _begin_group_drag(target: Object, at: Vector2) -> void:
 ## Slide the whole group across the floor plan, keeping each thing's height.
 func _update_group_drag(at: Vector2, ctrl_held: bool) -> void:
 	if not _group_drag_started:
-		if at.distance_to(_press_pos) < DRAG_THRESHOLD_PX:
+		if at.distance_to(_press_pos) < _drag_threshold:
 			return
 		_group_drag_started = true
 	var hit: Variant = _ray_plane(_group_plane, at)

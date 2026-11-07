@@ -16,7 +16,8 @@ extends RefCounted
 const P := preload("res://ui/theme/ui_palette.gd")
 
 
-static func build() -> Theme:
+## `touch` makes controls fingertip-sized; it is applied at run time, never baked.
+static func build(touch := false) -> Theme:
 	var t := Theme.new()
 	var ui := _system_font(P.UI_FONTS, 400)
 	var ui_bold := _system_font(P.UI_FONTS, 600)
@@ -35,7 +36,48 @@ static func build() -> Theme:
 	_sliders_and_scrollbars(t)
 	_popups(t)
 	_containers(t)
+	if touch:
+		_touch_sizing(t)
 	return t
+
+
+## Touchscreen present (or PRECISION_TOUCH=1 to try it without one).
+static func touch_wanted() -> bool:
+	return OS.get_environment("PRECISION_TOUCH") == "1" or DisplayServer.is_touchscreen_available()
+
+
+## Fingertip-sized controls: taller buttons and list rows, fatter scrollbars.
+## Mouse layouts are untouched.
+static func _touch_sizing(t: Theme) -> void:
+	for type: StringName in ["Button", "OptionButton", "MenuButton", "ColorPickerButton",
+			"FlatButton", "AccentButton", "DangerButton", "PillButton"]:
+		for state: StringName in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			var box := t.get_stylebox(state, type)
+			if box:
+				var big := box.duplicate() as StyleBox
+				big.content_margin_top = maxf(box.content_margin_top, TOUCH_PAD_V)
+				big.content_margin_bottom = maxf(box.content_margin_bottom, TOUCH_PAD_V)
+				t.set_stylebox(state, type, big)
+	for type: StringName in ["CheckBox", "CheckButton"]:
+		for state: StringName in ["normal", "hover", "pressed", "hover_pressed"]:
+			var box := t.get_stylebox(state, type).duplicate() as StyleBox
+			box.content_margin_top = TOUCH_PAD_V
+			box.content_margin_bottom = TOUCH_PAD_V
+			t.set_stylebox(state, type, box)
+	t.set_constant("v_separation", "ItemList", 18)
+	t.set_constant("v_separation", "Tree", 14)
+	t.set_constant("v_separation", "PopupMenu", 16)
+	for type: StringName in ["HScrollBar", "VScrollBar"]:
+		for state: StringName in ["scroll", "scroll_focus"]:
+			var box := t.get_stylebox(state, type).duplicate() as StyleBox
+			box.content_margin_left = 9
+			box.content_margin_right = 9
+			box.content_margin_top = 9
+			box.content_margin_bottom = 9
+			t.set_stylebox(state, type, box)
+
+
+const TOUCH_PAD_V := 12.0 ## button padding top and bottom with a touchscreen (about 44 px tall)
 
 
 # ---------------------------------------------------------------- helpers
