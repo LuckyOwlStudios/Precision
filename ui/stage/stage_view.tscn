@@ -6,7 +6,7 @@
 [ext_resource type="Script" path="res://ui/stage/transform_gizmo.gd" id="4_1eond"]
 [ext_resource type="Script" path="res://ui/widgets/reset_label.gd" id="5_rstlb"]
 [ext_resource type="Shader" path="res://ui/stage/mirror_plane.gdshader" id="6_mirpl"]
-[ext_resource type="Script" path="res://ui/stage/drafting_overlay.gd" id="7_draft"]
+[ext_resource type="Script" path="res://ui/settings/unit_spin_box.gd" id="99_unitbox"]
 
 [sub_resource type="Environment" id="Environment_onnio"]
 background_mode = 1
@@ -165,19 +165,6 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12.5)
 fov = 50.0
 
-[node name="Drafting" type="Control" parent="ViewportContainer/Viewport"]
-unique_name_in_owner = true
-editor_description = "Grid, rulers, labels, trim heights and beam coverage drawn over the orthographic views. Lives in the viewport so exports include it."
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("7_draft")
-
 [node name="Overlay" type="Control" parent="." unique_id=31798538]
 anchors_preset = 0
 anchor_right = 1.0
@@ -214,7 +201,6 @@ focus_mode = 0
 theme_type_variation = &"PillButton"
 toggle_mode = true
 button_pressed = true
-tooltip_text = "Free 3D view (numpad 5 switches between this and the last drawing view)"
 text = "Perspective"
 
 [node name="Front" type="Button" parent="Overlay/ViewButtons" unique_id=434094859]
@@ -223,17 +209,7 @@ layout_mode = 2
 focus_mode = 0
 theme_type_variation = &"PillButton"
 toggle_mode = true
-tooltip_text = "Front elevation, from the audience: widths and hanging heights, true to scale (numpad 1)"
 text = "Front"
-
-[node name="Side" type="Button" parent="Overlay/ViewButtons"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Side elevation, looking from house left: back of the stage on the left, audience on the right (numpad 3)"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Side"
 
 [node name="Top" type="Button" parent="Overlay/ViewButtons" unique_id=725362222]
 unique_name_in_owner = true
@@ -241,7 +217,6 @@ layout_mode = 2
 focus_mode = 0
 theme_type_variation = &"PillButton"
 toggle_mode = true
-tooltip_text = "Top plan, looking straight down: true positions on the floor, no perspective (numpad 7)"
 text = "Top"
 
 [node name="ShadingGap" type="Control" parent="Overlay/ViewButtons" unique_id=1874423304]
@@ -266,64 +241,6 @@ theme_type_variation = &"PillButton"
 toggle_mode = true
 button_pressed = true
 text = "Show"
-
-[node name="DraftBar" type="HBoxContainer" parent="Overlay"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 0
-offset_left = 16.0
-offset_top = 50.0
-offset_right = 16.0
-offset_bottom = 50.0
-theme_override_constants/separation = 2
-
-[node name="DraftGrid" type="Button" parent="Overlay/DraftBar"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Grid lines and rulers in metres"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-button_pressed = true
-text = "Grid"
-
-[node name="DraftLabels" type="Button" parent="Overlay/DraftBar"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Fixture names, DMX address and trim height"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-button_pressed = true
-text = "Labels"
-
-[node name="DraftBeams" type="Button" parent="Overlay/DraftBar"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Where each beam lands: footprint on the plan, cone and throw in an elevation"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-button_pressed = true
-text = "Beams"
-
-[node name="DraftMeasure" type="Button" parent="Overlay/DraftBar"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Click two points for a distance; fixtures snap, the grid snaps with Snap on (D)"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Measure"
-
-[node name="DraftExport" type="Button" parent="Overlay/DraftBar"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Save this view as a PNG with its grid, labels and a title block"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = false
-text = "Export plot"
 
 [node name="Tools" type="HBoxContainer" parent="Overlay" unique_id=1209258975]
 unique_name_in_owner = true
@@ -439,13 +356,14 @@ text = "At X  "
 [node name="Center" type="SpinBox" parent="Overlay/MirrorOptions"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Where the mirror plane crosses the floor, in metres from the middle of the stage"
+tooltip_text = "Where the mirror plane crosses the floor, from the middle of the stage"
 min_value = -30.0
 max_value = 30.0
 step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="CenterToSelection" type="Button" parent="Overlay/MirrorOptions"]
 unique_name_in_owner = true
@@ -497,63 +415,6 @@ focus_mode = 0
 max_value = 1.0
 step = 0.01
 value = 0.45
-
-[node name="Gap" type="Control" parent="Overlay/LookControls" unique_id=984644216]
-custom_minimum_size = Vector2(6, 0)
-layout_mode = 2
-
-[node name="QualityLabel" type="Label" parent="Overlay/LookControls" unique_id=1840562377]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Caption"
-theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
-theme_override_constants/outline_size = 4
-text = "Quality"
-script = ExtResource("5_rstlb")
-
-[node name="Low" type="Button" parent="Overlay/LookControls" unique_id=1595457844]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Fastest: beam cones only, no shadows or volumetric haze"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Low"
-
-[node name="Medium" type="Button" parent="Overlay/LookControls" unique_id=132788527]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Volumetric haze, moving head shadows, ambient occlusion"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Medium"
-
-[node name="High" type="Button" parent="Overlay/LookControls" unique_id=300121373]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Every light casts shadows, floor reflections, smoother haze"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-button_pressed = true
-text = "High"
-
-[node name="Ultra" type="Button" parent="Overlay/LookControls" unique_id=514387932]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Highest detail haze, soft shadows, light bounce. Needs a strong GPU"
-focus_mode = 0
-theme_type_variation = &"PillButton"
-toggle_mode = true
-text = "Ultra"
-
-[node name="ForwardPlusNote" type="Label" parent="Overlay/LookControls" unique_id=1476330128]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"Caption"
-text = "Haze and shadows need the Forward+ renderer"
 
 [node name="HelpBar" type="HBoxContainer" parent="Overlay"]
 layout_mode = 0

@@ -25,7 +25,7 @@ var _shown: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] ## what the six boxes 
 @onready var _fixtures_caption: Label = %FixturesCaption
 @onready var _fixtures_value: Label = %FixturesValue
 @onready var _joined: Label = %Joined
-@onready var _place: Array[SpinBox] = [%PositionX, %PositionY, %PositionZ] ## metres
+@onready var _place: Array[UnitSpinBox] = [%PositionX, %PositionY, %PositionZ] ## metres inside; show metres or feet
 @onready var _turn: Array[SpinBox] = [%RotationX, %RotationY, %RotationZ] ## degrees
 
 
@@ -43,7 +43,9 @@ func _ready() -> void:
 		_apply_name(t)
 		_name.release_focus())
 	_name.focus_exited.connect(func() -> void: _apply_name(_name.text))
-	for sb: SpinBox in _place + _turn:
+	for sb: UnitSpinBox in _place:
+		sb.metres_changed.connect(func(_m: float) -> void: _push_placement())
+	for sb: SpinBox in _turn:
 		sb.value_changed.connect(func(_v: float) -> void: _push_placement())
 		sb.get_line_edit().add_theme_constant_override("minimum_character_width", 0)
 
@@ -75,8 +77,8 @@ func _push_placement() -> void:
 	var pos := now.origin
 	var rot := now.basis.get_euler()
 	for i in 3:
-		if not is_equal_approx(_place[i].value, _shown[i]):
-			pos[i] = _place[i].value
+		if not is_equal_approx(_place[i].get_metres(), _shown[i]):
+			pos[i] = _place[i].get_metres()
 		if not is_equal_approx(_turn[i].value, _shown[3 + i]):
 			rot[i] = deg_to_rad(_turn[i].value)
 	ctx.place_piece(piece, Transform3D(Basis.from_euler(rot), pos))
@@ -94,8 +96,8 @@ func _refresh() -> void:
 	var dims := piece.bounds.size
 	# A truss is described by its length, which is always its long (X) side.
 	_length_row.visible = piece.kind == StructurePiece.Kind.TRUSS
-	_length_value.text = "%.2f m" % dims.x
-	_size_value.text = "%.2f × %.2f × %.2f m" % [dims.x, dims.y, dims.z]
+	_length_value.text = Units.length_text(dims.x)
+	_size_value.text = " × ".join([Units.length_text(dims.x), Units.length_text(dims.y), Units.length_text(dims.z)])
 	_fixtures_caption.text = "Standing on it" if piece.kind == StructurePiece.Kind.BASE_PLATE else "Hung on it"
 	_fixtures_value.text = str(_fixture_count())
 	_joined.text = _joined_text()
@@ -104,10 +106,10 @@ func _refresh() -> void:
 	for i in 3:
 		# Leave a box alone while you're typing in it.
 		if not _place[i].get_line_edit().has_focus():
-			_place[i].value = _seen.origin[i]
+			_place[i].set_metres(_seen.origin[i])
 		if not _turn[i].get_line_edit().has_focus():
 			_turn[i].value = rad_to_deg(euler[i])
-		_shown[i] = _place[i].value
+		_shown[i] = _place[i].get_metres()
 		_shown[3 + i] = _turn[i].value
 	_syncing = false
 

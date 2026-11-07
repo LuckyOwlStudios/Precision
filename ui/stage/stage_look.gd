@@ -2,8 +2,9 @@ class_name StageLook
 extends RefCounted
 ## How the 3D stage is rendered: shading mode, haze amount, quality level and
 ## the club-room environment (tonemapping, glow, fog, reflections, ambient occlusion).
-## Pure visuals: nothing here touches DMX or the show. Saved per machine in
-## user://stage_look.cfg, because quality depends on the computer, not the show.
+## Pure visuals: nothing here touches DMX or the show. Haze and shading are saved
+## per machine in user://stage_look.cfg. Quality is a Settings choice (AppSettings,
+## because it depends on the computer, not the show); the stage view copies it here.
 
 signal changed
 
@@ -44,14 +45,12 @@ func load_saved() -> void:
 	if cfg.load(SAVE_PATH) != OK:
 		return
 	haze = float(cfg.get_value("stage", "haze", haze))
-	quality = clampi(int(cfg.get_value("stage", "quality", quality)), 0, Quality.ULTRA) as Quality
 	shading = clampi(int(cfg.get_value("stage", "shading", shading)), 0, Shading.SHOW) as Shading
 
 
 func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("stage", "haze", haze)
-	cfg.set_value("stage", "quality", quality)
 	cfg.set_value("stage", "shading", shading)
 	cfg.save(SAVE_PATH)
 

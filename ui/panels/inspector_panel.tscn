@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://ui/panels/structure_info.tscn" id="2_structure"]
 [ext_resource type="Script" path="res://ui/widgets/swatch_row.gd" id="3_swatches"]
 [ext_resource type="PackedScene" path="res://ui/panels/clip_info.tscn" id="3_clip"]
+[ext_resource type="Script" path="res://ui/settings/unit_spin_box.gd" id="99_unitbox"]
 
 [node name="InspectorPanel" type="ScrollContainer" unique_id=941001158]
 horizontal_scroll_mode = 3
@@ -159,6 +160,7 @@ step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="PositionY" type="SpinBox" parent="Padding/Content/PositionField/Axes" unique_id=682806130]
 unique_name_in_owner = true
@@ -170,6 +172,7 @@ step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="PositionZ" type="SpinBox" parent="Padding/Content/PositionField/Axes" unique_id=1327057552]
 unique_name_in_owner = true
@@ -181,6 +184,7 @@ step = 0.01
 suffix = " m"
 custom_arrow_step = 0.1
 select_all_on_focus = true
+script = ExtResource("99_unitbox")
 
 [node name="RotationField" type="VBoxContainer" parent="Padding/Content" unique_id=240559862]
 layout_mode = 2

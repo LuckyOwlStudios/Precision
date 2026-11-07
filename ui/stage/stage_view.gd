@@ -135,7 +135,6 @@ var _aim_unreachable := 0 ## selected heads that can't reach the spot (shown in 
 
 var _mode_buttons: Dictionary = {} ## TransformGizmo.Mode -> Button
 var _view_buttons: Dictionary = {} ## preset name -> Button
-var _quality_buttons: Array[Button] = []
 var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 
 @onready var _viewport: SubViewport = %Viewport
@@ -162,10 +161,9 @@ var _shading_buttons: Array[Button] = [] ## indexed by StageLook.Shading
 @onready var _axis_x: Button = %AxisX
 @onready var _axis_z: Button = %AxisZ
 @onready var _center_label: Label = %CenterLabel
-@onready var _center_box: SpinBox = %Center
+@onready var _center_box: UnitSpinBox = %Center
 @onready var _haze: HSlider = %Haze
 @onready var _haze_label: ResetLabel = %HazeLabel
-@onready var _quality_label: ResetLabel = %QualityLabel
 @onready var _empty_hint: Control = %EmptyHint
 ## The empty-stage welcome (with "Load demo rig") is a startup nicety: once the user
 ## clicks the stage or places anything it stays gone, even if the stage empties again.
@@ -225,7 +223,10 @@ func _ready() -> void:
 	_mode_buttons = {TransformGizmo.Mode.MOVE: %Move, TransformGizmo.Mode.ROTATE: %Rotate}
 	for m: TransformGizmo.Mode in _mode_buttons:
 		(_mode_buttons[m] as Button).pressed.connect(set_gizmo_mode.bind(m))
-	_snap_button.tooltip_text = "Move in %.2f m steps and rotate in %d° steps. Hold Ctrl while dragging to flip this." % [TransformGizmo.MOVE_STEP, int(TransformGizmo.ROTATE_STEP)]
+	_update_snap_tooltip()
+	AppSettings.hub().changed.connect(func(key: StringName) -> void:
+		if key == &"units":
+			_update_snap_tooltip())
 	set_gizmo_mode(TransformGizmo.Mode.MOVE)
 	_aim_button.toggled.connect(_set_aiming)
 
@@ -233,7 +234,7 @@ func _ready() -> void:
 	_mirror_button.toggled.connect(func(on: bool) -> void: ctx.symmetry.enabled = on)
 	_axis_x.pressed.connect(func() -> void: ctx.symmetry.axis = StageSymmetry.Axis.X)
 	_axis_z.pressed.connect(func() -> void: ctx.symmetry.axis = StageSymmetry.Axis.Z)
-	_center_box.value_changed.connect(func(v: float) -> void: ctx.symmetry.set_offset(v))
+	_center_box.metres_changed.connect(func(m: float) -> void: ctx.symmetry.set_offset(m))
 	%CenterReset.pressed.connect(func() -> void: ctx.symmetry.reset())
 	%CenterToSelection.pressed.connect(_center_on_selection)
 	_sync_mirror()
@@ -243,18 +244,17 @@ func _ready() -> void:
 	for sh in _shading_buttons.size():
 		_shading_buttons[sh].pressed.connect(func() -> void: look.shading = sh as StageLook.Shading)
 
-	# Haze and quality, bottom right: how the stage is drawn, not the show.
+	# Haze, bottom right: how the stage is drawn, not the show. (Quality is a
+	# computer-wide choice in Settings; the look follows it.)
 	_haze.value = look.haze
 	_haze.value_changed.connect(func(v: float) -> void: look.haze = v)
-	_quality_buttons = [%Low, %Medium, %High, %Ultra]
-	for q in _quality_buttons.size():
-		_quality_buttons[q].pressed.connect(func() -> void: look.quality = q as StageLook.Quality)
-	# Clicking "Haze" / "Quality" puts that setting back once it has been changed.
+	look.quality = AppSettings.quality
+	AppSettings.hub().changed.connect(func(key: StringName) -> void:
+		if key == &"quality":
+			look.quality = AppSettings.quality)
+	# Clicking "Haze" puts it back once it has been changed.
 	_haze_label.default_text = "%d%%" % roundi(StageLook.DEFAULT_HAZE * 100.0)
 	_haze_label.reset_requested.connect(func() -> void: look.haze = StageLook.DEFAULT_HAZE)
-	_quality_label.default_text = StageLook.QUALITY_NAMES[StageLook.DEFAULT_QUALITY]
-	_quality_label.reset_requested.connect(func() -> void: look.quality = StageLook.DEFAULT_QUALITY)
-	%ForwardPlusNote.visible = not look.forward_plus
 	look.changed.connect(_sync_look_controls)
 	_sync_look_controls()
 
@@ -268,6 +268,10 @@ func _ready() -> void:
 	%ShortcutsButton.pressed.connect(_toggle_shortcuts)
 	_update_help()
 	_update_camera()
+
+
+func _update_snap_tooltip() -> void:
+	_snap_button.tooltip_text = tr("Move in %s steps and rotate in %d° steps. Hold Ctrl while dragging to flip this.") % [Units.length_text(TransformGizmo.MOVE_STEP), int(TransformGizmo.ROTATE_STEP)]
 
 
 ## Shading, haze or quality changed: retune the environment and the viewport.
@@ -285,9 +289,6 @@ func _apply_look() -> void:
 func _sync_look_controls() -> void:
 	_haze.set_value_no_signal(look.haze)
 	_haze_label.modified = not is_equal_approx(look.haze, StageLook.DEFAULT_HAZE)
-	_quality_label.modified = look.quality != StageLook.DEFAULT_QUALITY
-	for i in _quality_buttons.size():
-		_quality_buttons[i].button_pressed = i == look.quality
 	for i in _shading_buttons.size():
 		_shading_buttons[i].button_pressed = i == look.shading
 
@@ -1133,8 +1134,8 @@ func _sync_mirror() -> void:
 	_axis_x.set_pressed_no_signal(sym.axis == StageSymmetry.Axis.X)
 	_axis_z.set_pressed_no_signal(sym.axis == StageSymmetry.Axis.Z)
 	_center_label.text = "At %s  " % ("X" if sym.axis == StageSymmetry.Axis.X else "Z")
-	if not is_equal_approx(_center_box.value, sym.offset()):
-		_center_box.set_value_no_signal(sym.offset())
+	if not is_equal_approx(_center_box.get_metres(), sym.offset()):
+		_center_box.set_metres_no_signal(sym.offset())
 	var staging := ctx.workspace == StudioContext.Workspace.STAGE
 	_mirror_options.visible = sym.enabled and staging
 	_mirror_plane.visible = sym.enabled and staging

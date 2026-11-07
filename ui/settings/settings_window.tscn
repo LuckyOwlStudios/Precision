@@ -1,0 +1,194 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/settings/settings_window.gd" id="1_win"]
+[ext_resource type="Script" path="res://ui/widgets/reset_label.gd" id="2_reset"]
+
+[node name="SettingsWindow" type="Window"]
+title = "Settings"
+initial_position = 2
+size = Vector2i(560, 470)
+visible = false
+wrap_controls = true
+transient = true
+min_size = Vector2i(460, 400)
+script = ExtResource("1_win")
+
+[node name="Background" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"CenterPanel"
+
+[node name="Margin" type="MarginContainer" parent="Background"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="Column" type="VBoxContainer" parent="Background/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="GraphicsTitle" type="Label" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Graphics"
+
+[node name="GraphicsRule" type="HSeparator" parent="Background/Margin/Column"]
+layout_mode = 2
+
+[node name="QualityRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="QualityLabel" type="Label" parent="Background/Margin/Column/QualityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Quality"
+script = ExtResource("2_reset")
+
+[node name="Low" type="Button" parent="Background/Margin/Column/QualityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Fastest: beam cones only, no shadows or volumetric haze"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Low"
+
+[node name="Medium" type="Button" parent="Background/Margin/Column/QualityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Volumetric haze, moving head shadows, ambient occlusion"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Medium"
+
+[node name="High" type="Button" parent="Background/Margin/Column/QualityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Every light casts shadows, floor reflections, smoother haze"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "High"
+
+[node name="Ultra" type="Button" parent="Background/Margin/Column/QualityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Highest detail haze, soft shadows, light bounce. Needs a strong GPU"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Ultra"
+
+[node name="ForwardPlusNote" type="Label" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Haze and shadows need the Forward+ renderer"
+autowrap_mode = 3
+
+[node name="Gap1" type="Control" parent="Background/Margin/Column"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="UnitsTitle" type="Label" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Units"
+
+[node name="UnitsRule" type="HSeparator" parent="Background/Margin/Column"]
+layout_mode = 2
+
+[node name="UnitsRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UnitsLabel" type="Label" parent="Background/Margin/Column/UnitsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Lengths"
+script = ExtResource("2_reset")
+
+[node name="Metric" type="Button" parent="Background/Margin/Column/UnitsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Metres and centimetres, e.g. 3.20 m"
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Metric"
+
+[node name="Imperial" type="Button" parent="Background/Margin/Column/UnitsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Feet and inches, e.g. 10' 6\""
+focus_mode = 0
+theme_type_variation = &"PillButton"
+toggle_mode = true
+text = "Imperial"
+
+[node name="Gap2" type="Control" parent="Background/Margin/Column"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="LanguageTitle" type="Label" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Language"
+
+[node name="LanguageRule" type="HSeparator" parent="Background/Margin/Column"]
+layout_mode = 2
+
+[node name="LanguageRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LanguageLabel" type="Label" parent="Background/Margin/Column/LanguageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Language"
+script = ExtResource("2_reset")
+
+[node name="Language" type="OptionButton" parent="Background/Margin/Column/LanguageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+focus_mode = 0
+
+[node name="Spacer" type="Control" parent="Background/Margin/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Footer" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+
+[node name="ResetAll" type="Button" parent="Background/Margin/Column/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Restores graphics quality, units and language"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "Reset all"
+
+[node name="Fill" type="Control" parent="Background/Margin/Column/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Close" type="Button" parent="Background/Margin/Column/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AccentButton"
+text = "Close"

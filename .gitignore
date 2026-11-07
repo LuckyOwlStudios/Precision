@@ -3,3 +3,6 @@
 /android/
 *.import
 export_presets.cfg
+
+# Godot converts locale/strings.csv on import; the game reads the CSV itself
+locale/*.translation
