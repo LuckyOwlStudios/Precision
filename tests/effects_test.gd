@@ -84,6 +84,22 @@ func _init() -> void:
 	var p1 := float(movers[1].live.pan) - movers[1].pan
 	_expect(p0 > 0.0 and p1 < 0.0 and absf(t0) < 0.001 and absf(t1) < 0.001, "spread puts the second mover on the other side")
 
+	# Effects only go on fixtures that can do them.
+	var pars := ctx.fixtures().filter(func(f: DMXFixture) -> bool: return not f.profile.has_channel("pan") and not f.profile.has_channel("tilt"))
+	_expect(not pars.is_empty(), "demo rig has fixtures without pan/tilt")
+	var par_only: Array[DMXFixture] = []
+	par_only.append(pars[0])
+	_expect(ctx.add_clip(circle, 96.0, par_only) == null, "a circle can't go on a par")
+	var everyone := ctx.add_clip(circle, 96.0, ctx.fixtures())
+	_expect(everyone.targets.size() == ctx.fixtures_supporting("circle").size() and everyone.targets.size() == movers.size(), "on the whole rig, only the movers get the circle")
+	_expect(ctx.add_clip(strobe, 96.0, par_only) != null, "a strobe can go on a par")
+
+	# Selecting a clip; selecting a fixture puts the fixture back.
+	ctx.select_clip(everyone)
+	_expect(ctx.selected_clip == everyone, "select a clip")
+	ctx.select(mover)
+	_expect(ctx.selected_clip == null, "selecting a fixture clears the clip selection")
+
 	# Your own preset.
 	c1.params.size = 60.0
 	var mine := ctx.save_clip_as_preset(c1, "Big circle")

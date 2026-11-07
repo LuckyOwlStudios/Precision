@@ -8,7 +8,8 @@ extends Control
 ##   Drag a preset from the Effects shelf onto a lane (or onto the music lane
 ##   for every fixture). Drag a clip to move it, drag its ends to stretch it.
 ##   Right-click a clip for Duplicate / Save as preset / Delete.
-##   Wheel scrolls time, Shift+wheel scrolls lanes, Ctrl+wheel zooms.
+##   Wheel (or the scrollbar) scrolls time, Shift+wheel scrolls lanes, Ctrl+wheel
+##   zooms, Home goes back to the start. Click a lane's name to select that fixture.
 
 const HEADER_W := 168.0
 const RULER_H := 26.0
@@ -33,6 +34,12 @@ var _drag_from_x := 0.0
 var _drag_start := 0.0
 var _drag_end := 0.0
 var _drop_lane := -2 ## lane under a dragged preset: -1 = music lane (all fixtures), -2 = none
+var _drop_preset: EffectPreset ## the preset being dragged over the timeline, to grey out lanes that can't do it
+## Set when you scroll by hand, so the view stops chasing the playhead until
+## you seek, scrub, or press play again.
+var _manual_scroll := false
+var _last_pos := 0.0
+var _was_playing := false
 var _menu: PopupMenu
 var _menu_clip: ShowClip
 
@@ -53,6 +60,7 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_DRAG_END:
 		_drop_lane = -2
+		_drop_preset = null
 
 
 # ------------------------------------------------------------------ layout
@@ -162,7 +170,10 @@ func _draw() -> void:
 		var lane: Dictionary = lanes[i]
 		if i % 2 == 0:
 			draw_rect(Rect2(HEADER_W, lane.y, w - HEADER_W, lane.h), Color(1, 1, 1, 0.012))
-		if i == _drop_lane:
+		if _drop_preset and not EffectTemplates.supports(_drop_preset.template, lane.fx):
+			draw_rect(Rect2(HEADER_W, lane.y, w - HEADER_W, lane.h), Color(0, 0, 0, 0.35))
+			draw_string(font, Vector2(HEADER_W + 12, lane.y + minf(lane.h, LANE_H) * 0.5 + 4), "Can't do %s: %s" % [_drop_preset.preset_name, EffectTemplates.needs_text(_drop_preset.template)], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UIPalette.TEXT_FAINT)
+		elif i == _drop_lane:
 			draw_rect(Rect2(HEADER_W, lane.y, w - HEADER_W, lane.h), Color(UIPalette.ACCENT, 0.08))
 		draw_line(Vector2(0, lane.y + lane.h), Vector2(w, lane.y + lane.h), UIPalette.HAIRLINE)
 	draw_line(Vector2(0, RULER_H + MUSIC_H), Vector2(w, RULER_H + MUSIC_H), UIPalette.HAIRLINE)
@@ -196,7 +207,7 @@ func _draw() -> void:
 
 	if _drop_lane == -1:
 		draw_rect(Rect2(HEADER_W, RULER_H, w - HEADER_W, MUSIC_H), Color(UIPalette.ACCENT, 0.08))
-		draw_string(font, Vector2(HEADER_W + 12, RULER_H + MUSIC_H - 8), "Drop here to put the effect on every fixture", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UIPalette.ACCENT)
+		draw_string(font, Vector2(HEADER_W + 12, RULER_H + MUSIC_H - 8), "Drop here to put it on every fixture that can do it", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UIPalette.ACCENT)
 
 	# Effect clips, clipped to the lane area so they scroll under the ruler.
 	for lane in lanes:
@@ -281,13 +292,35 @@ func _draw_waveform(lane: Rect2, font: Font) -> void:
 		draw_multiline(ahead, Color(UIPalette.BEAT, 0.45))
 
 
-## Keep the playhead on screen while playing.
+## Keep the playhead on screen while playing, and bring it into view when it
+## jumps (Back to start, a seek, the DJ jumping). Scrolling by hand stops the
+## chase until you seek, scrub or press play, so you can always look back to
+## the start of the song while it plays.
 func _follow_playhead() -> void:
-	if not ctx.playing:
+	var pos := ctx.position_beats
+	var jumped := absf(pos - _last_pos) > 0.5 and not _scrubbing
+	var started := ctx.playing and not _was_playing
+	_last_pos = pos
+	_was_playing = ctx.playing
+	if jumped or started:
+		_manual_scroll = false
+	if _manual_scroll or _scrubbing or _drag != Drag.NONE:
+		return
+	if not ctx.playing and not jumped:
 		return
 	var visible_beats := (size.x - HEADER_W) / px_per_beat
-	if ctx.position_beats > scroll_beats + visible_beats * 0.9 or ctx.position_beats < scroll_beats:
-		scroll_beats = maxf(0.0, ctx.position_beats - visible_beats * 0.1)
+	if pos > scroll_beats + visible_beats * 0.9 or pos < scroll_beats:
+		scroll_beats = maxf(0.0, pos - visible_beats * 0.1)
+
+
+## Scroll the view by hand (wheel, trackpad, scrollbar).
+func scroll_to(beats: float) -> void:
+	scroll_beats = clampf(beats, 0.0, ctx.length_beats if ctx else 0.0)
+	_manual_scroll = true
+
+
+func visible_beats() -> float:
+	return maxf(1.0, (size.x - HEADER_W) / px_per_beat)
 
 
 func _dashed_box() -> StyleBoxFlat:
@@ -354,14 +387,25 @@ func _gui_input(event: InputEvent) -> void:
 			elif mb.shift_pressed:
 				scroll_y = maxf(0.0, scroll_y - LANE_H)
 			else:
-				scroll_beats = maxf(0.0, scroll_beats - 4.0)
+				scroll_to(scroll_beats - 4.0)
 		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if mb.ctrl_pressed:
 				px_per_beat = maxf(px_per_beat / 1.15, 3.0)
 			elif mb.shift_pressed:
 				scroll_y = clampf(scroll_y + LANE_H, 0.0, maxf(0.0, _content_height() - size.y))
 			else:
-				scroll_beats = minf(ctx.length_beats, scroll_beats + 4.0)
+				scroll_to(scroll_beats + 4.0)
+		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_LEFT:
+			scroll_to(scroll_beats - 4.0)
+		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_RIGHT:
+			scroll_to(scroll_beats + 4.0)
+		accept_event()
+	elif event is InputEventPanGesture:
+		# Trackpad two-finger scroll: sideways moves through the song, up/down
+		# through the lanes.
+		var pan := (event as InputEventPanGesture).delta
+		scroll_to(scroll_beats + pan.x * 2.0)
+		scroll_y = clampf(scroll_y + pan.y * 8.0, 0.0, maxf(0.0, _content_height() - size.y))
 		accept_event()
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
@@ -385,12 +429,17 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _press(pos: Vector2) -> void:
+	if pos.x < HEADER_W:
+		var li := _lane_index_at(pos.y)
+		if li >= 0:
+			ctx.select(_lanes()[li].fx) # a lane's name picks that fixture
+		return
 	var hit := _clip_at(pos)
 	if hit.is_empty():
 		ctx.select_clip(null)
-		_scrubbing = pos.x > HEADER_W
-		if _scrubbing:
-			_scrub(pos.x)
+		_scrubbing = true
+		_manual_scroll = false
+		_scrub(pos.x)
 		return
 	var clip: ShowClip = hit.clip
 	var rect: Rect2 = hit.rect
@@ -419,7 +468,7 @@ func _drag_to(pos: Vector2) -> void:
 			if clip.targets.size() == 1:
 				var li := _lane_index_at(pos.y)
 				var lanes := _lanes()
-				if li >= 0 and lanes[li].path != clip.targets[0]:
+				if li >= 0 and lanes[li].path != clip.targets[0] and EffectTemplates.supports(clip.template, lanes[li].fx):
 					clip.targets = PackedStringArray([lanes[li].path])
 		Drag.LEFT:
 			var s := clampf(_snap(_drag_start + delta), 0.0, _drag_end - min_len)
@@ -473,9 +522,13 @@ func _on_menu(id: int) -> void:
 func _can_drop_data(at: Vector2, data: Variant) -> bool:
 	if not (data is Dictionary and (data as Dictionary).has("effect_preset")):
 		return false
+	var preset: EffectPreset = (data as Dictionary).effect_preset
+	_drop_preset = preset
 	var li := _lane_index_at(at.y) if at.x > HEADER_W else -2
-	if li == -1 and ctx.fixtures().is_empty():
+	if li == -1 and ctx.fixtures_supporting(preset.template).is_empty():
 		li = -2
+	elif li >= 0 and not EffectTemplates.supports(preset.template, _lanes()[li].fx):
+		li = -2 # a crowd sweep on a par: not allowed
 	_drop_lane = li
 	return li != -2
 
@@ -485,10 +538,11 @@ func _drop_data(at: Vector2, data: Variant) -> void:
 	var li := _lane_index_at(at.y)
 	var targets: Array[DMXFixture] = []
 	if li == -1:
-		targets = ctx.fixtures()
+		targets = ctx.fixtures_supporting(preset.template)
 	elif li >= 0:
 		targets.append(_lanes()[li].fx)
 	_drop_lane = -2
+	_drop_preset = null
 	if targets.is_empty():
 		return
 	ctx.add_clip(preset, maxf(0.0, _snap(_beat_at(at.x))), targets)

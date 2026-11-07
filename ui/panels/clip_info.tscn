@@ -1,0 +1,89 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/clip_info.gd" id="1_clip"]
+
+[node name="ClipInfo" type="VBoxContainer"]
+visible = false
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+script = ExtResource("1_clip")
+
+[node name="ClipTitle" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Effect"
+uppercase = true
+
+[node name="ClipRule" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="ClipName" type="LineEdit" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Effect name"
+
+[node name="ClipKind" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+autowrap_mode = 3
+
+[node name="Timing" type="GridContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
+[node name="Params" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TargetsTitle" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="TargetsTitle"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Caption"
+text = "Runs on (in order, for spread and chases)"
+autowrap_mode = 3
+
+[node name="AllFixtures" type="Button" parent="TargetsTitle"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FlatButton"
+text = "All"
+
+[node name="Targets" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ClipButtons" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="SavePreset" type="Button" parent="ClipButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Save this effect and its settings to the shelf, named as above"
+theme_type_variation = &"AccentButton"
+text = "Save as preset"
+
+[node name="Duplicate" type="Button" parent="ClipButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Copy this effect right after itself (Ctrl+D)"
+text = "Duplicate"
+
+[node name="DeleteClip" type="Button" parent="ClipButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete this effect from the timeline (Delete)"
+text = "Delete"
+
+[node name="PresetNote" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3

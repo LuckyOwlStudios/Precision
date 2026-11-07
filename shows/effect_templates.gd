@@ -84,6 +84,44 @@ static func get_template(id: String) -> Dictionary:
 	return {}
 
 
+## What a fixture needs for this effect: "move" = pan or tilt, "color" = RGB,
+## "light" = anything that can change brightness (a dimmer, or colour/white
+## channels it can dim virtually).
+static func needs(id: String) -> String:
+	match id:
+		"circle", "sweep":
+			return "move"
+		"rainbow", "color":
+			return "color"
+	return "light"
+
+
+## Can this fixture do this effect? A crowd sweep on a par can't.
+static func supports(id: String, fx: DMXFixture) -> bool:
+	if fx == null or fx.profile == null:
+		return false
+	var pr := fx.profile
+	match needs(id):
+		"move":
+			return pr.has_channel("pan") or pr.has_channel("tilt")
+		"color":
+			return pr.has_channel("red") and pr.has_channel("green") and pr.has_channel("blue")
+	for ch in ["dimmer", "red", "green", "blue", "white", "amber", "uv", "strobe"]:
+		if pr.has_channel(ch):
+			return true
+	return false
+
+
+## Short reason shown when a fixture can't do an effect.
+static func needs_text(id: String) -> String:
+	match needs(id):
+		"move":
+			return "needs a moving head (pan/tilt)"
+		"color":
+			return "needs a colour (RGB) fixture"
+	return "needs a fixture that can dim"
+
+
 static func display_name(id: String) -> String:
 	return str(get_template(id).get("name", id))
 
