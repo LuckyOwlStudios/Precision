@@ -58,6 +58,7 @@ var _lights: Array[Light3D] = []
 var _beam_strength := 1.0
 var _marker_tween: Tween
 var _selected := false
+static var _body_boxes: Dictionary = {} ## scene path -> AABB, see body_box_of
 
 @onready var _yoke: Node3D = %Yoke ## rotates with pan
 @onready var _head: Node3D = %Head ## rotates with tilt; the beam points down its -Y
@@ -85,6 +86,46 @@ static func scene_path_of(fx: DMXFixture) -> String:
 ## position per MountPoint. Read from the scene once and remembered.
 static func mounts_of(path: String) -> PackedVector3Array:
 	return MountRotation.rules_of(path).mounts
+
+
+## The box round a body scene's solid parts (shell, yoke, clamps; not beams,
+## glows, markers or a floor stand), in the fixture's own space. Read from the
+## scene once and remembered. Used to keep fixtures on one tube from overlapping.
+static func body_box_of(path: String) -> AABB:
+	if _body_boxes.has(path):
+		return _body_boxes[path]
+	var box := AABB()
+	var first := true
+	var root := (load(path) as PackedScene).instantiate() as Node3D
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or not _solid_part(mi, root):
+			continue
+		var xf := Transform3D.IDENTITY
+		var p: Node = mi
+		while p and p != root:
+			xf = (p as Node3D).transform * xf
+			p = p.get_parent()
+		var b := xf * mi.mesh.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	root.free()
+	_body_boxes[path] = box
+	return box
+
+
+static func _solid_part(n: Node, root: Node) -> bool:
+	var p: Node = n
+	while p and p != root:
+		if p is Node3D and not (p as Node3D).visible:
+			return false
+		if p.is_in_group(StagePick.NO_PICK_GROUP) or String(p.name) == "Stand":
+			return false
+		for prefix in StagePick.SKIP_PREFIXES:
+			if String(p.name).begins_with(prefix):
+				return false
+		p = p.get_parent()
+	return true
 
 
 ## Show the clamps (and brackets under them) while the fixture hangs on a

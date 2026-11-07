@@ -230,14 +230,91 @@ static func hang(pipe: Pipe, along: float, mounts: PackedVector3Array, side := V
 ## goes to `along`, but no further than lets its outermost clamp reach an end.
 ## A 1.2 m bar with a clamp at each end stops 0.6 m from the end of the tube.
 static func slide(pipe: Pipe, xform: Transform3D, mounts: PackedVector3Array, along: float) -> Transform3D:
+	var r := slide_range(pipe, mounts)
+	along = clampf(along, r.x, r.y)
+	return Transform3D(xform.basis, pipe.point(along) - xform.basis * centre_of(mounts))
+
+
+## How far along a tube the middle of a fixture's clamps may go: [from, to],
+## keeping every clamp on the tube.
+static func slide_range(pipe: Pipe, mounts: PackedVector3Array) -> Vector2:
 	var centre := centre_of(mounts)
 	var half_span := 0.0
 	for m: Vector3 in mounts:
 		half_span = maxf(half_span, absf(m.x - centre.x))
 	var run := pipe.length()
 	var margin := half_span + MountPoint.CLAMP_HALF_WIDTH
-	along = clampf(along, minf(margin, run * 0.5), maxf(run - margin, run * 0.5))
-	return Transform3D(xform.basis, pipe.point(along) - xform.basis * centre)
+	return Vector2(minf(margin, run * 0.5), maxf(run - margin, run * 0.5))
+
+
+# ---------------------------------------------------------------- fixtures side by side on one tube
+
+## Fixtures on one tube keep this far apart (metres between their bodies).
+const NEIGHBOUR_GAP := 0.005
+
+
+## How much of a tube a fixture's body covers: [from, to] along it, for the
+## fixture at `xform` with its body box `box` (in its own space).
+static func span_on(pipe: Pipe, xform: Transform3D, box: AABB) -> Vector2:
+	var lo := INF
+	var hi := -INF
+	for i in 8:
+		var a := pipe.along_of(xform * box.get_endpoint(i))
+		lo = minf(lo, a)
+		hi = maxf(hi, a)
+	return Vector2(lo, hi)
+
+
+## Where the middle of a fixture's clamps may NOT go because its body would
+## run into a neighbour's: `rel` is its body's span relative to the middle of
+## its clamps, `others` the spans neighbours cover. One open range per neighbour.
+static func blocked_by(rel: Vector2, others: Array[Vector2]) -> Array[Vector2]:
+	var list: Array[Vector2] = []
+	for o in others:
+		list.append(Vector2(o.x - rel.y - NEIGHBOUR_GAP, o.y - rel.x + NEIGHBOUR_GAP))
+	list.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.x < q.x)
+	var merged: Array[Vector2] = []
+	for b in list:
+		if not merged.is_empty() and b.x <= merged[-1].y:
+			merged[-1] = Vector2(merged[-1].x, maxf(merged[-1].y, b.y))
+		else:
+			merged.append(b)
+	return merged
+
+
+## The stretch of `limits` a fixture whose clamps' middle is at `at` can slide
+## in without passing a neighbour: it stops at their edges. If it already
+## overlaps one (an old rig), it isn't held back.
+static func free_gap(limits: Vector2, blocked: Array[Vector2], at: float) -> Vector2:
+	var gap := limits
+	for b in blocked:
+		if at > b.x and at < b.y:
+			return limits
+		if b.y <= at:
+			gap.x = maxf(gap.x, b.y)
+		elif b.x >= at:
+			gap.y = minf(gap.y, b.x)
+	return gap
+
+
+## The free spot in `limits` nearest `want`, or NAN if the tube is full.
+static func nearest_free(limits: Vector2, blocked: Array[Vector2], want: float) -> float:
+	var options: Array[float] = [clampf(want, limits.x, limits.y)]
+	for b in blocked:
+		options.append(b.x)
+		options.append(b.y)
+	var best := NAN
+	for a in options:
+		if a < limits.x - 1e-6 or a > limits.y + 1e-6:
+			continue
+		var inside := false
+		for b in blocked:
+			if a > b.x + 1e-6 and a < b.y - 1e-6:
+				inside = true
+				break
+		if not inside and (is_nan(best) or absf(a - want) < absf(best - want)):
+			best = a
+	return best
 
 
 ## Where the middle of a fixture's clamps is along a tube.

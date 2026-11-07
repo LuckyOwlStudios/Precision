@@ -83,6 +83,7 @@ var _drag_screen_offset := Vector2.ZERO ## fixture on screen minus the cursor
 var _drag_start := Transform3D.IDENTITY
 var _drag_pipe: StageRoom.Pipe ## the tube it slides along, if hung on one
 var _drag_along_offset := 0.0 ## clamps' place on the tube minus the grab point's
+var _drag_gap := Vector2.ZERO ## how far along the tube it may slide before it meets a neighbour
 var _edit_before := Transform3D.IDENTITY ## where the fixture being dragged started, for undo
 
 # Box select: drag on empty space to pick several things at once.
@@ -344,7 +345,10 @@ func _entry_mounts(entry: FixtureCatalog.Entry) -> PackedVector3Array:
 ## onto the truss tube under it by its MountPoints (`mounts`), or flush on the
 ## surface under it, beam pointing into the room. With `no_snap` (Alt held) it
 ## hangs at the default height above the floor point instead. Null on a miss.
-func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Array, no_snap: bool) -> Variant:
+## `path` is the fixture's body scene, so it can be kept clear of the fixtures
+## already on the tube (`ignore` is the one being moved, if any).
+func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Array, no_snap: bool,
+		path := "", ignore: DMXFixture = null) -> Variant:
 	var origin := _camera.project_ray_origin(at)
 	var dir := _camera.project_ray_normal(at)
 	if no_snap:
@@ -356,7 +360,15 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	if not mounts.is_empty():
 		var grab := _pipe_at(at)
 		if not grab.is_empty():
-			return StageRoom.hang(grab[0], grab[1], mounts, grab[2])
+			var pipe: StageRoom.Pipe = grab[0]
+			var xf := StageRoom.hang(pipe, grab[1], mounts, grab[2])
+			if path.is_empty():
+				return xf
+			var a := StageRoom.nearest_free(StageRoom.slide_range(pipe, mounts),
+				_blocked_on(pipe, xf, path, ignore), StageRoom.clamps_along(pipe, xf, mounts))
+			if not is_nan(a):
+				return StageRoom.slide(pipe, xf, mounts, a)
+			# That tube is full: fall through to whatever is behind it.
 	var hit := StageRoom.raycast(_surfaces, origin, dir)
 	if hit == null:
 		return null
@@ -364,6 +376,22 @@ func _placement(at: Vector2, body: FixtureCatalog.Body, mounts: PackedVector3Arr
 	if hit.kind == StageRoom.Kind.FLOOR:
 		pos = Vector3(clampf(pos.x, -7.5, 7.5), pos.y, clampf(pos.z, -5.5, 5.5)) # stay in the room
 	return Transform3D(StageRoom.mount_basis(hit.normal), pos + hit.normal * StageFixture3D.mount_offset(body))
+
+
+## Where on `pipe` the middle of a fixture's clamps may not go (see
+## StageRoom.blocked_by): the fixture has body scene `path` and would sit at
+## `xform` (its turn is what counts); `ignore` is itself, when moving one.
+func _blocked_on(pipe: StageRoom.Pipe, xform: Transform3D, path: String, ignore: DMXFixture) -> Array[Vector2]:
+	var mounts := StageFixture3D.mounts_of(path)
+	var own := StageRoom.span_on(pipe, xform, StageFixture3D.body_box_of(path))
+	var centre := StageRoom.clamps_along(pipe, xform, mounts)
+	var others: Array[Vector2] = []
+	for fx: DMXFixture in _visuals:
+		if fx == ignore or _pipe_holding(fx) != pipe:
+			continue
+		others.append(StageRoom.span_on(pipe, StudioContext.fixture_transform(fx),
+			StageFixture3D.body_box_of(StageFixture3D.scene_path_of(fx))))
+	return StageRoom.blocked_by(own - Vector2(centre, centre), others)
 
 
 ## The tube nearest the cursor on screen, where along it, and which face of it
@@ -425,7 +453,8 @@ func _can_drop_data(at: Vector2, data: Variant) -> bool:
 	var ok: bool = data is Dictionary and (data as Dictionary).get("kind") == "fixture"
 	if ok:
 		var entry: FixtureCatalog.Entry = (data as Dictionary)["entry"]
-		var xf: Variant = _placement(at, entry.body, _entry_mounts(entry), Input.is_key_pressed(KEY_ALT))
+		var xf: Variant = _placement(at, entry.body, _entry_mounts(entry), Input.is_key_pressed(KEY_ALT),
+			StageFixture3D.scene_path(entry.body, entry.profile.fixture_name))
 		_drop_marker.visible = xf != null
 		if xf != null:
 			var t: Transform3D = xf
@@ -441,7 +470,8 @@ func _drop_data(at: Vector2, data: Variant) -> void:
 		_drop_piece(at, String((data as Dictionary)["path"]))
 		return
 	var entry: FixtureCatalog.Entry = (data as Dictionary)["entry"]
-	var xf: Variant = _placement(at, entry.body, _entry_mounts(entry), Input.is_key_pressed(KEY_ALT))
+	var xf: Variant = _placement(at, entry.body, _entry_mounts(entry), Input.is_key_pressed(KEY_ALT),
+			StageFixture3D.scene_path(entry.body, entry.profile.fixture_name))
 	if xf == null:
 		xf = Transform3D(Basis.IDENTITY, Vector3(0, StageFixture3D.MOUNT_HEIGHT, 0))
 	var t: Transform3D = xf
@@ -507,7 +537,10 @@ func _begin_body_drag(fx: DMXFixture, at: Vector2, restick: bool) -> void:
 	_drag_pipe = _pipe_holding(fx)
 	if _drag_pipe:
 		var r := _drag_pipe.closest_to_ray(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
-		_drag_along_offset = StageRoom.clamps_along(_drag_pipe, _drag_start, _mounts(fx)) - float(r[0])
+		var at_now := StageRoom.clamps_along(_drag_pipe, _drag_start, _mounts(fx))
+		_drag_along_offset = at_now - float(r[0])
+		_drag_gap = StageRoom.free_gap(StageRoom.slide_range(_drag_pipe, _mounts(fx)),
+			_blocked_on(_drag_pipe, _drag_start, StageFixture3D.scene_path_of(fx), fx), at_now)
 
 
 func _update_body_drag(at: Vector2, ctrl_held: bool) -> void:
@@ -517,7 +550,8 @@ func _update_body_drag(at: Vector2, ctrl_held: bool) -> void:
 		_drag_started = true
 	var body: FixtureCatalog.Body = _dragging.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
 	if _drag_restick:
-		var xf: Variant = _placement(at + _drag_screen_offset, body, _mounts(_dragging), false)
+		var xf: Variant = _placement(at + _drag_screen_offset, body, _mounts(_dragging), false,
+			StageFixture3D.scene_path_of(_dragging), _dragging)
 		if xf != null:
 			ctx.move_fixture(_dragging, xf)
 		return
@@ -528,6 +562,7 @@ func _update_body_drag(at: Vector2, ctrl_held: bool) -> void:
 			# Snap where the clamps sit in the room, not the distance from the tube's end.
 			var start := _drag_pipe.along_of(Vector3.ZERO)
 			along = snappedf(along - start, TransformGizmo.MOVE_STEP) + start
+		along = clampf(along, _drag_gap.x, _drag_gap.y) # stop at the neighbours
 		ctx.move_fixture(_dragging, StageRoom.slide(_drag_pipe, _drag_start, _mounts(_dragging), along))
 		return
 	var hit: Variant = _ray_plane(_drag_plane, at)
