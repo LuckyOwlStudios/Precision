@@ -31,7 +31,7 @@ horizontal_alignment = 1
 [node name="Snap" type="OptionButton" parent="Header/Row" unique_id=1783106614]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Grid snap for clips (clips coming soon)"
+tooltip_text = "Grid that effect clips snap to when you drop, move or stretch them"
 selected = 0
 item_count = 5
 popup/item_0/text = "Snap: 1 beat"

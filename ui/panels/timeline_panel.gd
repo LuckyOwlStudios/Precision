@@ -2,8 +2,8 @@ class_name TimelinePanel
 extends VBoxContainer
 ## Beat-grid timeline along the bottom: a music lane, one lane per fixture,
 ## bars and beats on the ruler, and a red playhead.
-## First pass: it shows the grid and transport; clips and keyframes come next
-## (they will map onto an AnimationPlayer, see the addon README).
+## Effect clips live on the fixture lanes (see TimelineCanvas); the Snap menu
+## sets the grid they move on.
 
 var ctx: StudioContext
 
@@ -20,6 +20,9 @@ func setup(p_ctx: StudioContext) -> void:
 
 func _ready() -> void:
 	%Zoom.value_changed.connect(func(v: float) -> void: _canvas.px_per_beat = v)
+	# Snap: 1 beat, 1/2, 1/4, bar, off (same order as the menu).
+	var snaps := [1.0, 0.5, 0.25, 4.0, 0.0]
+	%Snap.item_selected.connect(func(i: int) -> void: _canvas.snap_beats = snaps[i])
 
 
 func _update_label() -> void:
