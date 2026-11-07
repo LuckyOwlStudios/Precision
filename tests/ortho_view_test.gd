@@ -43,6 +43,7 @@ func _init() -> void:
 	await test_numpad_and_return()
 	await test_leaving_by_orbit()
 	await test_pan_and_zoom()
+	await test_touch()
 	await test_click_picks_fixture()
 	await test_snap_and_measure()
 	await test_beam_footprint()
@@ -141,7 +142,20 @@ func test_leaving_by_orbit() -> void:
 	rmb.button_index = MOUSE_BUTTON_RIGHT
 	rmb.pressed = true
 	view._gui_input(rmb)
-	check(view._view_preset == "Perspective", "flying (right button) also leaves it")
+	check(view._view_preset == "Front" and not view._flying, "right button in a drawing view pans instead of flying")
+	var before := view._pivot.position
+	var drag := InputEventMouseMotion.new()
+	drag.relative = Vector2(0, 80)
+	drag.position = Vector2(400, 300)
+	view._gui_input(drag)
+	check(view._pivot.position.y > before.y + 0.1 and absf(view._pivot.position.x - before.x) < 0.001, "right drag down moves the view up")
+	rmb.pressed = false
+	view._gui_input(rmb)
+	check(not view._panning, "releasing stops the pan")
+	view.show_view("Perspective")
+	rmb.pressed = true
+	view._gui_input(rmb)
+	check(view._flying, "in perspective the right button still flies")
 	rmb.pressed = false
 	view._gui_input(rmb)
 
@@ -174,6 +188,46 @@ func test_pan_and_zoom() -> void:
 	var per_px := view._ortho_size / view.size.y
 	check(is_equal_approx(absf(moved.x), 100.0 * per_px), "one pixel of drag is one pixel of drawing")
 	check(is_equal_approx(cam.size, view._ortho_size), "the camera shows the zoomed height")
+
+
+func touch(index: int, at: Vector2, down: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = index
+	ev.position = at
+	ev.pressed = down
+	view._gui_input(ev)
+
+
+func touch_drag(index: int, at: Vector2, rel: Vector2) -> void:
+	var ev := InputEventScreenDrag.new()
+	ev.index = index
+	ev.position = at
+	ev.relative = rel
+	view._gui_input(ev)
+
+
+func test_touch() -> void:
+	print("touch in a drawing view")
+	view.show_view("Front")
+	await frames(2)
+	var pivot := view._pivot.position
+	touch(0, Vector2(400, 400), true)
+	touch(1, Vector2(500, 400), true)
+	touch_drag(0, Vector2(440, 400), Vector2(40, 0))
+	touch_drag(1, Vector2(540, 400), Vector2(40, 0))
+	check(view._view_preset == "Front", "two fingers don't leave the drawing view")
+	check(view._pivot.position.x < pivot.x - 0.1, "two fingers dragging right slide the drawing right")
+	var size_before: float = view._ortho_size
+	touch_drag(0, Vector2(340, 400), Vector2(-100, 0))
+	touch_drag(1, Vector2(640, 400), Vector2(100, 0))
+	check(view._ortho_size < size_before, "spreading the fingers zooms in")
+	var size_mid: float = view._ortho_size
+	touch_drag(0, Vector2(480, 400), Vector2(140, 0))
+	touch_drag(1, Vector2(500, 400), Vector2(-140, 0))
+	check(view._ortho_size > size_mid, "pinching zooms out")
+	touch(0, Vector2(480, 400), false)
+	touch(1, Vector2(500, 400), false)
+	check(not view._touch_locked, "lifting the fingers ends the gesture")
 
 
 func test_click_picks_fixture() -> void:

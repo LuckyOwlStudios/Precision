@@ -32,9 +32,9 @@ extends Control
 ##   Top / Front / Side buttons        -> orthographic drawing views (numpad 7 / 1 / 3, numpad 5
 ##                                       back to perspective): no perspective, true to scale,
 ##                                       with grid, labels, trim heights and beam coverage
-##                                       (see DraftingOverlay). Middle drag pans, wheel zooms to
-##                                       the cursor, D measures, Alt+left or right drag go back
-##                                       to a free perspective view
+##                                       (see DraftingOverlay). Right or middle drag pans, wheel zooms
+##                                       to the cursor, D measures, Alt+left drag goes back to a
+##                                       free perspective view. Touch: two fingers pan, pinch zooms
 ##   T / Point at button               -> aim the selected moving heads: click or drag on the
 ##                                       stage and every selected head points there (one undo
 ##                                       step), Esc or T again to finish
@@ -66,7 +66,7 @@ const ORTHO_VIEWS := {
 }
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
-const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · middle drag  pan · wheel  zoom to cursor\n? or F1  this list"
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -78,6 +78,8 @@ var _pitch := -14.0
 var _distance := 12.5
 var _orbiting := false
 var _panning := false
+var _panning_middle := false
+var _panning_right := false ## right button held in a drawing view
 var _drag_threshold := DRAG_THRESHOLD_PX ## set per press: bigger for a finger
 var _touches := TouchGestures.new()
 var _touch_locked := false ## a gesture is going (or just ended): ignore the leftover finger's mouse events
@@ -729,11 +731,14 @@ func _gui_input(event: InputEvent) -> void:
 								"Turn fixture" if _gizmo.mode == TransformGizmo.Mode.ROTATE else "Move fixture")
 						_update_gizmo()
 			MOUSE_BUTTON_RIGHT:
-				if mb.pressed:
-					_leave_ortho() # flying is a perspective thing
-				_set_flying(mb.pressed)
+				if _is_ortho() or _panning_right:
+					_panning_right = mb.pressed and _is_ortho() # a drawing view has nothing to fly through: drag pans
+					_panning = _panning_right or _panning_middle
+				else:
+					_set_flying(mb.pressed)
 			MOUSE_BUTTON_MIDDLE:
-				_panning = mb.pressed
+				_panning_middle = mb.pressed
+				_panning = _panning_middle or _panning_right
 			MOUSE_BUTTON_WHEEL_UP:
 				if mb.pressed and _flying:
 					_set_fly_speed(_fly_speed * 1.2)
@@ -945,7 +950,8 @@ func _touch_input(event: InputEvent) -> bool:
 func _apply_gesture(pan: Vector2, pinch: float, fingers: int) -> void:
 	if pinch != 1.0:
 		_zoom(1.0 / pinch)
-	if fingers >= 3 and _is_ortho():
+	if _is_ortho():
+		# Two or more fingers: slide the drawing (pinch, above, zooms). No orbiting here.
 		var per_px := _ortho_size / maxf(size.y, 1.0)
 		_pivot.position += (-_camera.global_basis.x * pan.x + _camera.global_basis.y * pan.y) * per_px
 	elif fingers >= 3:
@@ -953,7 +959,6 @@ func _apply_gesture(pan: Vector2, pinch: float, fingers: int) -> void:
 		var fwd := Vector3(_camera.global_transform.basis.z.x, 0, _camera.global_transform.basis.z.z).normalized()
 		_pivot.position += (-right * pan.x + -fwd * pan.y) * _distance * TOUCH_PAN_PER_PX
 	else:
-		_leave_ortho()
 		_yaw -= pan.x * TOUCH_ORBIT_DEG_PER_PX
 		_pitch = clampf(_pitch - pan.y * TOUCH_ORBIT_DEG_PER_PX, -89.0, maxf(5.0, _pitch))
 	_update_camera()
@@ -1023,7 +1028,7 @@ func _update_help() -> void:
 	elif ctx and ctx.selected:
 		text = "W move · E rotate · F2 rename · Delete remove" + HINT_MORE
 	elif _is_ortho():
-		text = "Drag to box select · Middle drag pan · Wheel zoom · D measure · Numpad 5 perspective"
+		text = "Drag to box select · Right drag pan · Wheel zoom · D measure · Numpad 5 perspective"
 	else:
 		text = "Drag to box select · Right drag to fly" + HINT_MORE
 	if text != _help.text:
