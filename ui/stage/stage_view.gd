@@ -1213,6 +1213,7 @@ func _refresh_marks() -> void:
 		p.set_highlight(p == _selected_piece or _group.has(p))
 	if ctx:
 		ctx.select_piece(_selected_piece if _group.is_empty() else null) # the inspector's details
+		ctx.set_group(_group) # the inspector edits a group's fixtures together
 	_refresh_aim_button()
 
 
