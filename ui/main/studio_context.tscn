@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://addons/lucky_dmx/cue_stack.gd" id="4_cues"]
 [ext_resource type="Script" path="res://music/song_library.gd" id="5_songs"]
 [ext_resource type="Script" path="res://djsync/dj_sync.gd" id="6_dj"]
+[ext_resource type="Script" path="res://shows/look_library.gd" id="7_looks"]
 
 [node name="Studio" type="Node"]
 script = ExtResource("1_ctx")
@@ -29,6 +30,9 @@ fixtures_root = NodePath("../Rig")
 
 [node name="Songs" type="Node" parent="."]
 script = ExtResource("5_songs")
+
+[node name="Looks" type="Node" parent="."]
+script = ExtResource("7_looks")
 
 [node name="Music" type="AudioStreamPlayer" parent="."]
 
