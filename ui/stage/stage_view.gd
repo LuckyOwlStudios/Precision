@@ -148,6 +148,8 @@ func setup(p_ctx: StudioContext) -> void:
 		_follow_piece(p)
 		_rebuild_pipes())
 	ctx.symmetry.changed.connect(_sync_mirror)
+	ctx.look_editing_changed.connect(_show_look_edit_badge)
+	_style_look_edit_badge()
 	ctx.set_root = _set
 	ctx.truss_pipes = _pipes
 	ctx.stage_surfaces = _surfaces
@@ -1386,3 +1388,24 @@ func _attach_group(fxs: Array, indices: Array, pieces: Array, xfs: Array) -> voi
 	items.append_array(fxs)
 	items.append_array(pieces)
 	_set_selection(items)
+
+
+# While a look is being edited, an amber badge at the top of the stage says so,
+# so changes are never made to a saved look by accident.
+func _style_look_edit_badge() -> void:
+	var box := StyleBoxFlat.new()
+	box.bg_color = UIPalette.ACCENT
+	box.set_corner_radius_all(UIPalette.RADIUS)
+	box.content_margin_left = 14
+	box.content_margin_right = 14
+	box.content_margin_top = 5
+	box.content_margin_bottom = 5
+	%LookEditBadge.add_theme_stylebox_override("panel", box)
+	%LookEditText.add_theme_color_override("font_color", UIPalette.APP_BG)
+
+
+func _show_look_edit_badge(look: Look) -> void:
+	var badge: Control = %LookEditBadge
+	badge.visible = look != null
+	if look:
+		%LookEditText.text = "EDITING LOOK: %s   ·   Save changes or Cancel in the Cues tab" % look.look_name.to_upper()

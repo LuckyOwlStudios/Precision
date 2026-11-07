@@ -1,6 +1,6 @@
 extends SceneTree
-## Checks the Looks shelf: save, apply with undo, rename, delete, and that looks
-## survive a reload from disk.
+## Checks the Looks shelf: save, apply with undo, rename, delete, unique names,
+## edit mode, and that looks survive a reload from disk.
 ##   godot --headless --path . --script res://tests/looks_test.gd
 
 var _failed := 0
@@ -37,6 +37,30 @@ func _init() -> void:
 	_expect(ctx.looks.looks.size() == 2, "looks come back from disk")
 	var names := ctx.looks.looks.map(func(l: Look) -> String: return l.look_name)
 	_expect(names.has("Doors open"), "renamed look was saved")
+
+	# Names are unique (ignoring case and spaces).
+	_expect(ctx.save_look(" doors OPEN ") == null, "a duplicate name is refused")
+	_expect(ctx.looks.looks.size() == 2, "nothing was added for the duplicate")
+	var other: Look = ctx.looks.looks[0] if ctx.looks.looks[0] != look else ctx.looks.looks[1]
+	ctx.rename_look(other, "Doors open")
+	_expect(other.look_name != "Doors open", "rename to a taken name is refused")
+
+	# Edit mode: changes only go into the look on Save changes.
+	look = ctx.looks.looks[0] if ctx.looks.looks[0].look_name == "Doors open" else ctx.looks.looks[1]
+	fx.color = Color.GREEN
+	ctx.begin_look_edit(look)
+	_expect(ctx.editing_look == look and fx.color == Color.RED, "edit puts the look on stage")
+	fx.color = Color.YELLOW
+	ctx.cancel_look_edit()
+	_expect(ctx.editing_look == null and fx.color == Color.GREEN, "cancel puts the stage back")
+	_expect(look.values[str(ctx.rig.get_path_to(fx))]["color"] == Color.RED, "cancel leaves the look alone")
+	ctx.begin_look_edit(look)
+	fx.color = Color.YELLOW
+	ctx.finish_look_edit(4.0)
+	_expect(look.values[str(ctx.rig.get_path_to(fx))]["color"] == Color.YELLOW and is_equal_approx(look.fade_time, 4.0), "save changes stores the stage and fade")
+	ctx.undo()
+	_expect(look.values[str(ctx.rig.get_path_to(fx))]["color"] == Color.RED, "undo takes the edit back")
+	ctx.redo()
 
 	var back: Look = ctx.looks.looks[0]
 	ctx.delete_look(back)

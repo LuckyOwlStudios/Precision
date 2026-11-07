@@ -63,7 +63,7 @@ func remove(look: Look) -> void:
 
 func rename(look: Look, new_name: String) -> void:
 	new_name = new_name.strip_edges()
-	if new_name.is_empty() or new_name == look.look_name:
+	if new_name.is_empty() or new_name == look.look_name or is_name_taken(new_name, look):
 		return
 	look.look_name = new_name
 	save(look)
@@ -77,12 +77,22 @@ func save(look: Look) -> void:
 		push_warning("LookLibrary: could not save '%s' (error %d)" % [look.look_name, err])
 
 
+## True when another look (not `except`) already has this name. Names are
+## compared without case or surrounding spaces, so "Intro" and "intro " clash.
+func is_name_taken(look_name: String, except: Look = null) -> bool:
+	_ensure_loaded()
+	var key := look_name.strip_edges().to_lower()
+	for l in looks:
+		if l != except and l.look_name.strip_edges().to_lower() == key:
+			return true
+	return false
+
+
 ## "Look 3" style name that no other look uses yet.
 func next_name() -> String:
 	_ensure_loaded()
 	var n := looks.size() + 1
-	var taken := looks.map(func(l: Look) -> String: return l.look_name)
-	while taken.has("Look %d" % n):
+	while is_name_taken("Look %d" % n):
 		n += 1
 	return "Look %d" % n
 

@@ -505,6 +505,23 @@ unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
 
+[node name="LookEditBadge" type="PanelContainer" parent="Overlay" unique_id=910000030]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_top = 16.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="LookEditText" type="Label" parent="Overlay/LookEditBadge" unique_id=910000031]
+unique_name_in_owner = true
+layout_mode = 2
+text = "EDITING LOOK"
+horizontal_alignment = 1
+
 [node name="EmptyHint" type="VBoxContainer" parent="Overlay" unique_id=14525423]
 unique_name_in_owner = true
 layout_mode = 0

@@ -24,6 +24,8 @@ signal workspace_changed(workspace: Workspace)
 signal cues_changed
 ## A look was applied, saved, renamed or deleted (the shelf listens).
 signal looks_changed
+## Editing a look started or ended (`look` is null when it ended).
+signal look_editing_changed(look: Look)
 signal song_changed(song: Song)
 ## The linked show should start: fired when a song starts playing from
 ## stopped or paused. The show player will listen to this once shows exist.
@@ -781,10 +783,13 @@ var _applied_look: Look ## the look most recently applied, for the shelf highlig
 
 
 ## Store what the fixtures are doing now as a new look on the shelf.
+## Returns null (and saves nothing) if another look already has that name.
 func save_look(look_name: String = "") -> Look:
 	var name_to_use := look_name.strip_edges()
 	if name_to_use.is_empty():
 		name_to_use = looks.next_name()
+	if looks.is_name_taken(name_to_use):
+		return null
 	var look := Look.capture(rig, name_to_use)
 	_applied_look = look # it is what is on stage right now
 	looks.add(look)
@@ -793,6 +798,8 @@ func save_look(look_name: String = "") -> Look:
 
 
 func delete_look(look: Look) -> void:
+	if editing_look == look:
+		cancel_look_edit()
 	if _applied_look == look:
 		_applied_look = null
 	looks.remove(look)
@@ -817,6 +824,65 @@ func apply_look(look: Look, fade: float = -1.0) -> void:
 
 func applied_look() -> Look:
 	return _applied_look
+
+
+# Editing a look. Outside of this, changing fixtures never touches a saved look:
+# "Save look" always makes a new one. Editing is a mode you enter on purpose
+# (Edit on the shelf); the stage shows a badge while it is on, and you leave it
+# with Save changes (the look takes what is on stage) or Cancel.
+
+## The look being edited, or null.
+var editing_look: Look
+var _pre_edit_values: Dictionary = {} ## the stage before Edit, for Cancel
+
+
+func is_editing_look() -> bool:
+	return editing_look != null
+
+
+## Put the look on stage (no fade) and start editing it.
+func begin_look_edit(look: Look) -> void:
+	if editing_look == look:
+		return
+	if editing_look:
+		cancel_look_edit()
+	_pre_edit_values = Look.capture(rig, "").values
+	editing_look = look
+	apply_look(look, 0.0)
+	look_editing_changed.emit(look)
+	looks_changed.emit()
+
+
+## Store what is on stage now (and the fade time) into the look being edited.
+func finish_look_edit(fade_time: float = -1.0) -> void:
+	var look := editing_look
+	if look == null:
+		return
+	var before := {"values": look.values.duplicate(true), "fade": look.fade_time}
+	var after := {"values": Look.capture(rig, "").values, "fade": look.fade_time if fade_time < 0.0 else fade_time}
+	editing_look = null
+	_pre_edit_values = {}
+	record("Edit look", _set_look_data.bind(look, after), _set_look_data.bind(look, before), true)
+	look_editing_changed.emit(null)
+
+
+## Leave editing without changing the look; the stage goes back to how it
+## was before Edit was pressed.
+func cancel_look_edit() -> void:
+	if editing_look == null:
+		return
+	var restore := _pre_edit_values
+	editing_look = null
+	_pre_edit_values = {}
+	_set_looks_values(restore, 0.0, null)
+	look_editing_changed.emit(null)
+
+
+func _set_look_data(look: Look, data: Dictionary) -> void:
+	look.values = (data["values"] as Dictionary).duplicate(true)
+	look.fade_time = float(data["fade"])
+	looks.save(look)
+	looks_changed.emit()
 
 
 func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
