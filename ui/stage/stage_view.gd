@@ -48,7 +48,8 @@ const TOUCH_ORBIT_DEG_PER_PX := 0.3
 const TOUCH_PAN_PER_PX := 0.0016 ## of the camera distance
 const TOUCH_PICK_PX := 24.0 ## gizmo handle reach for a fingertip (a mouse uses TransformGizmo.PICK_PX)
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
-const HELP_TEXT := "Drag empty space box select (Shift adds) · Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · Touch: two fingers pinch zoom / orbit, three pan · F frame · Shift drag re-stick · F2 rename · Z work lights"
+const HINT_MORE := "" ## the "?" button beside the hint opens the full list
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -213,7 +214,9 @@ func _ready() -> void:
 
 	look.changed.connect(_apply_look)
 	_apply_look()
-	_help.text = HELP_TEXT
+	%Text.text = SHORTCUTS_BBCODE
+	%ShortcutsButton.pressed.connect(_toggle_shortcuts)
+	_update_help()
 	_update_camera()
 
 
@@ -652,6 +655,10 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if k.ctrl_pressed or k.meta_pressed:
 			return # Ctrl+Z, Ctrl+R... are the main window's, not W / E / R / Z here
+		if k.unicode == 63 or k.keycode == KEY_QUESTION or k.keycode == KEY_F1:
+			_toggle_shortcuts()
+			accept_event()
+			return
 		match k.keycode:
 			KEY_F:
 				_pivot.position = Vector3(0, 1.4, -0.5)
@@ -818,8 +825,29 @@ func _set_fly_speed(speed: float) -> void:
 	_update_help()
 
 
+## The bottom hint shows only what applies right now; the rest is behind "?".
 func _update_help() -> void:
-	_help.text = "Flying %.1f m/s · WASD move · Q/E down/up · Shift faster · Alt slower · Wheel speed" % _fly_speed if _flying else HELP_TEXT
+	var text: String
+	if _flying:
+		text = "Flying %.1f m/s · WASD move · Q/E down/up · Shift faster · Alt slower · Wheel speed" % _fly_speed
+	elif not _group.is_empty():
+		text = "W move · E rotate · Delete remove · Esc deselect" + HINT_MORE
+	elif _selected_piece:
+		text = "Drag to move · R turn · Delete remove · Esc deselect" + HINT_MORE
+	elif ctx and ctx.selected:
+		text = "W move · E rotate · F2 rename · Delete remove" + HINT_MORE
+	else:
+		text = "Drag to box select · Right drag to fly" + HINT_MORE
+	if text != _help.text:
+		_help.text = text
+
+
+func _toggle_shortcuts() -> void:
+	var popup: PopupPanel = %ShortcutsPopup
+	if popup.visible:
+		popup.hide()
+	else:
+		popup.popup_centered()
 
 
 ## Turn the camera where it stands. The orbit pivot is carried along, kept the
@@ -834,6 +862,7 @@ func _look(relative: Vector2) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_help()
 	if not _flying:
 		return
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):

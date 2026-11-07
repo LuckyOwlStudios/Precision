@@ -457,20 +457,53 @@ layout_mode = 2
 theme_type_variation = &"Caption"
 text = "Haze and shadows need the Forward+ renderer"
 
-[node name="Help" type="Label" parent="Overlay" unique_id=1128013438]
-unique_name_in_owner = true
+[node name="HelpBar" type="HBoxContainer" parent="Overlay"]
 layout_mode = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -30.0
+offset_top = -38.0
 offset_right = 16.0
-offset_bottom = -30.0
+offset_bottom = -10.0
 grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="ShortcutsButton" type="Button" parent="Overlay/HelpBar"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "All shortcuts (?)"
+theme_type_variation = &"PillButton"
+text = "?"
+
+[node name="Help" type="Label" parent="Overlay/HelpBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
 theme_type_variation = &"Caption"
 theme_override_colors/font_outline_color = Color(0.02, 0.024, 0.031, 0.75)
 theme_override_constants/outline_size = 4
-text = "Right drag fly (WASD, Q/E, wheel speed) · Alt drag orbit · Middle drag pan · Wheel zoom · F frame · Shift drag re-stick · F2 rename · Z work lights"
+text = "Drag to box select · Right drag to fly"
+
+[node name="ShortcutsPopup" type="PopupPanel" parent="Overlay"]
+unique_name_in_owner = true
+size = Vector2i(560, 420)
+
+[node name="Margin" type="MarginContainer" parent="Overlay/ShortcutsPopup"]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 556.0
+offset_bottom = 416.0
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="Text" type="RichTextLabel" parent="Overlay/ShortcutsPopup/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
 
 [node name="EmptyHint" type="VBoxContainer" parent="Overlay" unique_id=14525423]
 unique_name_in_owner = true
