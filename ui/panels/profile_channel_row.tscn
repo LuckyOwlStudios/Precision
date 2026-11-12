@@ -1,0 +1,69 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/profile_channel_row.gd" id="1_row"]
+
+[node name="ProfileChannelRow" type="HBoxContainer"]
+theme_override_constants/separation = 6
+script = ExtResource("1_row")
+
+[node name="Address" type="Label" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+text = "1"
+horizontal_alignment = 2
+
+[node name="NameEdit" type="LineEdit" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Channel name, e.g. dimmer"
+
+[node name="Summary" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+text = "28 pixels"
+
+[node name="Presets" type="MenuButton" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Pick a common channel name"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "▾"
+
+[node name="Default" type="SpinBox" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+tooltip_text = "Fixed value sent on this channel (0-255), for settings like mode or speed."
+max_value = 255.0
+prefix = "fixed "
+
+[node name="Up" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Move up"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "↑"
+
+[node name="Down" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Move down"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "↓"
+
+[node name="Delete" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Remove channel"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "✕"

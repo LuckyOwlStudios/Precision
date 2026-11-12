@@ -24,6 +24,8 @@ const DEFAULT_QUALITY := StageLook.Quality.HIGH
 const DEFAULT_UNITS := Units.System.METRIC
 const DEFAULT_LANGUAGE := "en"
 
+const DEFAULT_FALLBACK_LOOKS := true
+
 static var _hub := Hub.new()
 static var _loaded := false
 static var _loading := false ## true while load_saved() fills the values: no saving, no signals
@@ -52,6 +54,18 @@ static var units: Units.System = DEFAULT_UNITS:
 			return
 		units = v
 		_changed(&"units")
+
+## Play a built-in beat-reactive look when a song has no show of its own.
+static var fallback_looks: bool = DEFAULT_FALLBACK_LOOKS:
+	get:
+		_ensure_loaded()
+		return fallback_looks
+	set(v):
+		_ensure_loaded()
+		if v == fallback_looks:
+			return
+		fallback_looks = v
+		_changed(&"fallback_looks")
 
 ## Locale code, a column of locale/strings.csv ("en", later "de", "es", ...).
 static var language: String = DEFAULT_LANGUAGE:
@@ -94,6 +108,7 @@ static func load_saved() -> void:
 		q = legacy.get_value("stage", "quality") # carry over the old choice
 	quality = clampi(int(q if q != null else DEFAULT_QUALITY), 0, StageLook.Quality.ULTRA) as StageLook.Quality
 	units = Units.System.IMPERIAL if int(cfg.get_value("units", "system", DEFAULT_UNITS)) == Units.System.IMPERIAL else Units.System.METRIC
+	fallback_looks = bool(cfg.get_value("shows", "fallback_looks", DEFAULT_FALLBACK_LOOKS))
 	language = Localization.closest(str(cfg.get_value("language", "locale", Localization.system_language())))
 	Localization.apply(language)
 	_loading = false
@@ -103,6 +118,7 @@ static func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("graphics", "quality", quality)
 	cfg.set_value("units", "system", units)
+	cfg.set_value("shows", "fallback_looks", fallback_looks)
 	cfg.set_value("language", "locale", language)
 	cfg.save(SAVE_PATH)
 
@@ -110,6 +126,7 @@ static func save() -> void:
 static func reset_to_defaults() -> void:
 	quality = DEFAULT_QUALITY
 	units = DEFAULT_UNITS
+	fallback_looks = DEFAULT_FALLBACK_LOOKS
 	language = DEFAULT_LANGUAGE
 
 

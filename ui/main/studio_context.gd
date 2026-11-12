@@ -11,6 +11,10 @@ signal selection_changed(fixture: DMXFixture)
 ## Two or more fixtures are picked together (box select), or none. The inspector
 ## then edits all of them at once.
 signal group_changed
+## A saved fixture group was added, renamed, deleted or its members changed.
+signal groups_changed
+## Ctrl+G made a group: the On stage panel opens its name field.
+signal group_rename_requested(group: FixtureGroup)
 ## A panel (the On stage list) asks the stage view to select exactly these fixtures.
 signal pick_requested(list: Array)
 ## A panel asks the stage view to delete whatever is selected (one fixture or a group).
@@ -33,6 +37,7 @@ signal piece_selection_changed(piece: StructurePiece)
 signal piece_moved(piece: StructurePiece)
 signal transport_changed
 signal blackout_changed(active: bool)
+signal grand_master_changed(level: float)
 signal workspace_changed(workspace: Workspace)
 signal cues_changed
 ## A look was applied, saved, renamed or deleted (the shelf listens).
@@ -45,6 +50,12 @@ signal show_changed
 ## A clip on the timeline was selected (null = none).
 signal clip_selected(clip: ShowClip)
 signal song_changed(song: Song)
+## The built-in fallback look started, changed tier or stopped (see
+## fallback_show()). `tier_name` is empty when it stopped.
+signal fallback_changed(tier_name: String)
+
+## The song's first beat or phrase markers changed (timeline redraws on its own).
+signal marks_changed
 ## The linked show should start: fired when a song starts playing from
 ## stopped or paused. The show player will listen to this once shows exist.
 signal show_started(song: Song)
@@ -68,6 +79,7 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var cue_stack: CueStack = $Cues
 @onready var library: SongLibrary = $Songs
 @onready var looks: LookLibrary = $Looks ## the Looks shelf
+@onready var groups: GroupLibrary = $Groups ## saved fixture groups
 @onready var effects: EffectPresetLibrary = $Effects ## the Effects shelf
 @onready var show_player: ShowPlayer = $ShowPlayer
 @onready var music_player: AudioStreamPlayer = $Music
@@ -77,6 +89,8 @@ const META_PROFILE_LABEL := &"profile_label"
 ## Everything the Ctrl+K action search can run. Features register their own
 ## actions here (see ActionRegistry).
 var actions := ActionRegistry.new()
+
+var _tapper := TapTempo.new()
 
 var song: Song ## the song loaded on the timeline, or null
 
@@ -123,6 +137,14 @@ var blackout: bool = false:
 			universe.blackout_held = value
 		blackout_changed.emit(value)
 
+## Scales every intensity output, 0 to 1 (the console's grand master).
+var grand_master: float = 1.0:
+	set(value):
+		grand_master = clampf(value, 0.0, 1.0)
+		if universe:
+			universe.grand_master = grand_master
+		grand_master_changed.emit(grand_master)
+
 var _counters: Dictionary = {} ## short name -> last number used
 
 const HISTORY_STEPS := 300
@@ -138,10 +160,17 @@ func _ready() -> void:
 		func(data: Variant) -> void: RigCodec.load_data(self, data), func() -> void: RigCodec.clear(self), 20)
 	shows.register_section(&"cues", _cues_to_data, _cues_from_data, _cues_clear, 30)
 	shows.register_section(&"looks", _looks_to_data, _looks_from_data, func() -> void: looks.set_looks([]), 25)
+	shows.register_section(&"groups", groups.to_data,
+		func(data: Variant) -> void: groups.load_data(data if data is Array else []),
+		func() -> void: groups.load_data([]), 28)
 	shows.register_section(&"stage", _stage_to_data, _stage_from_data, _stage_reset, 40)
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
+	library.song_updated.connect(_on_song_updated)
+
+	groups.groups_changed.connect(groups_changed.emit)
 	show_player.ctx = self
+	fixtures_changed.connect(func() -> void: _fallback_dirty = true)
 
 	music_player.finished.connect(_on_music_finished)
 	dj.ctx = self
@@ -170,13 +199,25 @@ func _process(delta: float) -> void:
 ## While DJ sync is on, the DJ's deck is the clock: their play/pause is our
 ## play/pause and their playhead is our playhead. We play no audio.
 func _follow_dj() -> void:
-	var now_playing := dj.source.playing and song != null
-	if now_playing and not playing:
+	var src := dj.source
+	# A track that isn't in the library has no song or show; the fallback look
+	# keeps the lights going on the DJ's clock until a known track starts.
+	var unknown := song == null and src.track != null and AppSettings.fallback_looks
+	var now_playing := src.playing and (song != null or unknown)
+	if now_playing and not playing and song:
 		show_started.emit(song)
 	var changed := now_playing != playing
 	playing = now_playing
 	if song:
 		var beats := clampf(seconds_to_beats(dj.position_seconds()), 0.0, length_beats)
+		changed = changed or not is_equal_approx(beats, position_beats)
+		position_beats = beats
+	elif unknown:
+		# No library song to give the tempo: use what the DJ software says the
+		# track's own tempo is, and the DJ's position runs at the pitched speed.
+		if src.track.bpm > 0.0:
+			bpm = clampf(src.track.bpm, 40.0, 220.0)
+		var beats := fposmod(seconds_to_beats(dj.position_seconds()), length_beats)
 		changed = changed or not is_equal_approx(beats, position_beats)
 		position_beats = beats
 	if changed:
@@ -949,12 +990,114 @@ func set_bpm(value: float) -> void:
 	transport_changed.emit()
 
 
+## One tap of the tap-tempo button / key. Two or more taps in a row set the
+## tempo, which drives every effect and chase. Ignored while following the DJ,
+## whose software owns the tempo.
+func tap_tempo() -> void:
+	if following_dj():
+		return
+	var value := _tapper.tap(Time.get_ticks_msec() / 1000.0)
+	if value > 0.0:
+		set_bpm(value)
+
+
 func beats_to_seconds(beats: float) -> float:
 	return beats * 60.0 / bpm
 
 
 func seconds_to_beats(seconds: float) -> float:
 	return seconds * bpm / 60.0
+
+
+# ------------------------------------------- beat grid alignment & phrases
+
+## Where bar 1 starts, in timeline beats (0 when the first beat is at the start).
+func first_beat_beats() -> float:
+	return seconds_to_beats(song.beat_offset) if song else 0.0
+
+
+## Move the beat grid so bar 1 starts at `seconds` in the audio.
+## `by_hand` false is for the automatic guess, which must not count as yours.
+func set_beat_offset(seconds: float, by_hand := true) -> void:
+	if song == null or following_dj():
+		return
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	after.beat_offset = clampf(seconds, 0.0, maxf(0.0, song.duration))
+	after.beat_offset_set = by_hand
+	_record_marks("Align beat grid", song, before, after)
+
+
+## Guess the first beat from the waveform and tempo (needs both). Undoable.
+func guess_first_beat() -> void:
+	if song == null:
+		return
+	var t := BeatGrid.estimate_first_beat(song.peaks, Song.PEAKS_PER_SECOND, song.bpm)
+	if t >= 0.0:
+		set_beat_offset(t, false)
+
+
+## Put the first beat under the playhead (the usual way: play, hear the first
+## kick, pause, press the button).
+func set_first_beat_here() -> void:
+	set_beat_offset(beats_to_seconds(position_beats))
+
+
+## Shift the grid by a few milliseconds for fine tuning.
+func nudge_beat_offset(delta_seconds: float) -> void:
+	if song:
+		set_beat_offset(song.beat_offset + delta_seconds)
+
+
+## Add a phrase starting at `seconds`. Returns it, or {} with no song.
+func add_phrase(seconds: float, phrase_name: String) -> Dictionary:
+	if song == null:
+		return {}
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	var phrase := {"time": maxf(0.0, seconds), "name": phrase_name}
+	after.phrases.append(phrase)
+	_record_marks("Add phrase", song, before, after)
+	return phrase
+
+
+func remove_phrase(index: int) -> void:
+	if song == null or index < 0 or index >= song.phrases.size():
+		return
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	after.phrases.remove_at(index)
+	_record_marks("Delete phrase", song, before, after)
+
+
+func rename_phrase(index: int, phrase_name: String) -> void:
+	if song == null or index < 0 or index >= song.phrases.size():
+		return
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	after.phrases[index].name = phrase_name
+	_record_marks("Rename phrase", song, before, after)
+
+
+## Record a change that was already made live on the song (dragging a phrase
+## or the first-beat flag) as one undo step. `before` is song.marks_state() from
+## when the drag began.
+func commit_marks(action: String, before: Dictionary) -> void:
+	if song and before != song.marks_state():
+		_record_marks(action, song, before, song.marks_state())
+
+
+## `from_state` -> `to_state` as one undo step; the song already shows
+## `from_state` unless a drag has been live-editing it.
+func _record_marks(action: String, s: Song, from_state: Dictionary, to_state: Dictionary) -> void:
+	record(action, _apply_marks.bind(s, to_state), _apply_marks.bind(s, from_state), true)
+
+
+func _apply_marks(s: Song, state: Dictionary) -> void:
+	s.apply_marks_state(state)
+	library.update(s)
+	marks_changed.emit()
+	transport_changed.emit()
 
 
 # ---------------------------------------------------------------- songs
@@ -995,6 +1138,13 @@ func import_songs(paths: PackedStringArray) -> Array[Song]:
 	if song == null and not added.is_empty():
 		load_song(added[0])
 	return added
+
+
+## The waveform finished and the first-beat guess may have moved the grid.
+func _on_song_updated(s: Song) -> void:
+	if s == song:
+		marks_changed.emit()
+		transport_changed.emit()
 
 
 func _on_library_changed() -> void:
@@ -1043,6 +1193,86 @@ func go_cue(index: int = -1) -> void:
 	else:
 		cue_stack.go_to(index)
 	cues_changed.emit()
+
+
+# ---------------------------------------------------------------- fixture groups
+
+## The fixtures picked on stage right now (one, or the box-selected group).
+func selection_fixtures() -> Array[DMXFixture]:
+	if not selected_group.is_empty():
+		return selected_group.duplicate()
+	var list: Array[DMXFixture] = []
+	if selected:
+		list.append(selected)
+	return list
+
+
+## Save the picked fixtures (or `list`) as a named group, one undo step.
+## Returns null when nothing is picked or the name is already used.
+func make_group(group_name: String = "", list: Array = []) -> FixtureGroup:
+	var members: Array = list if not list.is_empty() else selection_fixtures()
+	if members.is_empty():
+		return null
+	var name_to_use := group_name.strip_edges()
+	if name_to_use.is_empty():
+		name_to_use = groups.next_name()
+	if groups.is_name_taken(name_to_use):
+		return null
+	var g := FixtureGroup.new()
+	g.group_name = name_to_use
+	g.fixtures = _paths_in_rig_order(members)
+	groups.add(g)
+	record("Make group", groups.add.bind(g), groups.remove.bind(g))
+	return g
+
+
+func delete_group(g: FixtureGroup) -> void:
+	groups.remove(g)
+	record("Delete group", groups.remove.bind(g), groups.add.bind(g))
+
+
+func rename_group(g: FixtureGroup, new_name: String) -> void:
+	var before := g.group_name
+	groups.rename(g, new_name)
+	if g.group_name != before:
+		record("Rename group", groups.rename.bind(g, g.group_name), groups.rename.bind(g, before))
+
+
+## Make the picked fixtures the group's members.
+func update_group(g: FixtureGroup) -> void:
+	var members := selection_fixtures()
+	if members.is_empty():
+		return
+	var before := g.fixtures.duplicate()
+	var after := _paths_in_rig_order(members)
+	record("Update group", groups.set_members.bind(g, after), groups.set_members.bind(g, before), true)
+
+
+## The fixtures of a group still in the rig, in rig order.
+func group_fixtures(g: FixtureGroup) -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	for path in g.fixtures:
+		var fx := rig.get_node_or_null(NodePath(path)) as DMXFixture
+		if fx:
+			list.append(fx)
+	return list
+
+
+## One click: pick every fixture of the group on stage and in the panels.
+## Returns how many were picked.
+func recall_group(g: FixtureGroup) -> int:
+	var list := group_fixtures(g)
+	pick(list)
+	return list.size()
+
+
+func _paths_in_rig_order(list: Array) -> PackedStringArray:
+	var sorted := list.duplicate()
+	sorted.sort_custom(func(a: Node, b: Node) -> bool: return a.get_index() < b.get_index())
+	var paths := PackedStringArray()
+	for fx: DMXFixture in sorted:
+		paths.append(fixture_path(fx))
+	return paths
 
 
 # ---------------------------------------------------------------- looks
@@ -1179,6 +1409,55 @@ func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
 		_look_tween = null
 	_applied_look = look
 	looks_changed.emit()
+
+
+# ---------------------------------------------------------------- fallback looks
+
+var _fallback_show: SongShow
+var _fallback_tier: int = -1
+var _fallback_dirty := true ## the rig changed since the cached look was built
+
+
+## The built-in look to play right now, or null when the song's own show should
+## play. It plays while a song with no clips is playing and the lights are live
+## (following the DJ, or the Live workspace), and for tracks the DJ plays that
+## aren't in the library. Evaluate it at fposmod(position_beats, FallbackLooks.CYCLE_BEATS).
+func fallback_show() -> SongShow:
+	var want := AppSettings.fallback_looks and playing and show.clips.is_empty() \
+			and (following_dj() or workspace == Workspace.LIVE)
+	if not want:
+		_set_fallback(-1)
+		return null
+	var tier := FallbackLooks.tier_for(heard_bpm(), _fallback_tier)
+	if _fallback_show == null or tier != _fallback_tier or _fallback_dirty:
+		var paths := PackedStringArray()
+		for fx in fixtures():
+			paths.append(fixture_path(fx))
+		_fallback_show = FallbackLooks.build(tier, paths)
+		_fallback_dirty = false
+	_set_fallback(tier)
+	return _fallback_show
+
+
+## The tempo the audience hears: the DJ's, pitch included, else the timeline's.
+func heard_bpm() -> float:
+	if following_dj() and dj.source.bpm > 0.0:
+		return dj.source.bpm
+	return bpm
+
+
+## Name of the fallback look playing now ("Drive"), or "" when none is.
+func fallback_name() -> String:
+	return "" if _fallback_tier < 0 else FallbackLooks.tier_name(_fallback_tier as FallbackLooks.Tier)
+
+
+func _set_fallback(tier: int) -> void:
+	if tier == _fallback_tier:
+		return
+	_fallback_tier = tier
+	if tier < 0:
+		_fallback_show = null
+	fallback_changed.emit("" if tier < 0 else FallbackLooks.tier_name(tier as FallbackLooks.Tier))
 
 
 # ---------------------------------------------------------------- show (timeline clips)

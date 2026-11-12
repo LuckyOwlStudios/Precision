@@ -71,5 +71,22 @@ func _init() -> void:
 	check(pivot.position == before, "F is ignored while flying")
 	view._set_flying(false)
 
+	# Close zoom: LEDs are ~1 cm, so the wheel must get within centimetres and the near plane must follow.
+	view._set_view("Perspective")
+	for i in 80:
+		view._zoom(0.9)
+	check(is_equal_approx(view._distance, StageView.DISTANCE_MIN) and view._distance < 0.1, "wheel zooms to centimetres")
+	check(view.get_node("%Camera").near < view._distance, "near plane stays in front of the pivot")
+	var d := view._distance
+	view._zoom(0.9)
+	view._zoom(1.1)
+	view._distance = 1.0
+	view._zoom(0.9)
+	check(is_equal_approx(view._distance, 0.9), "zoom steps scale with distance")
+	view._set_view("Front")
+	for i in 80:
+		view._zoom(0.9)
+	check(is_equal_approx(view._ortho_size, StageView.ORTHO_SIZE_MIN), "drawing view zooms to centimetres")
+
 	print("\n%d checks, %d failed" % [checks, failures])
 	quit(1 if failures > 0 else 0)

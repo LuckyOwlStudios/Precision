@@ -27,3 +27,7 @@ window/size/mode=2
 [gui]
 
 theme/custom="res://ui/theme/lucky_dark.tres"
+
+[rendering]
+
+textures/vram_compression/import_etc2_astc=true

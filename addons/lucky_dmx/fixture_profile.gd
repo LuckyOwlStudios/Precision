@@ -17,6 +17,9 @@ extends Resource
 ## number (a master dimmer, strobe) work for the whole fixture as usual.
 
 @export var fixture_name: String = "Generic RGB"
+## What the fixture looks like on a stage: 0 = par, 1 = moving head, 2 = bar,
+## 3 = strobe. Only used for profiles made in the profile editor or imported.
+@export_enum("Par", "Moving head", "Bar", "Strobe") var body_style: int = 0
 ## Channel names in order. Index 0 = the fixture's start address.
 @export var channels: PackedStringArray = PackedStringArray(["dimmer", "red", "green", "blue"]):
 	set(value):
