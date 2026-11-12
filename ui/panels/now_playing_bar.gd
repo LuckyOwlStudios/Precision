@@ -14,6 +14,7 @@ var _colors: PackedColorArray = []
 @onready var _progress: HSlider = %Progress
 @onready var _bpm: SpinBox = %Bpm
 @onready var _beats: Array[Panel] = [%Beat1, %Beat2, %Beat3, %Beat4]
+@onready var _master: HSlider = %GrandMaster
 @onready var _blackout: Button = %Blackout
 
 
@@ -21,7 +22,9 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx = p_ctx
 	ctx.transport_changed.connect(_sync)
 	ctx.blackout_changed.connect(func(on: bool) -> void: _blackout.set_pressed_no_signal(on))
+	ctx.grand_master_changed.connect(func(v: float) -> void: _master.set_value_no_signal(v * 100.0))
 	_bpm.value = ctx.bpm
+	_master.set_value_no_signal(ctx.grand_master * 100.0)
 	_sync()
 
 
@@ -35,6 +38,11 @@ func _ready() -> void:
 	_bpm.value_changed.connect(func(v: float) -> void:
 		if ctx:
 			ctx.set_bpm(v))
+	_master.value_changed.connect(func(v: float) -> void: ctx.grand_master = v / 100.0)
+	_master.gui_input.connect(func(e: InputEvent) -> void:
+		# Double-click the fader to snap back to full.
+		if e is InputEventMouseButton and e.double_click and e.button_index == MOUSE_BUTTON_LEFT:
+			ctx.grand_master = 1.0)
 	_blackout.toggled.connect(func(on: bool) -> void: ctx.blackout = on)
 
 
@@ -61,7 +69,7 @@ func _process(_delta: float) -> void:
 		return (a.get_meta(StudioContext.META_POSITION, Vector3.ZERO) as Vector3).x < (b.get_meta(StudioContext.META_POSITION, Vector3.ZERO) as Vector3).x)
 	var cols := PackedColorArray()
 	for fx in fixtures:
-		var k := 0.0 if ctx.blackout else fx.dimmer
+		var k := 0.0 if ctx.blackout else fx.dimmer * ctx.grand_master
 		cols.append(Color(fx.color.r * k, fx.color.g * k, fx.color.b * k))
 	if cols != _colors:
 		_colors = cols

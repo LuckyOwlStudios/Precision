@@ -145,6 +145,16 @@ step = 0.5
 value = 128.0
 suffix = "BPM"
 
+[node name="GrandMaster" type="HSlider" parent="Row" unique_id=1858308600]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Grand master: scales the brightness of every light. Double-click to reset to full."
+focus_mode = 0
+step = 1.0
+value = 100.0
+
 [node name="Blackout" type="Button" parent="Row" unique_id=1858308539]
 unique_name_in_owner = true
 layout_mode = 2

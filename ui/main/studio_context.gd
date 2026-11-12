@@ -33,6 +33,7 @@ signal piece_selection_changed(piece: StructurePiece)
 signal piece_moved(piece: StructurePiece)
 signal transport_changed
 signal blackout_changed(active: bool)
+signal grand_master_changed(level: float)
 signal workspace_changed(workspace: Workspace)
 signal cues_changed
 ## A look was applied, saved, renamed or deleted (the shelf listens).
@@ -121,6 +122,14 @@ var blackout: bool = false:
 		if universe:
 			universe.blackout_held = value
 		blackout_changed.emit(value)
+
+## Scales every intensity output, 0 to 1 (the console's grand master).
+var grand_master: float = 1.0:
+	set(value):
+		grand_master = clampf(value, 0.0, 1.0)
+		if universe:
+			universe.grand_master = grand_master
+		grand_master_changed.emit(grand_master)
 
 var _counters: Dictionary = {} ## short name -> last number used
 
