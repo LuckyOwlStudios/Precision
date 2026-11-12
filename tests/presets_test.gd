@@ -14,7 +14,7 @@ func _init() -> void:
 	await process_frame
 	var ctx: StudioContext = main.get_node("%Studio")
 	ctx.positions.clear()
-	ctx.looks.clear()
+	ctx.looks.set_looks([])
 	ctx.effects.root_dir = "user://presets_test"
 	ctx.effects.load_presets()
 	for p in ctx.effects.presets.duplicate():
@@ -79,10 +79,10 @@ func _init() -> void:
 
 	# Both shelves are part of the show file, and a new show starts without them.
 	_expect(ctx.looks.looks.size() == 1, "one look before the file round trip")
-	var look_data: Variant = JSON.parse_string(JSON.stringify(ShowCodec.encode(ctx.looks.to_data())))
-	ctx.looks.clear()
+	var look_data: Variant = JSON.parse_string(JSON.stringify(ShowCodec.encode(ctx._looks_to_data())))
+	ctx.looks.set_looks([])
 	_expect(ctx.looks.looks.is_empty(), "a new show has no looks")
-	ctx.looks.from_data(look_data)
+	ctx._looks_from_data(look_data)
 	_expect(ctx.looks.find(look.id) != null and ctx.looks.looks[0].values[str(ctx.rig.get_path_to(m))]["color"] == Color.BLUE, "looks come back from the show file")
 	look = ctx.looks.find(look.id)
 

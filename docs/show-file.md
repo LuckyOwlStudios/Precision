@@ -10,12 +10,15 @@ show that was open when it was last closed.
 |-------------|-------|----------------------------|----------------------------------------------------|
 | `structure` | 10    | `StageView`                | truss, corner boxes, base plates, mirror twins     |
 | `rig`       | 20    | `StudioContext` / `RigCodec` | fixtures, profiles, patch, position, look, labels, mirror twins |
+| `looks`     | 25    | `StudioContext`            | the Looks shelf (looks name fixtures, so they belong to a show) |
 | `cues`      | 30    | `StudioContext`            | the cue list                                       |
 | `stage`     | 40    | `StudioContext`            | mirror plane                                       |
 
-Not in the file, because they are computer-wide and already saved on their own:
-Settings, the song library, the Looks shelf, the Effects shelf and each song's
-timeline show (`user://library`).
+Not in the file, because they are computer-wide: Settings, the song library, the
+Effects shelf (effects like "circle" or "pan sweep" work on any rig) and each
+song's timeline show (`user://library`). Looks reference fixtures, so they are
+saved per show. Their ids are kept, so things that point at a look by id
+keep working after a reload.
 
 ## Envelope
 

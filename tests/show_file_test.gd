@@ -8,6 +8,9 @@ const PATH := "user://show_file_test.precision"
 
 
 func _init() -> void:
+	# The test saves shows, which changes "the last show" in user://session.cfg: put it back after.
+	var had_session := FileAccess.file_exists(ShowManager.SESSION_FILE)
+	var session_text := FileAccess.get_file_as_string(ShowManager.SESSION_FILE) if had_session else ""
 	var main: Control = (load("res://ui/main/main_window.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
@@ -23,6 +26,7 @@ func _init() -> void:
 	var fixtures := ctx.fixtures()
 	var n := fixtures.size()
 	var bar := fixtures[n - 1]
+	var bar_channels := bar.profile.channels
 	bar.pixel_colors = PackedColorArray([Color.RED, Color.GREEN, Color.BLUE])
 	bar.strobe = 7
 	bar.color = Color(0.25, 0.5, 0.75)
@@ -34,6 +38,10 @@ func _init() -> void:
 	ctx.cue_stack.cues[0].cue_name = "Warm intro"
 	ctx.cue_stack.cues[0].fade_time = 3.5
 	ctx.symmetry.center = Vector3(1, 0, 0)
+	bar.strobe = 9
+	var look := ctx.save_look("Doors open")
+	var look_id := look.id
+	bar.strobe = 7
 
 	# Dirty tracking.
 	_expect(shows.is_dirty() and not shows.has_path(), "an edited, never saved show is dirty")
@@ -51,6 +59,7 @@ func _init() -> void:
 	_expect(ctx.fixtures().is_empty(), "new show has no fixtures")
 	_expect(ctx.structure_pieces().size() == default_pieces, "new show has the default set")
 	_expect(ctx.cue_stack.cues.is_empty(), "new show has no cues")
+	_expect(ctx.looks.looks.is_empty(), "new show has no looks")
 	_expect(not shows.has_path() and not shows.is_dirty(), "new show is untitled and clean")
 	_expect(not ctx.history.has_undo(), "new show has no undo history")
 
@@ -65,11 +74,14 @@ func _init() -> void:
 	_expect(b.pixel_colors.size() == 3 and b.pixel_colors[1].is_equal_approx(Color.GREEN), "per-pixel colours are back")
 	_expect(b.strobe == 7 and typeof(b.strobe) == TYPE_INT, "strobe is back as an int")
 	_expect(b.color.is_equal_approx(Color(0.25, 0.5, 0.75)), "colour is back")
-	_expect(b.profile.channels == fixtures[n - 1].profile.channels, "profile channels are back")
+	_expect(b.profile.channels == bar_channels, "profile channels are back")
 	_expect(StudioContext.fixture_transform(back[4]).is_equal_approx(first_pos), "position and turn are back")
 	_expect(StageSymmetry.partner_of(back[2]) == back[3] and int(back[2].get_meta(StageSymmetry.META_FLIP)) == 2, "mirror pair is linked again")
 	_expect(ctx.cue_stack.cues.size() == 1 and ctx.cue_stack.cues[0].cue_name == "Warm intro" and is_equal_approx(ctx.cue_stack.cues[0].fade_time, 3.5), "cue is back")
 	_expect(ctx.structure_pieces().size() == default_pieces, "truss set is back")
+	_expect(ctx.looks.looks.size() == 1 and ctx.looks.looks[0].look_name == "Doors open" and ctx.looks.looks[0].id == look_id, "look is back with the same id")
+	var restored: Dictionary = ctx.looks.looks[0].values[str(ctx.rig.get_path_to(b))]
+	_expect(int(restored["strobe"]) == 9 and typeof(restored["strobe"]) == TYPE_INT, "look values are back (strobe as int)")
 	_expect(ctx.symmetry.center.is_equal_approx(Vector3(1, 0, 0)), "mirror plane is back")
 	_expect(shows.has_path() and not shows.is_dirty(), "an opened show is clean")
 	# The next fixture added carries on the numbering.
@@ -125,6 +137,12 @@ func _init() -> void:
 	_expect((round["p"] as PackedColorArray)[0] == Color.RED and round["list"][1] == "two" and round["s"] == "name", "codec: packed arrays, lists, strings")
 
 	DirAccess.remove_absolute(PATH)
+	if had_session:
+		var sf := FileAccess.open(ShowManager.SESSION_FILE, FileAccess.WRITE)
+		sf.store_string(session_text)
+		sf.close()
+	else:
+		DirAccess.remove_absolute(ShowManager.SESSION_FILE)
 	print("show_file_test: ", "OK" if _failed == 0 else "%d FAILED" % _failed)
 	quit(_failed)
 

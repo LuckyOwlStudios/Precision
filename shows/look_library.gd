@@ -1,13 +1,18 @@
 class_name LookLibrary
 extends Node
-## The Looks shelf. Each look is saved as its own file in the library folder
-## (same place as the song list) right after every change, so looks survive
-## restarting the app. No UI in here: panels listen to `looks_changed`.
+## The Looks shelf. Looks belong to a show (every rig has different fixtures),
+## so StudioContext turns `persist` off and the show file stores them (see
+## ShowManager, section "looks"). With `persist` on, each look is instead saved
+## as its own file in the library folder right after every change.
+## No UI in here: panels listen to `looks_changed`.
 
 signal looks_changed
 
 ## Override for tests.
 @export var root_dir: String = "user://library"
+
+## Save looks to the library folder on every change (and read them from there).
+@export var persist := true
 
 var looks: Array[Look] = []
 
@@ -30,7 +35,7 @@ func _ensure_loaded() -> void:
 func load_looks() -> void:
 	_loaded = true
 	looks.clear()
-	var dir := DirAccess.open(looks_dir())
+	var dir := DirAccess.open(looks_dir()) if persist else null
 	if dir:
 		for file in dir.get_files():
 			if file.get_extension() == "tres":
@@ -65,7 +70,7 @@ func remove(look: Look) -> void:
 	_ensure_loaded()
 	looks.erase(look)
 	var path := _path(look)
-	if FileAccess.file_exists(path):
+	if persist and FileAccess.file_exists(path):
 		DirAccess.remove_absolute(path)
 	looks_changed.emit()
 
@@ -80,6 +85,8 @@ func rename(look: Look, new_name: String) -> void:
 
 
 func save(look: Look) -> void:
+	if not persist:
+		return
 	DirAccess.make_dir_recursive_absolute(looks_dir())
 	var err := ResourceSaver.save(look, _path(look))
 	if err != OK:
@@ -104,6 +111,13 @@ func next_name() -> String:
 	while is_name_taken("Look %d" % n):
 		n += 1
 	return "Look %d" % n
+
+
+## Replace the whole shelf (opening a show).
+func set_looks(list: Array[Look]) -> void:
+	_loaded = true
+	looks = list
+	looks_changed.emit()
 
 
 func _path(look: Look) -> String:

@@ -236,3 +236,19 @@ Because fixture settings are ordinary properties, an **AnimationPlayer is your t
 Add a DMXFixture node, then keyframe its color and dimmer with the key icon in the
 Inspector. Turn on `send_in_editor` on the DMXUniverse and the real light follows as you
 scrub. A Call Method track can fire `CueStack.go_to()` at set times.
+
+## Building for Windows, macOS and Linux
+
+`export_presets.cfg` defines a preset for each platform. In the editor use
+**Project → Export**, or from a terminal (with export templates installed):
+
+```
+godot --headless --export-release "Linux" build/linux/Precision.x86_64
+godot --headless --export-release "macOS" build/macos/Precision.zip
+godot --headless --export-release "Windows" build/windows/Precision.exe
+```
+
+CI (`.github/workflows/build.yml`) builds all three on every push and PR; download them
+from the run's Artifacts. macOS builds are exported unsigned (signing needs a Mac). After unzipping, run
+`codesign --force --deep -s - Precision.app && xattr -dr com.apple.quarantine Precision.app`,
+then open it (Apple Silicon Macs won't run an unsigned app otherwise).

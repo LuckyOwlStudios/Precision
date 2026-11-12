@@ -1,8 +1,12 @@
 class_name FixtureCatalog
 extends RefCounted
 ## The fixtures that appear in the library panel.
-## For now these are generic profiles built in code. Later this can scan a
-## folder of FixtureProfile .tres files (one per fixture model).
+## The built-in profiles are built in code; the person's own (made or imported
+## in the profile editor) come from ProfileStore and are listed after them
+## under "My fixtures".
+
+const USER_CATEGORY := "My fixtures"
+const _SHORT_NAMES: PackedStringArray = ["Par", "Mover", "Bar", "Strobe"] ## indexed by Body
 
 ## Visual body used in the 3D stage. Keeps the stage independent of DMX details.
 enum Body { PAR, MOVING_HEAD, BAR, STROBE }
@@ -47,4 +51,7 @@ static func entries() -> Array[Entry]:
 	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light 28 pixels (112ch)", FixtureProfile.pixel_channels(rgbw, 28)), Body.BAR, "Bar"))
 	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light 28 pixels (114ch)", FixtureProfile.pixel_channels(rgbw, 28, ["dimmer", "strobe"])), Body.BAR, "Bar"))
 	list.append(Entry.new("Bars and strobes", _profile("Generic Strobe (2ch)", ["dimmer", "strobe"]), Body.STROBE, "Strobe"))
+	for p in ProfileStore.load_all():
+		var body := clampi(p.body_style, 0, _SHORT_NAMES.size() - 1) as Body
+		list.append(Entry.new(USER_CATEGORY, p, body, _SHORT_NAMES[body]))
 	return list

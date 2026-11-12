@@ -6,6 +6,9 @@ extends Node
 ## cue) stay untouched underneath, so effects add on top of the look and the
 ## lights go back to it when the clips end.
 ##
+## When the song has no show of its own, plays the built-in fallback look
+## instead (StudioContext.fallback_show()).
+##
 ## Runs before the fixtures each frame (process_priority -10 in the scene), and
 ## from the playhead whether or not the song is playing, so scrubbing
 ## the timeline previews the show.
@@ -17,7 +20,12 @@ var _driven: Array[DMXFixture] = [] ## fixtures that had a live layer last frame
 
 
 func _process(_delta: float) -> void:
-	if ctx:
+	if ctx == null:
+		return
+	var fallback := ctx.fallback_show()
+	if fallback:
+		evaluate(fallback, fposmod(ctx.position_beats, FallbackLooks.CYCLE_BEATS))
+	else:
 		evaluate(ctx.show, ctx.position_beats)
 
 

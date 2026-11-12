@@ -12,6 +12,8 @@
 [ext_resource type="Script" path="res://shows/position_library.gd" id="11_positions"]
 [ext_resource type="Script" path="res://show_file/show_manager.gd" id="10_shows"]
 
+[ext_resource type="Script" path="res://shows/group_library.gd" id="10_groups"]
+
 [node name="Studio" type="Node"]
 script = ExtResource("1_ctx")
 
@@ -40,6 +42,9 @@ script = ExtResource("7_looks")
 
 [node name="Positions" type="Node" parent="."]
 script = ExtResource("11_positions")
+
+[node name="Groups" type="Node" parent="."]
+script = ExtResource("10_groups")
 
 [node name="Effects" type="Node" parent="."]
 script = ExtResource("8_effects")

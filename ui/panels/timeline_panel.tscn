@@ -28,6 +28,20 @@ size_flags_horizontal = 3
 theme_type_variation = &"MonoLabel"
 horizontal_alignment = 1
 
+[node name="FirstBeat" type="Button" parent="Header/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Put bar 1, beat 1 under the playhead. Play, pause on the first kick, press this. Drag the cyan flag on the ruler to fine-tune."
+disabled = true
+text = "First beat here"
+
+[node name="AddPhrase" type="Button" parent="Header/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Mark a section (intro, build, drop...) at the playhead. Shortcut: M. Right-click the ruler for more."
+disabled = true
+text = "+ Phrase"
+
 [node name="Snap" type="OptionButton" parent="Header/Row" unique_id=1783106614]
 unique_name_in_owner = true
 layout_mode = 2
