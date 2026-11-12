@@ -73,6 +73,10 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var music_player: AudioStreamPlayer = $Music
 @onready var dj: DJSync = $DJSync ## follows the DJ software; off until a source is picked
 
+## Everything the Ctrl+K action search can run. Features register their own
+## actions here (see ActionRegistry).
+var actions := ActionRegistry.new()
+
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
