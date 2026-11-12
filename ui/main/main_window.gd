@@ -53,6 +53,7 @@ func _ready() -> void:
 	palette.setup(ctx.actions)
 	ctx.actions.register(&"look.copy", "Copy look", func() -> void: _copy_look(), {category = "Fixture", shortcut = "Ctrl+C", keywords = "copy colour settings"})
 	ctx.actions.register(&"look.paste", "Paste look", func() -> void: _paste_look(), {category = "Fixture", shortcut = "Ctrl+V", keywords = "paste colour settings", enabled = func() -> bool: return not ctx.look_clipboard.is_empty()})
+	ctx.actions.register(&"group.make", "Group selected fixtures", func() -> void: _make_group(), {category = "Fixture", shortcut = "Ctrl+G", keywords = "save named group selection", enabled = func() -> bool: return not ctx.selection_fixtures().is_empty()})
 	%SearchButton.pressed.connect(palette.open)
 	_register_actions()
 	_apply_workspace(ctx.workspace)
@@ -213,6 +214,8 @@ func _on_command_key(key: InputEventKey) -> void:
 				return
 		KEY_D:
 			ctx.duplicate_requested.emit()
+		KEY_G:
+			_make_group()
 		KEY_K:
 			palette.toggle()
 		_:
@@ -235,6 +238,14 @@ func _paste_look() -> bool:
 		return false
 	ctx.paste_look(targets)
 	return true
+
+
+## Ctrl+G: save the picked fixtures as a group and ask for its name.
+func _make_group() -> bool:
+	var g := ctx.make_group()
+	if g:
+		ctx.group_rename_requested.emit(g)
+	return g != null
 
 
 func _undo() -> void:

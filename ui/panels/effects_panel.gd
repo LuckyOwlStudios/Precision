@@ -94,6 +94,10 @@ func _add_at_playhead() -> void:
 	var pool: Array[DMXFixture] = []
 	if ctx.selected and EffectTemplates.supports(p.template, ctx.selected):
 		pool.append(ctx.selected)
+	elif not ctx.selected_group.is_empty():
+		for fx in ctx.selected_group: # a recalled group: the effect runs on just those
+			if EffectTemplates.supports(p.template, fx):
+				pool.append(fx)
 	else:
 		pool = ctx.fixtures_supporting(p.template)
 	if pool.is_empty():

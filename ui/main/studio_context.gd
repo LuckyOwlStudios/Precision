@@ -11,6 +11,10 @@ signal selection_changed(fixture: DMXFixture)
 ## Two or more fixtures are picked together (box select), or none. The inspector
 ## then edits all of them at once.
 signal group_changed
+## A saved fixture group was added, renamed, deleted or its members changed.
+signal groups_changed
+## Ctrl+G made a group: the On stage panel opens its name field.
+signal group_rename_requested(group: FixtureGroup)
 ## A panel (the On stage list) asks the stage view to select exactly these fixtures.
 signal pick_requested(list: Array)
 ## A panel asks the stage view to delete whatever is selected (one fixture or a group).
@@ -69,6 +73,7 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var cue_stack: CueStack = $Cues
 @onready var library: SongLibrary = $Songs
 @onready var looks: LookLibrary = $Looks ## the Looks shelf
+@onready var groups: GroupLibrary = $Groups ## saved fixture groups
 @onready var effects: EffectPresetLibrary = $Effects ## the Effects shelf
 @onready var show_player: ShowPlayer = $ShowPlayer
 @onready var music_player: AudioStreamPlayer = $Music
@@ -143,6 +148,7 @@ func _ready() -> void:
 	load_swatches()
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
+	groups.groups_changed.connect(groups_changed.emit)
 	show_player.ctx = self
 
 	music_player.finished.connect(_on_music_finished)
@@ -1056,6 +1062,86 @@ func go_cue(index: int = -1) -> void:
 	else:
 		cue_stack.go_to(index)
 	cues_changed.emit()
+
+
+# ---------------------------------------------------------------- fixture groups
+
+## The fixtures picked on stage right now (one, or the box-selected group).
+func selection_fixtures() -> Array[DMXFixture]:
+	if not selected_group.is_empty():
+		return selected_group.duplicate()
+	var list: Array[DMXFixture] = []
+	if selected:
+		list.append(selected)
+	return list
+
+
+## Save the picked fixtures (or `list`) as a named group, one undo step.
+## Returns null when nothing is picked or the name is already used.
+func make_group(group_name: String = "", list: Array = []) -> FixtureGroup:
+	var members: Array = list if not list.is_empty() else selection_fixtures()
+	if members.is_empty():
+		return null
+	var name_to_use := group_name.strip_edges()
+	if name_to_use.is_empty():
+		name_to_use = groups.next_name()
+	if groups.is_name_taken(name_to_use):
+		return null
+	var g := FixtureGroup.new()
+	g.group_name = name_to_use
+	g.fixtures = _paths_in_rig_order(members)
+	groups.add(g)
+	record("Make group", groups.add.bind(g), groups.remove.bind(g))
+	return g
+
+
+func delete_group(g: FixtureGroup) -> void:
+	groups.remove(g)
+	record("Delete group", groups.remove.bind(g), groups.add.bind(g))
+
+
+func rename_group(g: FixtureGroup, new_name: String) -> void:
+	var before := g.group_name
+	groups.rename(g, new_name)
+	if g.group_name != before:
+		record("Rename group", groups.rename.bind(g, g.group_name), groups.rename.bind(g, before))
+
+
+## Make the picked fixtures the group's members.
+func update_group(g: FixtureGroup) -> void:
+	var members := selection_fixtures()
+	if members.is_empty():
+		return
+	var before := g.fixtures.duplicate()
+	var after := _paths_in_rig_order(members)
+	record("Update group", groups.set_members.bind(g, after), groups.set_members.bind(g, before), true)
+
+
+## The fixtures of a group still in the rig, in rig order.
+func group_fixtures(g: FixtureGroup) -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	for path in g.fixtures:
+		var fx := rig.get_node_or_null(NodePath(path)) as DMXFixture
+		if fx:
+			list.append(fx)
+	return list
+
+
+## One click: pick every fixture of the group on stage and in the panels.
+## Returns how many were picked.
+func recall_group(g: FixtureGroup) -> int:
+	var list := group_fixtures(g)
+	pick(list)
+	return list.size()
+
+
+func _paths_in_rig_order(list: Array) -> PackedStringArray:
+	var sorted := list.duplicate()
+	sorted.sort_custom(func(a: Node, b: Node) -> bool: return a.get_index() < b.get_index())
+	var paths := PackedStringArray()
+	for fx: DMXFixture in sorted:
+		paths.append(fixture_path(fx))
+	return paths
 
 
 # ---------------------------------------------------------------- looks
