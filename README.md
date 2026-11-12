@@ -249,5 +249,6 @@ godot --headless --export-release "Windows" build/windows/Precision.exe
 ```
 
 CI (`.github/workflows/build.yml`) builds all three on every push and PR; download them
-from the run's Artifacts. macOS builds are ad-hoc signed, not notarized: on first launch
-right-click the app and choose Open (or run `xattr -dr com.apple.quarantine Precision.app`).
+from the run's Artifacts. macOS builds are exported unsigned (signing needs a Mac). After unzipping, run
+`codesign --force --deep -s - Precision.app && xattr -dr com.apple.quarantine Precision.app`,
+then open it (Apple Silicon Macs won't run an unsigned app otherwise).
