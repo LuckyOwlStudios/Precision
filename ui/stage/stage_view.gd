@@ -1003,13 +1003,19 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		var piece: StructurePiece = picked if picked is StructurePiece else null
 		_select_piece(piece)
 		if piece:
+			if finger and mb.double_click:
+				_frame_selection() # double-tap focuses, like F
+				return
 			_piece_drag = piece
 			_piece_drag_started = false
 			_piece_before = piece.global_transform
 			_press_pos = mb.position
 		return
 	if mb.double_click:
-		ctx.request_rename(fx)
+		if finger:
+			_frame_selection() # double-tap focuses, like F (rename stays on mouse double-click and F2)
+		else:
+			ctx.request_rename(fx)
 		return
 	_begin_body_drag(fx, mb.position, mb.shift_pressed)
 

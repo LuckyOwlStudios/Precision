@@ -30,6 +30,7 @@ extends Control
 func _ready() -> void:
 	if LuckyTheme.touch_wanted():
 		theme = LuckyTheme.build(true) # bigger buttons, rows and scrollbars for fingers
+		add_child(TouchScroller.new()) # swipe a list or panel to scroll it
 	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Looks, %Positions, %LiveLooks, %Cues, %DMX, %DJ, %Effects]:
 		panel.call("setup", ctx)
 
