@@ -54,6 +54,17 @@ func clear_raw(channel_name: String = "") -> void:
 		_raw.erase(channel_name)
 
 
+## What a channel is being sent, 0..255, for things that read a fixture's
+## channels directly (the 3D preview of an LED ring): the raw override if set,
+## else the profile's fixed value, else `fallback`.
+func raw_value(channel_name: String, fallback: int = 0) -> int:
+	if _raw.has(channel_name):
+		return _raw[channel_name]
+	if profile and profile.defaults.has(channel_name):
+		return clampi(int(profile.defaults[channel_name]), 0, 255)
+	return fallback
+
+
 ## A look property as it is being output: the show's live value if an effect is
 ## running on it, else the property itself. The 3D stage draws from this.
 func out(prop: String) -> Variant:

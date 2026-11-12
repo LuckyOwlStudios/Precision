@@ -36,6 +36,7 @@ const SPOT_MOVER_SCENE := "res://ui/stage/fixtures/spot_mover.tscn"
 ## profile listed here uses its own model instead of the generic body scene.
 const MODEL_SCENES := {
 	"Wash Bar Light": "res://ui/stage/fixtures/models/wash_bar_light.tscn",
+	"LED Ring Beam": "res://ui/stage/fixtures/models/led_ring_beam.tscn",
 }
 const WASH_MOVER_SCENE := "res://ui/stage/fixtures/wash_mover.tscn"
 
@@ -48,6 +49,10 @@ static var _iris: Texture2D
 @export var marker_material: ShaderMaterial ## selection brackets
 ## The light-emitting face of a pixel fixture (pixel_surface.gdshader). Optional.
 @export var pixel_material: ShaderMaterial
+## An LED ring round the lens (pixel_surface.gdshader, one cell per LED, pixel 1
+## at the top going clockwise seen from the front). Driven by the profile's
+## `ring_dimmer`, `ring_effect` and `ring_speed` channels through LedRingPreview.
+@export var ring_material: ShaderMaterial
 ## Cells drawn on the pixel face when the profile has no pixels of its own.
 @export var default_pixel_grid: Vector2i = Vector2i(8, 1)
 
@@ -73,6 +78,8 @@ var _beam_strength := 1.0
 var _marker_tween: Tween
 var _pixel_image: Image ## one texel per pixel, uploaded to pixel_material
 var _pixel_texture: ImageTexture
+var _ring_image: Image ## one texel per ring LED, uploaded to ring_material
+var _ring_texture: ImageTexture
 var _selected := false
 static var _body_boxes: Dictionary = {} ## scene path -> AABB, see body_box_of
 
@@ -329,6 +336,9 @@ func _process(_delta: float) -> void:
 		c = _update_pixels(c)
 		pixel_material.set_shader_parameter("energy", 7.0 * level)
 
+	if ring_material:
+		_update_ring(c)
+
 	beam_material.set_shader_parameter("beam_color", c)
 	beam_material.set_shader_parameter("intensity", _beam_intensity() * level * _beam_strength)
 	lens_material.emission = c
@@ -345,6 +355,27 @@ func _process(_delta: float) -> void:
 	if body == FixtureCatalog.Body.MOVING_HEAD:
 		_yoke.rotation_degrees.y = (float(fixture.out("pan")) - 0.5) * fixture.profile.pan_range_deg
 		_head.rotation_degrees.x = -(float(fixture.out("tilt")) - 0.5) * fixture.profile.tilt_range_deg
+
+
+## The LED ring: what its effect channel makes of the ring's LEDs. The
+## fixture has no per-LED DMX channels, so these are a stand-in for the
+## built-in effects (see LedRingPreview). `base` is the fixture's own colour.
+func _update_ring(base: Color) -> void:
+	var count := LedRingPreview.LED_COUNT
+	var grid := ring_material.get_shader_parameter("grid") as Vector2i
+	if _ring_image == null:
+		grid = Vector2i(count, 1)
+		_ring_image = Image.create(grid.x, grid.y, false, Image.FORMAT_RGBA8)
+		_ring_texture = ImageTexture.create_from_image(_ring_image)
+		ring_material.set_shader_parameter("pixel_data", _ring_texture)
+	var effect := fixture.raw_value("ring_effect", 0)
+	var speed := fixture.raw_value("ring_speed", 0)
+	var colors := LedRingPreview.leds(effect, speed, Time.get_ticks_msec() / 1000.0, base, grid.x)
+	for i in grid.x:
+		_ring_image.set_pixel(i, 0, colors[i])
+	_ring_texture.update(_ring_image)
+	var level := 0.0 if (ctx and ctx.blackout) else fixture.raw_value("ring_dimmer", 255) / 255.0 * (ctx.grand_master if ctx else 1.0)
+	ring_material.set_shader_parameter("energy", 6.0 * level)
 
 
 ## A colour plus the white/amber/uv channels on top of RGB, so RGBW fixtures
