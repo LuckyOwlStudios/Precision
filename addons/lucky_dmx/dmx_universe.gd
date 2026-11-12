@@ -13,6 +13,10 @@ extends Node
 ## releasing blackout snaps straight back to the current look.
 @export var blackout_held: bool = false
 
+## Scales every fixture's intensity (0 to 1), like the grand master on a
+## console. Fixtures read it when they write their dimmer / colour channels.
+@export_range(0.0, 1.0) var grand_master: float = 1.0
+
 var data := PackedByteArray()
 var _zeros := PackedByteArray()
 var _accum := 0.0
