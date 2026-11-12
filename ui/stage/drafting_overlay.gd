@@ -30,6 +30,7 @@ var ctx: StudioContext
 var visuals: Dictionary = {} ## DMXFixture -> StageFixture3D (the stage view's own map)
 var surfaces: Array[StageRoom.Surface] = []
 
+var title := "" ## overrides the name of the view (the far sides: back, house right, underside)
 var kind := Kind.NONE:
 	set(value):
 		kind = value
@@ -87,6 +88,16 @@ func _h() -> Vector3:
 
 func _v() -> Vector3:
 	return camera.global_basis.y.normalized() ## world direction of screen up
+
+
+## The rulers name world coordinates (X across, Z deep, height up), so from behind or
+## underneath, where screen right or up runs the other way, their numbers flip sign.
+func _h_sign() -> float:
+	return signf(_h().dot(Vector3.BACK if kind == Kind.SIDE else Vector3.RIGHT))
+
+
+func _v_sign() -> float:
+	return signf(_v().dot(Vector3.BACK if kind == Kind.PLAN else Vector3.UP))
 
 
 func _px_per_m() -> float:
@@ -162,6 +173,8 @@ static func pick_step(steps: Array[float], at_least: float) -> float:
 
 ## Name of the current view, for the title block and file names.
 func view_name() -> String:
+	if not title.is_empty():
+		return title
 	match kind:
 		Kind.PLAN:
 			return "Plan"
@@ -239,7 +252,7 @@ func _draw_grid() -> void:
 		draw_line(Vector2(x, 0), Vector2(x, size.y), c, 1.0)
 		if is_major:
 			draw_line(Vector2(x, 0), Vector2(x, 6), UIPalette.TEXT_FAINT, 1.0)
-			_text(Vector2(x + 3, 11), _metres(a), UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
+			_text(Vector2(x + 3, 11), _metres(a * _h_sign()), UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
 	for j in range(ceili(b_lo / minor), floori(b_hi / minor) + 1):
 		var b := j * minor
 		var is_major := _multiple(b, major)
@@ -249,7 +262,7 @@ func _draw_grid() -> void:
 		if is_major:
 			draw_line(Vector2(0, y), Vector2(6, y), UIPalette.TEXT_FAINT, 1.0)
 			if y > 66.0: # not under the view buttons
-				_text(Vector2(9, y - 3), _metres(-b if kind == Kind.PLAN else b), UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
+				_text(Vector2(9, y - 3), _metres(b * _v_sign()), UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
 
 
 static func _multiple(value: float, step: float) -> bool:
@@ -435,12 +448,12 @@ func _draw_readout() -> void:
 	if cursor.x < 0.0:
 		return
 	var p := point_at(cursor)
-	var a := p.dot(_h())
-	var b := p.dot(_v())
+	var a := p.dot(_h()) * _h_sign()
+	var b := p.dot(_v()) * _v_sign()
 	var text: String
 	match kind:
 		Kind.PLAN:
-			text = "X %.2f m   Z %.2f m" % [a, -b]
+			text = "X %.2f m   Z %.2f m" % [a, b]
 		Kind.FRONT:
 			text = "X %.2f m   Height %.2f m" % [a, b]
 		_:
