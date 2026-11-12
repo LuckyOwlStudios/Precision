@@ -385,7 +385,7 @@ text = "Snap"
 [node name="Mirror" type="Button" parent="Overlay/Tools"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Symmetry: whatever you place, move, turn or delete on the left is done on the right too (M)"
+tooltip_text = "Symmetry: whatever you place, move, turn or delete on the left is done on the right too. With something selected, it also places its mirror image on the other side (M)"
 focus_mode = 0
 theme_type_variation = &"PillButton"
 toggle_mode = true

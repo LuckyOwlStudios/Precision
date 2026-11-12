@@ -255,7 +255,7 @@ func _ready() -> void:
 	_aim_button.toggled.connect(_set_aiming)
 
 	# Mirror mode, beside Snap: toggle, axis and where the plane crosses the floor.
-	_mirror_button.toggled.connect(func(on: bool) -> void: ctx.symmetry.enabled = on)
+	_mirror_button.toggled.connect(_set_mirror)
 	_axis_x.pressed.connect(func() -> void: ctx.symmetry.axis = StageSymmetry.Axis.X)
 	_axis_z.pressed.connect(func() -> void: ctx.symmetry.axis = StageSymmetry.Axis.Z)
 	_center_box.metres_changed.connect(func(m: float) -> void: ctx.symmetry.set_offset(m))
@@ -322,6 +322,7 @@ func _register_actions() -> void:
 	var has_sel := func() -> bool: return not _selection().is_empty()
 	var reg := ctx.actions
 	reg.register(&"stage.hide", "Hide selection", _hide_selection, {category = "Stage", shortcut = "H", keywords = "hide", enabled = has_sel})
+	reg.register(&"stage.point_at", "Point at", func() -> void: _aim_button.button_pressed = not _aiming, {category = "Stage", shortcut = "T", keywords = "aim moving head pan tilt target", enabled = func() -> bool: return _aiming or not _aimable().is_empty()})
 	reg.register(&"stage.isolate", "Isolate selection", _isolate_selection, {category = "Stage", shortcut = "Shift+H", keywords = "hide others solo", enabled = has_sel})
 	reg.register(&"stage.show_all", "Show all", _unhide_all, {category = "Stage", shortcut = "Alt+H", keywords = "unhide reveal"})
 	reg.register(&"stage.duplicate", "Duplicate selection", _duplicate_selected, {category = "Stage", shortcut = "Ctrl+D", keywords = "copy clone", enabled = has_sel})
@@ -927,7 +928,7 @@ func _gui_input(event: InputEvent) -> void:
 			KEY_E:
 				set_gizmo_mode(TransformGizmo.Mode.ROTATE)
 			KEY_M:
-				ctx.symmetry.enabled = not ctx.symmetry.enabled
+				_set_mirror(not ctx.symmetry.enabled)
 			KEY_Z:
 				look.shading = StageLook.Shading.SHOW if look.work_lights() else StageLook.Shading.WORK
 			KEY_T:
@@ -1003,13 +1004,19 @@ func _on_left_press(mb: InputEventMouseButton) -> void:
 		var piece: StructurePiece = picked if picked is StructurePiece else null
 		_select_piece(piece)
 		if piece:
+			if finger and mb.double_click:
+				_frame_selection() # double-tap focuses, like F
+				return
 			_piece_drag = piece
 			_piece_drag_started = false
 			_piece_before = piece.global_transform
 			_press_pos = mb.position
 		return
 	if mb.double_click:
-		ctx.request_rename(fx)
+		if finger:
+			_frame_selection() # double-tap focuses, like F (rename stays on mouse double-click and F2)
+		else:
+			ctx.request_rename(fx)
 		return
 	_begin_body_drag(fx, mb.position, mb.shift_pressed)
 
@@ -1332,6 +1339,146 @@ func _sync_mirror() -> void:
 		_mirror_plane.transform = Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(sym.center.x, 3.0, sym.center.z))
 	else:
 		_mirror_plane.transform = Transform3D(Basis.IDENTITY, Vector3(sym.center.x, 3.0, sym.center.z))
+
+
+## Turn mirror mode on or off. Turning it on with something selected also puts
+## a mirrored copy of it on the other side of the plane where there is room.
+func _set_mirror(on: bool) -> void:
+	ctx.symmetry.enabled = on
+	if on:
+		_mirror_selection()
+
+
+## Place a twin of each selected fixture and truss piece across the plane, as
+## one undo step. A fixture's twin snaps to the matching spot: the same kind of
+## truss tube, or the surface there. Anything that can't be mirrored (on the
+## plane, already paired, spot taken, nothing to mount on) is skipped and the
+## reason shown.
+func _mirror_selection() -> void:
+	var sym := ctx.symmetry
+	var items := _selection()
+	if items.is_empty() or _grabbing():
+		return
+	var skipped: Array[String] = []
+	var new_pieces: Array[StructurePiece] = []
+	var piece_xfs: Array[Transform3D] = []
+	var pairs: Array = [] ## [source, twin, flip]
+	for o in items:
+		if not o is StructurePiece or not is_instance_valid(o):
+			continue
+		var piece := o as StructurePiece
+		var name_of := str(piece.get_meta(StudioContext.META_LABEL, piece.name))
+		if StageSymmetry.partner_of(piece) != null:
+			skipped.append("%s already has a mirror twin" % name_of)
+			continue
+		var xf := piece.global_transform
+		if sym.on_plane(xf):
+			skipped.append("%s is on the mirror plane" % name_of)
+			continue
+		var flip := sym.default_flip(xf)
+		var twin_xf := sym.mirror_transform(xf, flip)
+		if _piece_at(piece, twin_xf) != null:
+			skipped.append("there is already truss where %s would mirror to" % name_of)
+			continue
+		var twin := (load(piece.scene_file_path) as PackedScene).instantiate() as StructurePiece
+		_set.add_child(twin)
+		twin.global_transform = twin_xf
+		StageSymmetry.link(piece, twin, flip)
+		new_pieces.append(twin)
+		piece_xfs.append(twin_xf)
+		pairs.append([piece, twin, flip])
+	if not new_pieces.is_empty():
+		_rebuild_pipes() # so a fixture hung on a mirrored tube finds its twin tube
+	var new_fixtures: Array[DMXFixture] = []
+	for o in items:
+		if not o is DMXFixture or not is_instance_valid(o):
+			continue
+		var fx := o as DMXFixture
+		var label := StudioContext.display_name(fx)
+		if StageSymmetry.partner_of(fx) != null:
+			skipped.append("%s already has a mirror twin" % label)
+			continue
+		var xf := StudioContext.fixture_transform(fx)
+		if sym.on_plane(xf):
+			skipped.append("%s is on the mirror plane" % label)
+			continue
+		var flip := sym.default_flip(xf)
+		var spot: Variant = _mirror_spot(fx, sym.mirror_transform(xf, flip))
+		if spot is String:
+			skipped.append("%s: %s" % [label, spot])
+			continue
+		var copies := ctx.duplicate_fixtures([fx])
+		if copies.is_empty():
+			continue
+		var twin_fx := copies[0]
+		ctx.move_fixture(twin_fx, spot as Transform3D)
+		StageSymmetry.link(fx, twin_fx, flip)
+		new_fixtures.append(twin_fx)
+	var made := new_pieces.size() + new_fixtures.size()
+	if made > 0:
+		var indices: Array[int] = []
+		for fx in new_fixtures:
+			indices.append(fx.get_index())
+		ctx.record_added_all("Mirror %d thing%s" % [made, "" if made == 1 else "s"], new_fixtures + new_pieces,
+			_attach_group.bind(new_fixtures, indices, new_pieces, piece_xfs), _detach_group.bind(new_fixtures, new_pieces))
+	var note := ""
+	if made > 0:
+		note = "Mirrored %d thing%s across the plane." % [made, "" if made == 1 else "s"]
+	if not skipped.is_empty():
+		note += (" " if made > 0 else "") + "Couldn't mirror " + "; ".join(skipped.slice(0, 2)) \
+			+ ("" if skipped.size() <= 2 else " (and %d more)" % (skipped.size() - 2)) + "."
+	_say(note, 6000)
+	_update_help()
+
+
+## A piece of the same kind already standing at `xf` (other than `ignore`), or null.
+func _piece_at(ignore: StructurePiece, xf: Transform3D) -> StructurePiece:
+	for p in _pieces():
+		if p != ignore and p.scene_file_path == ignore.scene_file_path \
+				and p.global_transform.origin.distance_to(xf.origin) < 0.05 \
+				and absf(p.global_transform.basis.y.dot(xf.basis.y)) > 0.99:
+			return p
+	return null
+
+
+## Where the mirror image of `fx`, wanted at `want`, can actually go: a
+## Transform3D snapped onto the same kind of mount (truss tube or surface) the
+## original sits on, or a String saying why it can't.
+func _mirror_spot(fx: DMXFixture, want: Transform3D) -> Variant:
+	for other in ctx.fixtures():
+		if other != fx and StudioContext.fixture_transform(other).origin.distance_to(want.origin) < 0.15:
+			return "there is already a fixture on the other side"
+	var mounts := _mounts(fx)
+	var body: FixtureCatalog.Body = fx.get_meta(StudioContext.META_BODY, FixtureCatalog.Body.PAR)
+	var offset := StageFixture3D.mount_offset(body)
+	if _pipe_holding(fx) != null:
+		if StageRoom.pipe_holding(_pipes, want, mounts) != null:
+			return want
+		# Close to a tube on that side? Slide onto it.
+		var mid := want * StageRoom.centre_of(mounts)
+		var pipe := StageRoom.pipe_near(_pipes, mid)
+		if pipe != null and pipe.distance_to(mid) < 0.3:
+			var snapped := StageRoom.slide(pipe, want, mounts, pipe.along_of(mid))
+			if StageRoom.pipe_holding(_pipes, snapped, mounts) != null:
+				return snapped
+		return "no truss on the other side"
+	# Not on a tube: if it rests on a surface, its twin must too.
+	if _surface_under(want, offset) == null:
+		if _surface_under(StudioContext.fixture_transform(fx), offset) == null:
+			return want # it hangs free; so does its twin
+		return "nothing to mount on over there"
+	var hit := _surface_under(want, offset)
+	return Transform3D(want.basis, hit.position + hit.normal * offset)
+
+
+## The surface a fixture at `xf` is mounted against (its +Y side), or null.
+func _surface_under(xf: Transform3D, offset: float) -> StageRoom.Hit:
+	var y := xf.basis.y.normalized()
+	var start := xf.origin - y * 0.25
+	var hit := StageRoom.raycast(_surfaces, start, y)
+	if hit == null or absf(hit.position.distance_to(start) - (0.25 + offset)) > 0.15:
+		return null
+	return hit
 
 
 ## Put the mirror plane through the middle of what is selected.
@@ -2019,11 +2166,13 @@ func _refresh_aim_button() -> void:
 	if _aim_button == null:
 		return
 	var n := _aimable().size()
+	# Only offered while the selection holds a moving head (mixed selections aim just the heads).
+	_aim_button.visible = n > 0
 	_aim_button.disabled = n == 0
 	if n == 0 and _aiming:
 		_aim_button.button_pressed = false
 	_aim_button.tooltip_text = "Point the selected moving heads at a spot: click or drag on the stage and they all aim there (T).\n" + \
-		("Select one or more moving heads first." if n == 0 else "%d moving head%s selected." % [n, "" if n == 1 else "s"])
+		"%d moving head%s selected." % [n, "" if n == 1 else "s"]
 
 
 func _set_aiming(on: bool) -> void:

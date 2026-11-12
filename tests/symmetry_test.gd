@@ -40,6 +40,7 @@ func _init() -> void:
 	test_math()
 	test_fixtures()
 	test_pieces()
+	test_mirror_selection()
 	test_turning_on_vertical_truss()
 	test_z_axis_and_centre()
 	test_demo_rig_not_doubled()
@@ -169,6 +170,53 @@ func test_pieces() -> void:
 	check(view._pieces().size() == n + 2 or view._pieces().size() == n, "(history intact)")
 	while ctx.undo() and view._pieces().size() > n:
 		pass
+
+
+func test_mirror_selection() -> void:
+	print("Mirror button on a selection")
+	ctx.symmetry.enabled = false
+	ctx.symmetry.axis = StageSymmetry.Axis.X
+	ctx.symmetry.center = Vector3.ZERO
+	var entry: FixtureCatalog.Entry = FixtureCatalog.entries()[1]
+	var steps := ctx.fixtures().size()
+	var fx := ctx.add_fixture(entry, Vector3(-3, 3, 0), Basis.IDENTITY)
+	check(ctx.fixtures().size() == steps + 1, "placed alone with mirror off")
+	view._set_selection([fx])
+	view._mirror_button.button_pressed = true # the same as pressing Mirror
+	check(ctx.symmetry.enabled and ctx.fixtures().size() == steps + 2, "pressing Mirror adds a fixture")
+	var twin := StageSymmetry.partner_of(fx) as DMXFixture
+	check(twin != null and StageSymmetry.partner_of(twin) == fx, "it is linked as a mirror twin")
+	check(twin != null and near(StudioContext.fixture_transform(twin).origin, Vector3(3, 3, 0)), "it sits across the plane")
+	check(twin != null and twin.start_address != fx.start_address, "it is patched to its own address")
+	view._mirror_selection()
+	check(ctx.fixtures().size() == steps + 2, "mirroring again adds nothing")
+	ctx.undo()
+	check(ctx.fixtures().size() == steps + 1 and StageSymmetry.partner_of(fx) == null, "one undo removes the twin")
+	ctx.redo()
+	check(ctx.fixtures().size() == steps + 2, "redo brings it back")
+	ctx.undo()
+	# Something already on the other side.
+	ctx.symmetry.enabled = false
+	ctx.add_fixture(entry, Vector3(3, 3, 0), Basis.IDENTITY)
+	ctx.symmetry.enabled = true
+	view._set_selection([fx])
+	view._mirror_selection()
+	check(ctx.fixtures().size() == steps + 2, "a fixture already there blocks it")
+	view._set_selection([])
+	while ctx.fixtures().size() > steps and ctx.undo():
+		pass
+	# Resting on the floor: the twin lands on the floor too.
+	ctx.symmetry.enabled = false
+	var floor_fx := ctx.add_fixture(entry, Vector3(-2, 0.3, 1), StageRoom.mount_basis(Vector3.UP))
+	var floor_xf := StudioContext.fixture_transform(floor_fx)
+	view._set_selection([floor_fx])
+	view._set_mirror(true)
+	var f_twin := StageSymmetry.partner_of(floor_fx)
+	var floor_ok := f_twin != null and absf(StudioContext.fixture_transform(f_twin as DMXFixture).origin.x - 2.0) < 0.001
+	check(floor_ok or f_twin == null, "a floor fixture mirrors only if the floor is there (%s)" % [floor_xf.origin])
+	while ctx.fixtures().size() > steps and ctx.undo():
+		pass
+	ctx.symmetry.enabled = true
 
 
 func test_turning_on_vertical_truss() -> void:
