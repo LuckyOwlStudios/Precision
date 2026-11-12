@@ -8,6 +8,7 @@ extends Control
 ## Shortcuts: Space = play/pause, Esc = blackout, Delete = remove selected fixture,
 ## F2 = rename selected fixture, W/E = move/rotate gizmo (stage view),
 ## Ctrl+Z = undo, Ctrl+R = redo (Ctrl+Shift+Z and Ctrl+Y redo too; Cmd on a Mac),
+## Ctrl+N/O/S = new/open/save show (Ctrl+Shift+S = save as),
 ## 1/2/3 = Stage/Program/Live workspace, Ctrl+K = search every action. None of these fire while you're typing
 ## in a text field: there Ctrl+Z undoes your typing instead.
 
@@ -23,6 +24,7 @@ extends Control
 @onready var output_dot: Panel = %OutputDot
 @onready var rig_label: Label = %RigLabel
 @onready var palette: CommandPalette = %CommandPalette
+@onready var show_menu: ShowMenu = %ShowMenu
 
 
 func _ready() -> void:
@@ -63,6 +65,13 @@ func _ready() -> void:
 
 	# Audio files dropped anywhere on the window go into the song library.
 	get_window().files_dropped.connect(_on_files_dropped)
+
+	# Shows: the File menu, and closing the window asks about unsaved changes.
+	show_menu.setup(ctx, %FileButton, %ShowName)
+	get_tree().auto_accept_quit = false
+	# Pick up where you left off. Not in headless runs (tests start from a clean rig).
+	if DisplayServer.get_name() != "headless":
+		ctx.shows.reopen_last()
 
 
 ## The app-wide actions of the Ctrl+K search. Other features register their own
@@ -242,6 +251,10 @@ func _paste_look() -> bool:
 	ctx.paste_look(targets)
 	return true
 
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_node_ready():
+		show_menu.request_quit()
 
 ## Ctrl+G: save the picked fixtures as a group and ask for its name.
 func _make_group() -> bool:

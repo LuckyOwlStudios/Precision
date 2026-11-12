@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/main/show_menu.gd" id="1_menu"]
+
+[node name="ShowMenu" type="Node"]
+script = ExtResource("1_menu")
+
+[node name="OpenDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Open a show"
+ok_button_text = "Open"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.precision ; Precision show")
+use_native_dialog = true
+
+[node name="SaveDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Save show as"
+ok_button_text = "Save"
+file_mode = 4
+access = 2
+filters = PackedStringArray("*.precision ; Precision show")
+use_native_dialog = true
+
+[node name="UnsavedDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Unsaved changes"
+ok_button_text = "Save"
+cancel_button_text = "Cancel"
+
+[node name="ErrorDialog" type="AcceptDialog" parent="."]
+unique_name_in_owner = true
+title = "Show file"
