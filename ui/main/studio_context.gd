@@ -50,6 +50,10 @@ signal show_changed
 ## A clip on the timeline was selected (null = none).
 signal clip_selected(clip: ShowClip)
 signal song_changed(song: Song)
+## The built-in fallback look started, changed tier or stopped (see
+## fallback_show()). `tier_name` is empty when it stopped.
+signal fallback_changed(tier_name: String)
+
 ## The song's first beat or phrase markers changed (timeline redraws on its own).
 signal marks_changed
 ## The linked show should start: fired when a song starts playing from
@@ -154,6 +158,7 @@ func _ready() -> void:
 
 	groups.groups_changed.connect(groups_changed.emit)
 	show_player.ctx = self
+	fixtures_changed.connect(func() -> void: _fallback_dirty = true)
 
 	music_player.finished.connect(_on_music_finished)
 	dj.ctx = self
@@ -182,13 +187,25 @@ func _process(delta: float) -> void:
 ## While DJ sync is on, the DJ's deck is the clock: their play/pause is our
 ## play/pause and their playhead is our playhead. We play no audio.
 func _follow_dj() -> void:
-	var now_playing := dj.source.playing and song != null
-	if now_playing and not playing:
+	var src := dj.source
+	# A track that isn't in the library has no song or show; the fallback look
+	# keeps the lights going on the DJ's clock until a known track starts.
+	var unknown := song == null and src.track != null and AppSettings.fallback_looks
+	var now_playing := src.playing and (song != null or unknown)
+	if now_playing and not playing and song:
 		show_started.emit(song)
 	var changed := now_playing != playing
 	playing = now_playing
 	if song:
 		var beats := clampf(seconds_to_beats(dj.position_seconds()), 0.0, length_beats)
+		changed = changed or not is_equal_approx(beats, position_beats)
+		position_beats = beats
+	elif unknown:
+		# No library song to give the tempo: use what the DJ software says the
+		# track's own tempo is, and the DJ's position runs at the pitched speed.
+		if src.track.bpm > 0.0:
+			bpm = clampf(src.track.bpm, 40.0, 220.0)
+		var beats := fposmod(seconds_to_beats(dj.position_seconds()), length_beats)
 		changed = changed or not is_equal_approx(beats, position_beats)
 		position_beats = beats
 	if changed:
@@ -1380,6 +1397,55 @@ func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
 		_look_tween = null
 	_applied_look = look
 	looks_changed.emit()
+
+
+# ---------------------------------------------------------------- fallback looks
+
+var _fallback_show: SongShow
+var _fallback_tier: int = -1
+var _fallback_dirty := true ## the rig changed since the cached look was built
+
+
+## The built-in look to play right now, or null when the song's own show should
+## play. It plays while a song with no clips is playing and the lights are live
+## (following the DJ, or the Live workspace), and for tracks the DJ plays that
+## aren't in the library. Evaluate it at fposmod(position_beats, FallbackLooks.CYCLE_BEATS).
+func fallback_show() -> SongShow:
+	var want := AppSettings.fallback_looks and playing and show.clips.is_empty() \
+			and (following_dj() or workspace == Workspace.LIVE)
+	if not want:
+		_set_fallback(-1)
+		return null
+	var tier := FallbackLooks.tier_for(heard_bpm(), _fallback_tier)
+	if _fallback_show == null or tier != _fallback_tier or _fallback_dirty:
+		var paths := PackedStringArray()
+		for fx in fixtures():
+			paths.append(fixture_path(fx))
+		_fallback_show = FallbackLooks.build(tier, paths)
+		_fallback_dirty = false
+	_set_fallback(tier)
+	return _fallback_show
+
+
+## The tempo the audience hears: the DJ's, pitch included, else the timeline's.
+func heard_bpm() -> float:
+	if following_dj() and dj.source.bpm > 0.0:
+		return dj.source.bpm
+	return bpm
+
+
+## Name of the fallback look playing now ("Drive"), or "" when none is.
+func fallback_name() -> String:
+	return "" if _fallback_tier < 0 else FallbackLooks.tier_name(_fallback_tier as FallbackLooks.Tier)
+
+
+func _set_fallback(tier: int) -> void:
+	if tier == _fallback_tier:
+		return
+	_fallback_tier = tier
+	if tier < 0:
+		_fallback_show = null
+	fallback_changed.emit("" if tier < 0 else FallbackLooks.tier_name(tier as FallbackLooks.Tier))
 
 
 # ---------------------------------------------------------------- show (timeline clips)

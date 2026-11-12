@@ -19,6 +19,8 @@ var _sim_songs: Array[Song] = []
 @onready var _deck_detail: Label = %DeckDetail
 @onready var _match: Label = %Match
 @onready var _offset: SpinBox = %Offset
+@onready var _fallback: CheckBox = %FallbackLooks
+@onready var _fallback_status: Label = %FallbackStatus
 
 @onready var _vdj_box: Control = %VirtualDJ
 @onready var _host: LineEdit = %Host
@@ -39,6 +41,12 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.dj.status_changed.connect(_sync)
 	ctx.library.songs_changed.connect(_fill_songs)
 	_offset.value = ctx.dj.light_offset_ms
+	_fallback.set_pressed_no_signal(AppSettings.fallback_looks)
+	AppSettings.hub().changed.connect(func(key: StringName) -> void:
+		if key == &"fallback_looks":
+			_fallback.set_pressed_no_signal(AppSettings.fallback_looks)
+			_sync())
+	ctx.fallback_changed.connect(func(_tier: String) -> void: _sync())
 	_fill_songs()
 	_sync()
 
@@ -46,6 +54,7 @@ func setup(p_ctx: StudioContext) -> void:
 func _ready() -> void:
 	_kind.item_selected.connect(func(i: int) -> void: _switch(i as DJSync.Kind))
 	_offset.value_changed.connect(func(v: float) -> void: ctx.dj.light_offset_ms = v)
+	_fallback.toggled.connect(func(on: bool) -> void: AppSettings.fallback_looks = on)
 	%Reconnect.pressed.connect(func() -> void: _switch(DJSync.Kind.VIRTUALDJ))
 	%CopyDiagnostics.pressed.connect(_copy_diagnostics)
 	%SimLoad.pressed.connect(_sim_load)
@@ -126,6 +135,9 @@ func _sync() -> void:
 	var detail := _deck_detail
 	_deck.visible = src != null
 	_match.visible = src != null
+	var look := ctx.fallback_name()
+	_fallback_status.text = "" if look.is_empty() else "Playing the %s look (%d BPM) because this song has no show." % [look, roundi(ctx.heard_bpm())]
+	_fallback_status.visible = not look.is_empty()
 	if src == null:
 		return
 	if src.track == null:
@@ -144,7 +156,7 @@ func _sync() -> void:
 		if dj.matched:
 			_match.text = "Show: %s (matched by %s)" % [dj.matched.show_name, dj.match_how]
 		else:
-			_match.text = "Not in your library, so the lights wait. Import this song to give it a show."
+			_match.text = "Not in your library. Import this song to give it a show."
 
 
 func _process(_delta: float) -> void:
