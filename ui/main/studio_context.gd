@@ -131,10 +131,13 @@ const HISTORY_STEPS := 300
 func _ready() -> void:
 	history.max_steps = HISTORY_STEPS
 	load_swatches()
+	looks.persist = false # looks live in the show file
+	looks.load_looks()
 	shows.setup(self)
 	shows.register_section(&"rig", func() -> Variant: return RigCodec.save(self),
 		func(data: Variant) -> void: RigCodec.load_data(self, data), func() -> void: RigCodec.clear(self), 20)
 	shows.register_section(&"cues", _cues_to_data, _cues_from_data, _cues_clear, 30)
+	shows.register_section(&"looks", _looks_to_data, _looks_from_data, func() -> void: looks.set_looks([]), 25)
 	shows.register_section(&"stage", _stage_to_data, _stage_from_data, _stage_reset, 40)
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
@@ -1413,6 +1416,34 @@ func _cues_clear() -> void:
 	cue_stack.stop()
 	cue_stack.cues.clear()
 	cue_stack.current = -1
+
+
+func _looks_to_data() -> Variant:
+	var list: Array = []
+	for l in looks.looks:
+		list.append({"id": l.id, "name": l.look_name, "fade": l.fade_time, "values": l.values})
+	return {"looks": list}
+
+
+func _looks_from_data(data: Variant) -> void:
+	var list: Array[Look] = []
+	if data is Dictionary:
+		for e: Variant in (data as Dictionary).get("looks", []):
+			var entry: Dictionary = e
+			var look := Look.new()
+			look.id = str(entry.get("id", ""))
+			look.look_name = str(entry.get("name", ""))
+			look.fade_time = float(entry.get("fade", 2.0))
+			var values: Dictionary = ShowCodec.decode(entry.get("values", {}))
+			for path: Variant in values:
+				var props: Dictionary = values[path]
+				if props.has("strobe"):
+					props["strobe"] = int(props["strobe"])
+			look.values = values
+			if look.id.is_empty():
+				look.id = "%d_%04d" % [Time.get_unix_time_from_system(), randi() % 10000]
+			list.append(look)
+	looks.set_looks(list)
 
 
 func _stage_to_data() -> Variant:

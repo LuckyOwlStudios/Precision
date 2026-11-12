@@ -11,6 +11,7 @@ func _init() -> void:
 	root.add_child(main)
 	await process_frame
 	var ctx: StudioContext = main.get_node("%Studio")
+	ctx.looks.persist = true # the app keeps looks in the show file; this test checks the disk path
 	ctx.looks.root_dir = "user://looks_test"
 	ctx.looks.load_looks()
 	for l in ctx.looks.looks.duplicate():
