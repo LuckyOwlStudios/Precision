@@ -96,6 +96,7 @@ func _register_actions() -> void:
 	a.register(&"workspace.stage", "Go to Stage", ctx.set_workspace.bind(StudioContext.Workspace.STAGE), {category = "Workspace", shortcut = "1", keywords = "rig build"})
 	a.register(&"workspace.program", "Go to Program", ctx.set_workspace.bind(StudioContext.Workspace.PROGRAM), {category = "Workspace", shortcut = "2", keywords = "timeline show"})
 	a.register(&"workspace.live", "Go to Live", ctx.set_workspace.bind(StudioContext.Workspace.LIVE), {category = "Workspace", shortcut = "3", keywords = "perform"})
+	a.register(&"fixture.new_profile", "New fixture profile", %Library.new_profile, {category = "Fixture", keywords = "create add import channel chart open fixture library gdtf"})
 	a.register(&"app.settings", "Open settings", %SettingsWindow.open, {category = "App", keywords = "preferences quality units language"})
 
 
