@@ -57,7 +57,7 @@ const TOUCH_ORBIT_DEG_PER_PX := 0.3
 const TOUCH_PAN_PER_PX := 0.0016 ## of the camera distance
 const TOUCH_PICK_PX := 24.0 ## gizmo handle reach for a fingertip (a mouse uses TransformGizmo.PICK_PX)
 const ORTHO_DISTANCE := 60.0 ## the drawing camera sits well outside the room
-const ORTHO_SIZE_MIN := 1.5 ## metres of height on screen
+const ORTHO_SIZE_MIN := 0.04 ## metres of height on screen: close enough to inspect single 1 cm LEDs
 const ORTHO_SIZE_MAX := 40.0
 const ORTHO_VIEWS := {
 	"Top": {"kind": DraftingOverlay.Kind.PLAN, "yaw": 0.0, "pitch": -90.0, "pivot": Vector3(0, 0, -0.5), "size": 14.0},
@@ -73,6 +73,10 @@ const NUMPAD_ORBIT_STEP := 15.0 ## degrees per numpad 2 / 4 / 6 / 8 press
 const FRAME_MARGIN := 1.25 ## room left around what Home and numpad . frame
 const DEFAULT_PIVOT := Vector3(0, 1.4, -0.5) ## the audience view (numpad 0, and F with nothing to frame)
 const DEFAULT_DISTANCE := 12.5
+const DISTANCE_MIN := 0.04 ## metres from the orbit pivot; the wheel zooms by a factor, so steps shrink as you near
+const DISTANCE_MAX := 40.0
+const NEAR_MIN := 0.002 ## the camera near plane follows the distance so close geometry is not clipped
+const NEAR_MAX := 0.05
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
 const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\nH  hide selection · Shift+H  isolate it · Alt+H  show all\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · Ctrl+D  duplicate (copies follow the mouse, click to drop) · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\nCtrl+C / Ctrl+V  copy a fixture's look, paste on the selection\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame selection (or the rig)\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale), Ctrl for the opposite side\nNumpad 5  perspective and back · Numpad 0  audience view\nNumpad 4 / 6 / 8 / 2  orbit in 15° steps\nNumpad .  frame the selection · Home  frame the whole rig\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
@@ -401,7 +405,7 @@ func _zoom(factor: float) -> void:
 	if _is_ortho():
 		_ortho_size = clampf(_ortho_size * factor, ORTHO_SIZE_MIN, ORTHO_SIZE_MAX)
 	else:
-		_distance = clampf(_distance * factor, 3.0, 40.0)
+		_distance = clampf(_distance * factor, DISTANCE_MIN, DISTANCE_MAX)
 	_update_camera()
 
 
@@ -1264,10 +1268,10 @@ func _frame_box(box: Variant) -> bool:
 		var extent := hi - lo
 		_ortho_size = clampf(maxf(extent.y, extent.x / aspect) * FRAME_MARGIN, ORTHO_SIZE_MIN, ORTHO_SIZE_MAX)
 	else:
-		var radius := maxf(b.size.length() * 0.5, 0.4)
+		var radius := maxf(b.size.length() * 0.5, 0.01)
 		var half_v := deg_to_rad(_camera.fov) * 0.5
 		var half_h := atan(tan(half_v) * aspect)
-		_distance = clampf(radius * FRAME_MARGIN / sin(minf(half_v, half_h)), 1.5, 60.0)
+		_distance = clampf(radius * FRAME_MARGIN / sin(minf(half_v, half_h)), DISTANCE_MIN, 60.0)
 	_update_camera()
 	return true
 
@@ -1297,6 +1301,7 @@ func _update_camera() -> void:
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL if ortho else Camera3D.PROJECTION_PERSPECTIVE
 	_camera.size = _ortho_size
 	_camera.far = 250.0 if ortho else 4000.0
+	_camera.near = NEAR_MAX if ortho else clampf(_distance * 0.05, NEAR_MIN, NEAR_MAX)
 	_camera.position = Vector3(0, 0, ORTHO_DISTANCE if ortho else _distance)
 	_camera.rotation = Vector3.ZERO
 	_gizmo.queue_redraw()
@@ -1683,10 +1688,10 @@ func _frame_selection() -> bool:
 		box = box.expand(pt)
 	_pivot.position = box.get_center()
 	if _is_ortho():
-		_ortho_size = maxf(box.get_longest_axis_size() * 1.6, 3.0)
+		_ortho_size = maxf(box.get_longest_axis_size() * 1.6, 1.0)
 	else:
-		var radius := maxf(box.size.length() * 0.5, 0.4) # a single fixture is ~0.8 m across
-		_distance = clampf(radius * 3.0, 1.5, 60.0)
+		var radius := maxf(box.size.length() * 0.5, 0.25) # a single point stands for a fixture ~0.5 m across
+		_distance = clampf(radius * 3.0, DISTANCE_MIN, 60.0)
 	_update_camera()
 	return true
 
