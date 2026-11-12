@@ -192,6 +192,7 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.pick_requested.connect(func(list: Array) -> void: _set_selection(list))
 	ctx.delete_requested.connect(_delete_selected)
 	ctx.duplicate_requested.connect(_duplicate_selected)
+	_register_actions()
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
 	ctx.piece_moved.connect(func(p: StructurePiece) -> void:
@@ -305,6 +306,22 @@ func _sync_look_controls() -> void:
 	_haze_label.modified = not is_equal_approx(look.haze, StageLook.DEFAULT_HAZE)
 	for i in _shading_buttons.size():
 		_shading_buttons[i].button_pressed = i == look.shading
+
+
+## Puts the stage's shortcuts into the Ctrl+K action search.
+func _register_actions() -> void:
+	var has_sel := func() -> bool: return not _selection().is_empty()
+	var reg := ctx.actions
+	reg.register(&"stage.hide", "Hide selection", _hide_selection, {category = "Stage", shortcut = "H", keywords = "hide", enabled = has_sel})
+	reg.register(&"stage.isolate", "Isolate selection", _isolate_selection, {category = "Stage", shortcut = "Shift+H", keywords = "hide others solo", enabled = has_sel})
+	reg.register(&"stage.show_all", "Show all", _unhide_all, {category = "Stage", shortcut = "Alt+H", keywords = "unhide reveal"})
+	reg.register(&"stage.duplicate", "Duplicate selection", _duplicate_selected, {category = "Stage", shortcut = "Ctrl+D", keywords = "copy clone", enabled = has_sel})
+	reg.register(&"stage.frame_selection", "Frame selection", func() -> void: _frame_selection(), {category = "View", shortcut = "F", keywords = "focus zoom", enabled = has_sel})
+	reg.register(&"view.audience", "Audience view", _audience_view, {category = "View", shortcut = "Numpad 0", keywords = "camera reset"})
+	reg.register(&"view.top", "Top plan view", func() -> void: _set_view("Top"), {category = "View", shortcut = "Numpad 7", keywords = "ortho drawing"})
+	reg.register(&"view.front", "Front view", func() -> void: _set_view("Front"), {category = "View", shortcut = "Numpad 1", keywords = "ortho elevation"})
+	reg.register(&"view.side", "Side view", func() -> void: _set_view("Side"), {category = "View", shortcut = "Numpad 3", keywords = "ortho elevation"})
+	reg.register(&"view.perspective", "Perspective view", func() -> void: _set_view("Perspective"), {category = "View", shortcut = "Numpad 5"})
 
 
 func _set_view(preset: String) -> void:
@@ -870,6 +887,14 @@ func _gui_input(event: InputEvent) -> void:
 			KEY_HOME:
 				if not _frame_box(_rig_box()):
 					_audience_view()
+				accept_event()
+			KEY_H:
+				if k.alt_pressed:
+					_unhide_all()
+				elif k.shift_pressed:
+					_isolate_selection()
+				else:
+					_hide_selection()
 				accept_event()
 			KEY_D:
 				if not _is_ortho():
