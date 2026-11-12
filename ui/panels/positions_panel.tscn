@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/positions_panel.gd" id="1_positions"]
+
+[node name="PositionsPanel" type="MarginContainer"]
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+script = ExtResource("1_positions")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Positions"
+uppercase = true
+
+[node name="Hint" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Where your moving heads point. Songs use a position by name, so updating it fixes every song at once."
+autowrap_mode = 3
+
+[node name="List" type="ItemList" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Empty" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"Subtitle"
+text = "Aim your moving heads (try the Point at tool), name it, and press Save position."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Rule" type="HSeparator" parent="Column"]
+layout_mode = 2
+
+[node name="Source" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3
+
+[node name="PositionName" type="LineEdit" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Position name (optional)"
+
+[node name="NameTaken" type="Label" parent="Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3
+
+[node name="SavePosition" type="Button" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Save where the moving heads are aimed now"
+theme_type_variation = &"AccentButton"
+text = "Save position"
+
+[node name="Buttons" type="HBoxContainer" parent="Column"]
+layout_mode = 2
+
+[node name="Aim" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Move the heads to the selected position (double-click does the same)"
+text = "Go"
+
+[node name="Update" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Replace the selected position with where the heads are now. Every song using it follows."
+text = "Update"
+
+[node name="Rename" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Give the selected position the name typed in the box"
+text = "Rename"
+
+[node name="Delete" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Delete the selected position"
+text = "Delete"
+
+[node name="AddToShow" type="Button" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Add a clip at the playhead that aims the heads at the selected position"
+text = "Add to show at playhead"

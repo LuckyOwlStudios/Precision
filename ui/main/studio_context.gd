@@ -42,6 +42,8 @@ signal workspace_changed(workspace: Workspace)
 signal cues_changed
 ## A look was applied, saved, renamed or deleted (the shelf listens).
 signal looks_changed
+## A position was saved, updated, renamed or deleted (the shelf listens).
+signal positions_changed
 ## Editing a look started or ended (`look` is null when it ended).
 signal look_editing_changed(look: Look)
 ## The show on the timeline changed: a clip was added, removed or edited, or
@@ -79,6 +81,7 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var cue_stack: CueStack = $Cues
 @onready var library: SongLibrary = $Songs
 @onready var looks: LookLibrary = $Looks ## the Looks shelf
+@onready var positions: PositionLibrary = $Positions ## the Positions shelf
 @onready var groups: GroupLibrary = $Groups ## saved fixture groups
 @onready var effects: EffectPresetLibrary = $Effects ## the Effects shelf
 @onready var show_player: ShowPlayer = $ShowPlayer
@@ -158,6 +161,8 @@ func _ready() -> void:
 	shows.setup(self)
 	shows.register_section(&"rig", func() -> Variant: return RigCodec.save(self),
 		func(data: Variant) -> void: RigCodec.load_data(self, data), func() -> void: RigCodec.clear(self), 20)
+	# Positions belong to the show (it has its own fixtures); effect presets stay global.
+	shows.register_section(&"positions", positions.to_data, positions.from_data, positions.clear, 26)
 	shows.register_section(&"cues", _cues_to_data, _cues_from_data, _cues_clear, 30)
 	shows.register_section(&"looks", _looks_to_data, _looks_from_data, func() -> void: looks.set_looks([]), 25)
 	shows.register_section(&"groups", groups.to_data,
@@ -166,6 +171,7 @@ func _ready() -> void:
 	shows.register_section(&"stage", _stage_to_data, _stage_from_data, _stage_reset, 40)
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
+	positions.positions_changed.connect(positions_changed.emit)
 	library.song_updated.connect(_on_song_updated)
 
 	groups.groups_changed.connect(groups_changed.emit)
@@ -1380,7 +1386,6 @@ func cancel_look_edit() -> void:
 func _set_look_data(look: Look, data: Dictionary) -> void:
 	look.values = (data["values"] as Dictionary).duplicate(true)
 	look.fade_time = float(data["fade"])
-	looks.save(look)
 	looks_changed.emit()
 
 
@@ -1409,6 +1414,147 @@ func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
 		_look_tween = null
 	_applied_look = look
 	looks_changed.emit()
+
+
+# ---------------------------------------------------------------- positions
+
+## Presets of where moving heads are aimed. Shows refer to them by id (see
+## ShowClip / ShowPlayer), so updating a position changes every song using it.
+
+var _position_tween: Tween
+
+
+## The fixtures a new position is saved from: the selection, else every
+## fixture that can aim.
+func position_sources() -> Array[DMXFixture]:
+	var list: Array[DMXFixture] = []
+	var pool: Array = selected_group if not selected_group.is_empty() else ([selected] if selected else fixtures())
+	for fx: DMXFixture in pool:
+		if PositionPreset.can_aim(fx):
+			list.append(fx)
+	return list
+
+
+## Store where the moving heads are aimed now as a new position. Returns null
+## if the name is taken or nothing can aim.
+func save_position(position_name: String = "") -> PositionPreset:
+	var n := position_name.strip_edges()
+	if n.is_empty():
+		n = positions.next_name()
+	if positions.is_name_taken(n):
+		return null
+	var p := PositionPreset.capture(rig, position_sources(), n)
+	if p.values.is_empty():
+		return null
+	record("Save position", positions.add.bind(p), positions.remove.bind(p), true)
+	return p
+
+
+func delete_position(p: PositionPreset) -> void:
+	record("Delete position", positions.remove.bind(p), positions.add.bind(p), true)
+
+
+func rename_position(p: PositionPreset, new_name: String) -> void:
+	var before := p.position_name
+	positions.rename(p, new_name)
+	if p.position_name != before:
+		record("Rename position", positions.rename.bind(p, p.position_name), positions.rename.bind(p, before))
+
+
+## Replace the aim of the fixtures in `p` that can aim (the selection, else
+## all of them) with where they are now. Every show using `p` follows.
+func update_position(p: PositionPreset) -> void:
+	var before := p.values.duplicate(true)
+	var after := before.duplicate(true)
+	after.merge(PositionPreset.capture_values(rig, position_sources()), true)
+	if after == before:
+		return
+	record("Update position", _set_position_values.bind(p, after), _set_position_values.bind(p, before), true)
+
+
+func _set_position_values(p: PositionPreset, data: Dictionary) -> void:
+	p.values = data.duplicate(true)
+	positions_changed.emit()
+
+
+## Aim the fixtures at a position (fading over `fade` seconds, its own time by
+## default), one undo step. Fixtures it doesn't know are left alone.
+func apply_position(p: PositionPreset, fade: float = -1.0) -> void:
+	var secs := p.fade_time if fade < 0.0 else fade
+	var before := p.current_values(rig)
+	record("Apply position", _aim_fixtures.bind(p.values.duplicate(true), secs), _aim_fixtures.bind(before, 0.0), true)
+
+
+func _aim_fixtures(values: Dictionary, secs: float) -> void:
+	if _position_tween:
+		_position_tween.kill()
+		_position_tween = null
+	var added := 0
+	if secs > 0.0:
+		_position_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE)
+	for path in values:
+		var fx := rig.get_node_or_null(NodePath(str(path))) as DMXFixture
+		if fx == null:
+			continue
+		for prop: String in values[path]:
+			if _position_tween:
+				fx.tween_to(_position_tween, prop, values[path][prop], secs)
+				added += 1
+			else:
+				fx.set(prop, values[path][prop])
+	if _position_tween and added == 0:
+		_position_tween.kill()
+		_position_tween = null
+
+
+## Put a saved position or look on the timeline: a clip at `at` beats that
+## plays it by reference. `kind` is "position" or "look". Fixtures that can't
+## take it are left out; returns null if none can.
+func add_reference_clip(kind: String, ref_id: String, ref_name: String, at: float, targets: Array) -> ShowClip:
+	var paths := PackedStringArray()
+	for fx: DMXFixture in targets:
+		if EffectTemplates.supports(kind, fx):
+			paths.append(fixture_path(fx))
+	if paths.is_empty():
+		return null
+	var preset := EffectPreset.make(ref_name, kind, {"ref": ref_id}, 8.0)
+	var clip := ShowClip.from_preset(preset, maxf(0.0, at), paths)
+	clip.preset_id = "" # the reference is the link
+	var sh := show
+	record("Add " + kind, _attach_clip.bind(sh, clip, sh.clips.size()), _detach_clip.bind(sh, clip), true)
+	select_clip(clip)
+	return clip
+
+
+## Make the effect preset a clip is linked to match the clip's own settings, so
+## every clip linked to it follows. Built-in presets can't change.
+func update_preset_from_clip(clip: ShowClip, p: EffectPreset) -> bool:
+	if p == null or p.built_in or p.template != clip.template:
+		return false
+	var before := clip.to_data()
+	var old := p.params.duplicate(true)
+	var fresh := clip.effective_params(effects).duplicate(true)
+	clip.preset_id = p.id
+	record("Update effect preset", _set_preset_params.bind(p, fresh), _set_preset_params.bind(p, old), true)
+	record_clip_change(clip, before, "Link effect to preset")
+	return true
+
+
+func _set_preset_params(p: EffectPreset, data: Dictionary) -> void:
+	p.params = data.duplicate(true)
+	effects.save(p)
+	effects.presets_changed.emit()
+	show_changed.emit()
+
+
+## Detach a clip from its preset, keeping the settings it plays now.
+func unlink_clip(clip: ShowClip) -> void:
+	if clip.preset_id.is_empty():
+		return
+	var before := clip.to_data()
+	clip.params = clip.effective_params(effects).duplicate(true)
+	clip.preset_id = ""
+	record_clip_change(clip, before, "Unlink effect from preset")
 
 
 # ---------------------------------------------------------------- fallback looks
