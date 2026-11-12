@@ -322,6 +322,7 @@ func _register_actions() -> void:
 	var has_sel := func() -> bool: return not _selection().is_empty()
 	var reg := ctx.actions
 	reg.register(&"stage.hide", "Hide selection", _hide_selection, {category = "Stage", shortcut = "H", keywords = "hide", enabled = has_sel})
+	reg.register(&"stage.point_at", "Point at", func() -> void: _aim_button.button_pressed = not _aiming, {category = "Stage", shortcut = "T", keywords = "aim moving head pan tilt target", enabled = func() -> bool: return _aiming or not _aimable().is_empty()})
 	reg.register(&"stage.isolate", "Isolate selection", _isolate_selection, {category = "Stage", shortcut = "Shift+H", keywords = "hide others solo", enabled = has_sel})
 	reg.register(&"stage.show_all", "Show all", _unhide_all, {category = "Stage", shortcut = "Alt+H", keywords = "unhide reveal"})
 	reg.register(&"stage.duplicate", "Duplicate selection", _duplicate_selected, {category = "Stage", shortcut = "Ctrl+D", keywords = "copy clone", enabled = has_sel})
@@ -2025,11 +2026,13 @@ func _refresh_aim_button() -> void:
 	if _aim_button == null:
 		return
 	var n := _aimable().size()
+	# Only offered while the selection holds a moving head (mixed selections aim just the heads).
+	_aim_button.visible = n > 0
 	_aim_button.disabled = n == 0
 	if n == 0 and _aiming:
 		_aim_button.button_pressed = false
 	_aim_button.tooltip_text = "Point the selected moving heads at a spot: click or drag on the stage and they all aim there (T).\n" + \
-		("Select one or more moving heads first." if n == 0 else "%d moving head%s selected." % [n, "" if n == 1 else "s"])
+		"%d moving head%s selected." % [n, "" if n == 1 else "s"]
 
 
 func _set_aiming(on: bool) -> void:
