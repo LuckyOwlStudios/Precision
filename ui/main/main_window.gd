@@ -163,9 +163,32 @@ func _on_command_key(key: InputEventKey) -> void:
 				_undo()
 		KEY_R, KEY_Y:
 			_redo()
+		KEY_C:
+			if not _copy_look():
+				return
+		KEY_V:
+			if not _paste_look():
+				return
 		_:
 			return
 	get_viewport().set_input_as_handled()
+
+
+## Ctrl+C: copy the picked fixture's look (the first of a box selection).
+func _copy_look() -> bool:
+	var fx := ctx.selected if ctx.selected else (ctx.selected_group[0] if not ctx.selected_group.is_empty() else null)
+	return ctx.copy_look(fx)
+
+
+## Ctrl+V: paste the copied look on the picked fixture(s), matching by channel.
+func _paste_look() -> bool:
+	var targets: Array = ctx.selected_group.duplicate()
+	if ctx.selected:
+		targets = [ctx.selected]
+	if targets.is_empty() or ctx.look_clipboard.is_empty():
+		return false
+	ctx.paste_look(targets)
+	return true
 
 
 func _undo() -> void:

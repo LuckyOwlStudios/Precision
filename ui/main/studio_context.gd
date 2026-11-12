@@ -450,6 +450,74 @@ func _apply_values(list: Array, prop: StringName, values: Array) -> void:
 		_apply_value(list[i], prop, values[i])
 
 
+# ---------------------------------------------------------------- copy / paste look
+
+## The look copied with Ctrl+C: property name -> value (see DMXFixture.capture()).
+## Empty until something is copied.
+var look_clipboard: Dictionary = {}
+
+
+## Remember `fx`'s look (dimmer, colour, pan/tilt...) for pasting. Only the
+## properties its profile actually has are kept, so a par's unused pan/tilt
+## never travels along.
+func copy_look(fx: DMXFixture) -> bool:
+	if fx == null:
+		return false
+	var all := fx.capture()
+	look_clipboard.clear()
+	for prop: String in all:
+		if look_property_supported(prop, fx):
+			look_clipboard[prop] = all[prop]
+	return not look_clipboard.is_empty()
+
+
+## Does this fixture have what it takes to show `prop`? Matching is by
+## channel name, so a look copied from a moving head pastes onto a par as just
+## its colour and dimmer.
+static func look_property_supported(prop: String, fx: DMXFixture) -> bool:
+	if fx == null or fx.profile == null:
+		return false
+	var pr := fx.profile
+	match prop:
+		"dimmer": # fixtures without a dimmer channel dim their colour instead
+			return pr.has_channel("dimmer") or EffectTemplates.supports("pulse", fx)
+		"color":
+			return pr.has_channel("red") or pr.has_channel("green") or pr.has_channel("blue")
+		_:
+			return pr.has_channel(prop)
+
+
+## Put the copied look on every fixture in `targets`, as one undo step. Only
+## properties a target supports are set. Returns how many fixtures changed.
+func paste_look(targets: Array) -> int:
+	if look_clipboard.is_empty():
+		return 0
+	var fixtures_: Array = []
+	var befores: Array = []
+	var afters: Array = []
+	for fx: DMXFixture in targets:
+		var before := {}
+		var after := {}
+		for prop: String in look_clipboard:
+			if look_property_supported(prop, fx):
+				before[prop] = fx.get(prop)
+				after[prop] = look_clipboard[prop]
+		if before != after:
+			fixtures_.append(fx)
+			befores.append(before)
+			afters.append(after)
+	if fixtures_.is_empty():
+		return 0
+	record("Paste look", _apply_look_props.bind(fixtures_, afters), _apply_look_props.bind(fixtures_, befores), true)
+	return fixtures_.size()
+
+
+func _apply_look_props(list: Array, values: Array) -> void:
+	for i in list.size():
+		for prop: String in values[i]:
+			_apply_value(list[i], prop, values[i][prop])
+
+
 # ---------------------------------------------------------------- colour swatches
 
 const SWATCH_FILE := "user://swatches.cfg"
