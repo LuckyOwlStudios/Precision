@@ -154,6 +154,8 @@ func _ready() -> void:
 	load_swatches()
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
+	library.song_updated.connect(_on_song_updated)
+
 	groups.groups_changed.connect(groups_changed.emit)
 	show_player.ctx = self
 	fixtures_changed.connect(func() -> void: _fallback_dirty = true)
@@ -1003,13 +1005,24 @@ func first_beat_beats() -> float:
 
 
 ## Move the beat grid so bar 1 starts at `seconds` in the audio.
-func set_beat_offset(seconds: float) -> void:
+## `by_hand` false is for the automatic guess, which must not count as yours.
+func set_beat_offset(seconds: float, by_hand := true) -> void:
 	if song == null or following_dj():
 		return
 	var before := song.marks_state()
 	var after := before.duplicate(true)
 	after.beat_offset = clampf(seconds, 0.0, maxf(0.0, song.duration))
+	after.beat_offset_set = by_hand
 	_record_marks("Align beat grid", song, before, after)
+
+
+## Guess the first beat from the waveform and tempo (needs both). Undoable.
+func guess_first_beat() -> void:
+	if song == null:
+		return
+	var t := BeatGrid.estimate_first_beat(song.peaks, Song.PEAKS_PER_SECOND, song.bpm)
+	if t >= 0.0:
+		set_beat_offset(t, false)
 
 
 ## Put the first beat under the playhead (the usual way: play, hear the first
@@ -1113,6 +1126,13 @@ func import_songs(paths: PackedStringArray) -> Array[Song]:
 	if song == null and not added.is_empty():
 		load_song(added[0])
 	return added
+
+
+## The waveform finished and the first-beat guess may have moved the grid.
+func _on_song_updated(s: Song) -> void:
+	if s == song:
+		marks_changed.emit()
+		transport_changed.emit()
 
 
 func _on_library_changed() -> void:
