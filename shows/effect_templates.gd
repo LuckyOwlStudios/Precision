@@ -18,6 +18,8 @@ const FLOAT := "float"
 const COLOR := "color"
 const BOOL := "bool"
 const CHOICE := "choice"
+## Points at a saved preset by id: `source` is "positions" or "looks".
+const REF := "ref"
 
 ## "Spread" (0..1) staggers the fixtures of a clip: 0 = all in step, 1 = spaced
 ## evenly through one loop (a circle fan, a rolling wave).
@@ -29,7 +31,7 @@ const COLOR_COLOR := Color("c86bff")
 
 
 static func ids() -> PackedStringArray:
-	return PackedStringArray(["circle", "sweep", "strobe", "pulse", "chase", "rainbow", "color", "dimmer"])
+	return PackedStringArray(["circle", "sweep", "strobe", "pulse", "chase", "rainbow", "color", "dimmer", "position", "look"])
 
 
 ## {id, name, description, color, params: [{key, label, kind, min, max, step, unit, default, options}]}
@@ -83,6 +85,14 @@ static func get_template(id: String) -> Dictionary:
 			return _t(id, "Dimmer", "Set the brightness for the length of the clip.", DIMMER_COLOR, [
 				_f("level", "Level", 0.0, 1.0, 0.05, "", 1.0),
 			])
+		"position":
+			return _t(id, "Position", "Aim the moving heads at a saved position. Edit the position and every show that uses it follows.", MOVE_COLOR, [
+				_r("ref", "Position", "positions"),
+			])
+		"look":
+			return _t(id, "Look", "Show a saved look. Edit the look and every show that uses it follows.", COLOR_COLOR, [
+				_r("ref", "Look", "looks"),
+			])
 	return {}
 
 
@@ -91,7 +101,7 @@ static func get_template(id: String) -> Dictionary:
 ## channels it can dim virtually).
 static func needs(id: String) -> String:
 	match id:
-		"circle", "sweep":
+		"circle", "sweep", "position":
 			return "move"
 		"rainbow", "color":
 			return "color"
@@ -138,6 +148,12 @@ static func defaults(id: String) -> Dictionary:
 	for p: Dictionary in get_template(id).get("params", []):
 		d[p.key] = p.default
 	return d
+
+
+## Effects that play a saved preset instead of computing a value. ShowPlayer
+## does these because it can reach the Looks and Positions shelves.
+static func is_reference(id: String) -> bool:
+	return id == "position" or id == "look"
 
 
 ## Change `v` (property -> value, already holding what the layers below made)
@@ -232,6 +248,10 @@ static func _f(key: String, label: String, lo: float, hi: float, step: float, un
 
 static func _b(key: String, label: String, def: bool) -> Dictionary:
 	return {"key": key, "label": label, "kind": BOOL, "default": def}
+
+
+static func _r(key: String, label: String, source: String) -> Dictionary:
+	return {"key": key, "label": label, "kind": REF, "source": source, "default": ""}
 
 
 static func _c(key: String, label: String, options: Array, def: int) -> Dictionary:

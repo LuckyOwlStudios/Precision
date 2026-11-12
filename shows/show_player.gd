@@ -48,7 +48,10 @@ func evaluate(show: SongShow, b: float) -> void:
 					v = fx.capture()
 					results[fx] = v
 				var before := v.duplicate()
-				EffectTemplates.apply(clip.template, clip.params, t, i, n, fx, v)
+				if EffectTemplates.is_reference(clip.template):
+					_apply_reference(clip, str(clip.targets[i]), fx, v)
+				else:
+					EffectTemplates.apply(clip.template, clip.effective_params(ctx.effects), t, i, n, fx, v)
 				if w < 1.0:
 					_blend(before, v, w)
 	for fx in _driven:
@@ -58,6 +61,25 @@ func evaluate(show: SongShow, b: float) -> void:
 	for fx: DMXFixture in results:
 		fx.live = results[fx]
 		_driven.append(fx)
+
+
+## A "Position" or "Look" clip: copy what the saved preset says for this fixture.
+## Looked up by id every frame, so editing the preset changes the show at once;
+## a deleted preset (or a fixture it never covered) simply does nothing.
+func _apply_reference(clip: ShowClip, path: String, fx: DMXFixture, v: Dictionary) -> void:
+	var ref := str(clip.params.get("ref", ""))
+	if ref.is_empty():
+		return
+	var saved: Dictionary
+	if clip.template == "position":
+		var pos := ctx.positions.find(ref)
+		saved = pos.values.get(path, {}) if pos else {}
+	else:
+		var look := ctx.looks.find(ref)
+		saved = look.values.get(path, {}) if look else {}
+	for prop: String in saved:
+		if clip.template == "position" or StudioContext.look_property_supported(prop, fx):
+			v[prop] = saved[prop]
 
 
 ## Fade: mix each changed value from `before` toward `after` by `w`.
