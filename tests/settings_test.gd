@@ -75,6 +75,14 @@ func _initialize() -> void:
 	win._unit_buttons[Units.System.METRIC].pressed.emit()
 	_check(AppSettings.units == Units.System.METRIC, "window button sets units")
 
+	# Drawing sheet: rulers, grid and labels follow the units too.
+	AppSettings.units = Units.System.IMPERIAL
+	_check(DraftingOverlay._len(3.048) == "10.00 ft", "overlay label in feet: " + DraftingOverlay._len(3.048))
+	var feet_step := DraftingOverlay.pick_step(DraftingOverlay.minor_steps(), 0.3)
+	_check(is_equal_approx(feet_step, 0.3048), "grid lands on whole feet: %s" % feet_step)
+	AppSettings.units = Units.System.METRIC
+	_check(DraftingOverlay._len(3.048) == "3.05 m", "overlay label in metres")
+
 	# The real window: settings button opens it; quality moved out of the stage view.
 	var main: Control = (load("res://ui/main/main_window.tscn") as PackedScene).instantiate()
 	root.add_child(main)

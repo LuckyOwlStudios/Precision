@@ -28,7 +28,7 @@ extends Control
 ##                                       WASD move, Q/E down/up, Shift faster,
 ##                                       Alt slower, wheel sets the fly speed
 ##   Alt+left drag                     -> orbit       Middle drag -> pan
-##   Mouse wheel                       -> zoom        F -> frame the rig
+##   Mouse wheel                       -> zoom        F -> frame selection / rig
 ##   Top / Front / Side buttons        -> orthographic drawing views (numpad 7 / 1 / 3, numpad 5
 ##                                       back to perspective): no perspective, true to scale,
 ##                                       with grid, labels, trim heights and beam coverage
@@ -63,10 +63,19 @@ const ORTHO_VIEWS := {
 	"Top": {"kind": DraftingOverlay.Kind.PLAN, "yaw": 0.0, "pitch": -90.0, "pivot": Vector3(0, 0, -0.5), "size": 14.0},
 	"Front": {"kind": DraftingOverlay.Kind.FRONT, "yaw": 0.0, "pitch": 0.0, "pivot": Vector3(0, 2.6, -0.5), "size": 9.0},
 	"Side": {"kind": DraftingOverlay.Kind.SIDE, "yaw": -90.0, "pitch": 0.0, "pivot": Vector3(0, 2.6, -0.5), "size": 9.0},
+	# The far sides (Ctrl + numpad 1 / 3 / 7). They light up their near neighbour's button.
+	"Back": {"kind": DraftingOverlay.Kind.FRONT, "yaw": 180.0, "pitch": 0.0, "pivot": Vector3(0, 2.6, -0.5), "size": 9.0, "button": "Front", "title": "Back elevation"},
+	"SideRight": {"kind": DraftingOverlay.Kind.SIDE, "yaw": 90.0, "pitch": 0.0, "pivot": Vector3(0, 2.6, -0.5), "size": 9.0, "button": "Side", "title": "Side elevation (house right)"},
+	"Bottom": {"kind": DraftingOverlay.Kind.PLAN, "yaw": 0.0, "pitch": 90.0, "pivot": Vector3(0, 0, -0.5), "size": 14.0, "button": "Top", "title": "Underside plan"},
 }
+const NUMPAD_VIEWS := {KEY_KP_1: ["Front", "Back"], KEY_KP_3: ["Side", "SideRight"], KEY_KP_7: ["Top", "Bottom"]}
+const NUMPAD_ORBIT_STEP := 15.0 ## degrees per numpad 2 / 4 / 6 / 8 press
+const FRAME_MARGIN := 1.25 ## room left around what Home and numpad . frame
+const DEFAULT_PIVOT := Vector3(0, 1.4, -0.5) ## the audience view (numpad 0, and F with nothing to frame)
+const DEFAULT_DISTANCE := 12.5
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
-const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\nH  hide selection · Shift+H  isolate it · Alt+H  show all\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · Ctrl+D  duplicate (copies follow the mouse, click to drop) · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\nCtrl+C / Ctrl+V  copy a fixture's look, paste on the selection\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame selection (or the rig)\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale), Ctrl for the opposite side\nNumpad 5  perspective and back · Numpad 0  audience view\nNumpad 4 / 6 / 8 / 2  orbit in 15° steps\nNumpad .  frame the selection · Home  frame the whole rig\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -126,6 +135,10 @@ var _group_target: Object ## the member pressed on
 var _group_plane := Plane() ## level plane through it: the group slides across the floor plan
 var _group_grab := Vector3.ZERO
 var _group_before: Array[Transform3D] = []
+var _grab_copies: Array[DMXFixture] = [] ## Ctrl+D copies following the mouse until you click
+var _grab_start: Array[Transform3D] = []
+var _grab_plane := Plane(Vector3.UP, 0.0)
+var _grab_origin := Vector3.ZERO
 
 # Point at: aim the selected moving heads at a spot on the stage.
 var _aiming := false
@@ -178,6 +191,8 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.selection_changed.connect(_on_selection_changed)
 	ctx.pick_requested.connect(func(list: Array) -> void: _set_selection(list))
 	ctx.delete_requested.connect(_delete_selected)
+	ctx.duplicate_requested.connect(_duplicate_selected)
+	_register_actions()
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
 	ctx.piece_moved.connect(func(p: StructurePiece) -> void:
@@ -293,6 +308,22 @@ func _sync_look_controls() -> void:
 		_shading_buttons[i].button_pressed = i == look.shading
 
 
+## Puts the stage's shortcuts into the Ctrl+K action search.
+func _register_actions() -> void:
+	var has_sel := func() -> bool: return not _selection().is_empty()
+	var reg := ctx.actions
+	reg.register(&"stage.hide", "Hide selection", _hide_selection, {category = "Stage", shortcut = "H", keywords = "hide", enabled = has_sel})
+	reg.register(&"stage.isolate", "Isolate selection", _isolate_selection, {category = "Stage", shortcut = "Shift+H", keywords = "hide others solo", enabled = has_sel})
+	reg.register(&"stage.show_all", "Show all", _unhide_all, {category = "Stage", shortcut = "Alt+H", keywords = "unhide reveal"})
+	reg.register(&"stage.duplicate", "Duplicate selection", _duplicate_selected, {category = "Stage", shortcut = "Ctrl+D", keywords = "copy clone", enabled = has_sel})
+	reg.register(&"stage.frame_selection", "Frame selection", func() -> void: _frame_selection(), {category = "View", shortcut = "F", keywords = "focus zoom", enabled = has_sel})
+	reg.register(&"view.audience", "Audience view", _audience_view, {category = "View", shortcut = "Numpad 0", keywords = "camera reset"})
+	reg.register(&"view.top", "Top plan view", func() -> void: _set_view("Top"), {category = "View", shortcut = "Numpad 7", keywords = "ortho drawing"})
+	reg.register(&"view.front", "Front view", func() -> void: _set_view("Front"), {category = "View", shortcut = "Numpad 1", keywords = "ortho elevation"})
+	reg.register(&"view.side", "Side view", func() -> void: _set_view("Side"), {category = "View", shortcut = "Numpad 3", keywords = "ortho elevation"})
+	reg.register(&"view.perspective", "Perspective view", func() -> void: _set_view("Perspective"), {category = "View", shortcut = "Numpad 5"})
+
+
 func _set_view(preset: String) -> void:
 	if ORTHO_VIEWS.has(preset):
 		var v: Dictionary = ORTHO_VIEWS[preset]
@@ -320,6 +351,13 @@ func show_view(preset: String) -> void:
 	_set_view(preset)
 
 
+## Which of the Perspective / Front / Side / Top buttons stands for a view.
+func _button_for(preset: String) -> String:
+	if ORTHO_VIEWS.has(preset):
+		return ORTHO_VIEWS[preset].get("button", preset)
+	return preset
+
+
 func _is_ortho() -> bool:
 	return ORTHO_VIEWS.has(_view_preset)
 
@@ -335,8 +373,9 @@ func _leave_ortho() -> void:
 ## The view changed: buttons, drawing layer, grid, and the wall that would block the camera.
 func _sync_view() -> void:
 	for key: String in _view_buttons:
-		(_view_buttons[key] as Button).set_pressed_no_signal(key == _view_preset)
+		(_view_buttons[key] as Button).set_pressed_no_signal(key == _button_for(_view_preset))
 	var ortho := _is_ortho()
+	_drafting.title = ORTHO_VIEWS[_view_preset].get("title", "") if ortho else ""
 	_drafting.kind = ORTHO_VIEWS[_view_preset]["kind"] if ortho else DraftingOverlay.Kind.NONE
 	_draft_bar.visible = ortho
 	if not ortho:
@@ -345,10 +384,14 @@ func _sync_view() -> void:
 	var near_wall := _room.get_node_or_null("LeftWall") as Node3D
 	if near_wall:
 		near_wall.visible = _view_preset != "Side"
-	# Seen edge on, the floor slab only shows reflections of the beams: the grid's floor line is enough.
+	var right_wall := _room.get_node_or_null("RightWall") as Node3D
+	if right_wall:
+		right_wall.visible = _view_preset != "SideRight"
+	# Seen edge on (or from underneath), the floor slab only shows reflections of the beams
+	# or hides the whole rig: the grid's floor line is enough.
 	var floor_slab := _room.get_node_or_null("Floor") as Node3D
 	if floor_slab:
-		floor_slab.visible = _view_preset != "Front" and _view_preset != "Side"
+		floor_slab.visible = not ortho or _view_preset == "Top"
 	_update_camera()
 	_update_gizmo()
 
@@ -599,6 +642,8 @@ func _notification(what: int) -> void:
 func _pick_at(at: Vector2) -> Object:
 	var best: StagePick.Hit = null
 	for fx: DMXFixture in _visuals:
+		if _is_hidden(fx):
+			continue
 		var hit := StagePick.ray_node(_camera, at, _visuals[fx], fx)
 		if hit and hit.beats(best):
 			best = hit
@@ -606,6 +651,8 @@ func _pick_at(at: Vector2) -> Object:
 		return best.target # in a plan the truss covers the lights hung under it: lights win
 	if ctx.workspace == StudioContext.Workspace.STAGE:
 		for p in _pieces():
+			if _is_hidden(p):
+				continue
 			var hit := StagePick.ray_node(_camera, at, p, p, p.bounds)
 			if hit and hit.beats(best):
 				best = hit
@@ -616,6 +663,8 @@ func _pick_at(at: Vector2) -> Object:
 	var near_fx: DMXFixture = null
 	var best_d := PICK_RADIUS_PX
 	for fx: DMXFixture in _visuals:
+		if _is_hidden(fx):
+			continue
 		var c := (_visuals[fx] as StageFixture3D).center()
 		if _camera.is_position_behind(c):
 			continue
@@ -698,6 +747,13 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		if _grabbing() and mb.pressed and (mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT):
+			if mb.button_index == MOUSE_BUTTON_LEFT:
+				_confirm_grab()
+			else:
+				_cancel_grab()
+			accept_event()
+			return
 		if mb.pressed:
 			_dismiss_empty_hint() # any click on the stage except the demo button (which eats its own)
 		match mb.button_index:
@@ -754,7 +810,9 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		_drafting.cursor = mm.position
-		if _flying:
+		if _grabbing() and not _flying:
+			_update_grab(mm.position, mm.ctrl_pressed)
+		elif _flying:
 			_look(mm.relative)
 		elif _orbiting:
 			_yaw -= mm.relative.x * 0.3
@@ -793,6 +851,17 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if not k.pressed or k.echo:
 			return
+		if _grabbing() and (k.keycode == KEY_ESCAPE or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER):
+			if k.keycode == KEY_ESCAPE:
+				_cancel_grab()
+			else:
+				_confirm_grab()
+			accept_event()
+			return
+		if NUMPAD_VIEWS.has(k.keycode) and not k.meta_pressed and not k.alt_pressed:
+			_set_view(NUMPAD_VIEWS[k.keycode][1 if k.ctrl_pressed else 0]) # Ctrl: the opposite side
+			accept_event()
+			return
 		if k.ctrl_pressed or k.meta_pressed:
 			return # Ctrl+Z, Ctrl+R... are the main window's, not W / E / R / Z here
 		if k.unicode == 63 or k.keycode == KEY_QUESTION or k.keycode == KEY_F1:
@@ -800,25 +869,49 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			return
 		match k.keycode:
-			KEY_KP_1:
-				_set_view("Front")
-			KEY_KP_3:
-				_set_view("Side")
-			KEY_KP_7:
-				_set_view("Top")
 			KEY_KP_5:
 				_set_view("Perspective" if _is_ortho() else _last_ortho)
+			KEY_KP_0:
+				_audience_view()
+			KEY_KP_4:
+				_orbit_step(-NUMPAD_ORBIT_STEP, 0.0)
+			KEY_KP_6:
+				_orbit_step(NUMPAD_ORBIT_STEP, 0.0)
+			KEY_KP_8:
+				_orbit_step(0.0, -NUMPAD_ORBIT_STEP) # the camera goes up, like Blender
+			KEY_KP_2:
+				_orbit_step(0.0, NUMPAD_ORBIT_STEP)
+			KEY_KP_PERIOD:
+				if not _frame_box(_selection_box()):
+					_say("Nothing selected to frame", 2500)
+			KEY_HOME:
+				if not _frame_box(_rig_box()):
+					_audience_view()
+				accept_event()
+			KEY_H:
+				if k.alt_pressed:
+					_unhide_all()
+				elif k.shift_pressed:
+					_isolate_selection()
+				else:
+					_hide_selection()
+				accept_event()
 			KEY_D:
 				if not _is_ortho():
 					return
 				_draft_measure.button_pressed = not _draft_measure.button_pressed
 			KEY_F:
+				if _flying:
+					return
+				if _frame_selection():
+					accept_event()
+					return
 				if _is_ortho():
 					_set_view(_view_preset) # back to the whole stage
 					accept_event()
 					return
-				_pivot.position = Vector3(0, 1.4, -0.5)
-				_distance = 12.5
+				_pivot.position = DEFAULT_PIVOT
+				_distance = DEFAULT_DISTANCE
 				_update_camera()
 			KEY_W:
 				set_gizmo_mode(TransformGizmo.Mode.MOVE)
@@ -1020,14 +1113,16 @@ func _update_help() -> void:
 		text = "Click or drag where the lights should point · Esc or T when done"
 		if _aim_unreachable > 0:
 			text += " · %d can't reach it" % _aim_unreachable
+	elif _grabbing():
+		text = "Move the mouse to place the copies · Click or Enter drops them · Esc or right click cancels"
 	elif _flying:
 		text = "Flying %.1f m/s · WASD move · Q/E down/up · Shift faster · Alt slower · Wheel speed" % _fly_speed
 	elif not _group.is_empty():
-		text = "W move · E rotate · Delete remove · Esc deselect" + HINT_MORE
+		text = "W move · E rotate · Ctrl+D duplicate · Delete remove · Esc deselect" + HINT_MORE
 	elif _selected_piece:
 		text = "Drag to move · R turn · Delete remove · Esc deselect" + HINT_MORE
 	elif ctx and ctx.selected:
-		text = "W move · E rotate · F2 rename · Delete remove" + HINT_MORE
+		text = "W move · E rotate · Ctrl+D duplicate · F2 rename · Delete remove" + HINT_MORE
 	elif _is_ortho():
 		text = "Drag to box select · Right drag pan · Wheel zoom · D measure · Numpad 5 perspective"
 	else:
@@ -1091,6 +1186,90 @@ func _process(delta: float) -> void:
 		speed *= FLY_SLOW
 	_pivot.position += move.normalized() * speed * delta
 	_update_camera()
+
+
+## Numpad 4 / 6 / 8 / 2: orbit the view by a fixed step (degrees). From a drawing view
+## this carries on in perspective, the same as an Alt + drag does.
+func _orbit_step(yaw_delta: float, pitch_delta: float) -> void:
+	_leave_ortho()
+	_yaw = wrapf(_yaw + yaw_delta, -180.0, 180.0)
+	_pitch = clampf(_pitch + pitch_delta, -89.0, maxf(5.0, _pitch))
+	_update_camera()
+
+
+## Numpad 0: the default camera, standing where the audience does. Perspective, level-headed,
+## and the old free camera is forgotten (numpad 5 returns to a drawing view instead).
+func _audience_view() -> void:
+	_persp_saved.clear()
+	_yaw = 0.0
+	_pitch = -14.0
+	_distance = DEFAULT_DISTANCE
+	_pivot.position = DEFAULT_PIVOT
+	_view_preset = "Perspective"
+	_sync_view()
+
+
+## World box around everything selected (fixtures and truss, single or group),
+## or null with nothing selected.
+func _selection_box() -> Variant:
+	return _box_of(_selection())
+
+
+## World box around every fixture and truss piece, or null on an empty stage.
+func _rig_box() -> Variant:
+	var items: Array[Object] = []
+	for fx: DMXFixture in _visuals:
+		items.append(fx)
+	for p in _pieces():
+		items.append(p)
+	return _box_of(items)
+
+
+func _box_of(items: Array[Object]) -> Variant:
+	var box := AABB()
+	var any := false
+	for o: Object in items:
+		if not is_instance_valid(o):
+			continue
+		var part: AABB
+		if o is DMXFixture and _visuals.has(o):
+			part = AABB((_visuals[o] as StageFixture3D).center() - Vector3.ONE * 0.4, Vector3.ONE * 0.8) # a fixture is ~0.8 m across
+		elif o is StructurePiece:
+			part = (o as StructurePiece).world_bounds()
+		else:
+			continue
+		box = part if not any else box.merge(part)
+		any = true
+	return box if any else null
+
+
+## Point the camera at `box` (an AABB, or null: nothing to do) and back off until it fits.
+## Perspective keeps its angle and changes the orbit distance; a drawing view keeps its
+## direction and zooms. Returns false when there was no box.
+func _frame_box(box: Variant) -> bool:
+	if box == null:
+		return false
+	var b: AABB = box
+	_pivot.position = b.get_center()
+	var aspect := maxf(size.x, 1.0) / maxf(size.y, 1.0)
+	if _is_ortho():
+		var basis := Basis.from_euler(Vector3(deg_to_rad(_pitch), deg_to_rad(_yaw), 0.0))
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for i in 8:
+			var rel := b.get_endpoint(i) - b.get_center()
+			var at := Vector2(rel.dot(basis.x), rel.dot(basis.y))
+			lo = lo.min(at)
+			hi = hi.max(at)
+		var extent := hi - lo
+		_ortho_size = clampf(maxf(extent.y, extent.x / aspect) * FRAME_MARGIN, ORTHO_SIZE_MIN, ORTHO_SIZE_MAX)
+	else:
+		var radius := maxf(b.size.length() * 0.5, 0.4)
+		var half_v := deg_to_rad(_camera.fov) * 0.5
+		var half_h := atan(tan(half_v) * aspect)
+		_distance = clampf(radius * FRAME_MARGIN / sin(minf(half_v, half_h)), 1.5, 60.0)
+	_update_camera()
+	return true
 
 
 ## Wheel zoom. A drawing view zooms towards the cursor, so what is under it stays put.
@@ -1180,6 +1359,87 @@ func _with_twins(items: Array) -> Array:
 			if twin and not all.has(twin):
 				all.append(twin)
 	return all
+
+
+# ---------------------------------------------------------------- duplicate (Ctrl+D)
+
+func _grabbing() -> bool:
+	return not _grab_copies.is_empty()
+
+
+## Ctrl+D: copy the selected fixtures (a box selection too). The copies are
+## patched to the next free addresses and follow the mouse over the floor, like
+## Blender's grab, until you click (keep), or press Esc / right click (cancel).
+func _duplicate_selected() -> void:
+	if _grabbing():
+		return
+	var fxs: Array = _selection().filter(func(o: Object) -> bool: return o is DMXFixture)
+	if fxs.is_empty():
+		return
+	var copies := ctx.duplicate_fixtures(fxs)
+	if copies.is_empty():
+		return
+	_grab_copies = copies
+	ctx.grabbing = true
+	_set_selection(copies)
+	_grab_start.clear()
+	for fx in copies:
+		_grab_start.append(StudioContext.fixture_transform(fx))
+	if not is_visible_in_tree():
+		# No stage in view to place them on (Live): drop them a metre over.
+		var moved: Array[Transform3D] = []
+		for xf in _grab_start:
+			moved.append(xf.translated(Vector3(1.0, 0.0, 0.0)))
+		_place_group(_grab_copies, moved)
+		_confirm_grab()
+		return
+	var centre := (_visuals[copies[0]] as StageFixture3D).center()
+	_grab_plane = Plane(Vector3.UP, centre.y)
+	var hit: Variant = _ray_plane(_grab_plane, get_local_mouse_position())
+	_grab_origin = hit if hit != null else centre
+	_update_help()
+
+
+func _update_grab(at: Vector2, ctrl_held: bool) -> void:
+	var hit: Variant = _ray_plane(_grab_plane, at)
+	if hit == null:
+		return
+	var delta: Vector3 = (hit as Vector3) - _grab_origin
+	delta.y = 0.0
+	if _snapping(ctrl_held):
+		delta.x = snappedf(delta.x, TransformGizmo.MOVE_STEP)
+		delta.z = snappedf(delta.z, TransformGizmo.MOVE_STEP)
+	var xfs: Array[Transform3D] = []
+	for xf in _grab_start:
+		xfs.append(xf.translated(delta))
+	_place_group(_grab_copies, xfs)
+
+
+## Keep the copies where they are, as one undo step.
+func _confirm_grab() -> void:
+	var fxs: Array = _grab_copies.duplicate()
+	_grab_copies.clear()
+	ctx.grabbing = false
+	_grab_start.clear()
+	var indices: Array[int] = []
+	for fx: DMXFixture in fxs:
+		indices.append(fx.get_index())
+	ctx.record_added_all("Duplicate %d fixture%s" % [fxs.size(), "" if fxs.size() == 1 else "s"], fxs,
+		_attach_group.bind(fxs, indices, [], []), _detach_group.bind(fxs, []))
+	_update_help()
+
+
+## Throw the copies away; nothing was recorded, so there is nothing to undo.
+func _cancel_grab() -> void:
+	var fxs: Array = _grab_copies.duplicate()
+	_grab_copies.clear()
+	ctx.grabbing = false
+	_grab_start.clear()
+	_set_selection([])
+	ctx.detach_fixtures(fxs)
+	for fx: DMXFixture in fxs:
+		fx.free()
+	_update_help()
 
 
 # ---------------------------------------------------------------- structure pieces (the truss set)
@@ -1405,6 +1665,32 @@ func _selection() -> Array[Object]:
 
 ## Select exactly `items` (fixtures and/or pieces). One item is an ordinary
 ## selection (inspector, gizmo); two or more make a group.
+## Frame the camera on whatever is selected (fixtures, truss, or a group).
+## Returns false when nothing is selected so F can fall back to the whole rig.
+func _frame_selection() -> bool:
+	var points: Array[Vector3] = []
+	for o: Object in _selection():
+		if not is_instance_valid(o):
+			continue
+		if o is DMXFixture and _visuals.has(o):
+			points.append((_visuals[o] as StageFixture3D).center())
+		elif o is Node3D:
+			points.append((o as Node3D).global_position)
+	if points.is_empty():
+		return false
+	var box := AABB(points[0], Vector3.ZERO)
+	for pt in points:
+		box = box.expand(pt)
+	_pivot.position = box.get_center()
+	if _is_ortho():
+		_ortho_size = maxf(box.get_longest_axis_size() * 1.6, 3.0)
+	else:
+		var radius := maxf(box.size.length() * 0.5, 0.4) # a single fixture is ~0.8 m across
+		_distance = clampf(radius * 3.0, 1.5, 60.0)
+	_update_camera()
+	return true
+
+
 func _set_selection(items: Array) -> void:
 	if items.size() == 1:
 		_group.clear()
@@ -1423,6 +1709,59 @@ func _set_selection(items: Array) -> void:
 			_group.append(o)
 	_refresh_marks()
 	_update_gizmo()
+
+
+# ---------------------------------------------------------------- hide / isolate (editor view only)
+
+## Hidden things are only left out of this view: no picking, no box select. The
+## fixture itself is untouched, so DMX output and cues carry on as before.
+func _is_hidden(o: Object) -> bool:
+	if o is DMXFixture:
+		return _visuals.has(o) and not (_visuals[o] as Node3D).visible
+	return o is Node3D and not (o as Node3D).visible
+
+
+func _set_hidden(o: Object, hidden: bool) -> void:
+	if o is DMXFixture:
+		if _visuals.has(o):
+			(_visuals[o] as Node3D).visible = not hidden
+	elif o is Node3D:
+		(o as Node3D).visible = not hidden
+
+
+## Everything that can be hidden: every fixture and set piece.
+func _all_things() -> Array[Object]:
+	var list: Array[Object] = []
+	for fx: DMXFixture in _visuals:
+		list.append(fx)
+	for p in _pieces():
+		list.append(p)
+	return list
+
+
+## H: hide what is selected (and drop it from the selection).
+func _hide_selection() -> void:
+	var sel := _selection()
+	if sel.is_empty():
+		return
+	_set_selection([])
+	for o in sel:
+		_set_hidden(o, true)
+
+
+## Shift+H: hide everything except the selection.
+func _isolate_selection() -> void:
+	var keep := _selection()
+	if keep.is_empty():
+		return
+	for o in _all_things():
+		_set_hidden(o, not keep.has(o))
+
+
+## Alt+H: show everything again.
+func _unhide_all() -> void:
+	for o in _all_things():
+		_set_hidden(o, false)
 
 
 func _begin_box(at: Vector2, add: bool) -> void:
@@ -1465,11 +1804,11 @@ func _end_box(at: Vector2) -> void:
 func _things_in(rect: Rect2) -> Array[Object]:
 	var list: Array[Object] = []
 	for fx: DMXFixture in _visuals:
-		if _on_screen_in((_visuals[fx] as StageFixture3D).center(), rect):
+		if not _is_hidden(fx) and _on_screen_in((_visuals[fx] as StageFixture3D).center(), rect):
 			list.append(fx)
 	if ctx.workspace == StudioContext.Workspace.STAGE:
 		for p in _pieces():
-			if _on_screen_in(p.world_bounds().get_center(), rect):
+			if not _is_hidden(p) and _on_screen_in(p.world_bounds().get_center(), rect):
 				list.append(p)
 	return list
 

@@ -78,6 +78,22 @@ func _init() -> void:
 	vis._process(0.0)
 	_expect(mat.get_shader_parameter("grid") == Vector2i(8, 1), "plain bar profile: 8 cells in one colour")
 
+	# The Wash Bar Light uses its own exact model.
+	_expect(StageFixture3D.scene_path(FixtureCatalog.Body.BAR, "Wash Bar Light 28 pixels (114ch)").ends_with("models/wash_bar_light.tscn"), "wash bar has its own model")
+	_expect(StageFixture3D.scene_path(FixtureCatalog.Body.BAR, "Generic RGB Bar (4ch)").ends_with("fixtures/bar.tscn"), "other bars keep the generic one")
+	var box := StageFixture3D.body_box_of("res://ui/stage/fixtures/models/wash_bar_light.tscn")
+	_expect(absf(box.size.x - 1.0) < 0.01, "wash bar is 1 m long: %s" % box.size)
+	fx.profile = pr
+	fx.set_meta(StudioContext.META_PROFILE_LABEL, "Wash Bar Light 28 pixels (114ch)")
+	var wb := StageFixture3D.create(fx)
+	root.add_child(wb)
+	await process_frame
+	wb.setup(fx, null)
+	fx.live = {"pixel_whites": PackedFloat32Array([0.5])}
+	wb._process(0.0)
+	_expect(wb.pixel_material.get_shader_parameter("led_rows") == 4, "four LED lines")
+	_expect(absf(wb._pixel_image.get_pixel(0, 0).a - 0.5) < 0.01 and wb._pixel_image.get_pixel(1, 0).a == 0.0, "white goes in alpha for the white LED lines")
+
 	print("pixel_bar_test: %s" % ("FAILED (%d)" % _failed if _failed else "all passed"))
 	quit(1 if _failed else 0)
 
