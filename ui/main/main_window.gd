@@ -8,7 +8,7 @@ extends Control
 ## Shortcuts: Space = play/pause, Esc = blackout, Delete = remove selected fixture,
 ## F2 = rename selected fixture, W/E = move/rotate gizmo (stage view),
 ## Ctrl+Z = undo, Ctrl+R = redo (Ctrl+Shift+Z and Ctrl+Y redo too; Cmd on a Mac),
-## 1/2/3 = Stage/Program/Live workspace. None of these fire while you're typing
+## 1/2/3 = Stage/Program/Live workspace, Ctrl+K = search every action. None of these fire while you're typing
 ## in a text field: there Ctrl+Z undoes your typing instead.
 
 @onready var ctx: StudioContext = %Studio
@@ -22,6 +22,7 @@ extends Control
 @onready var output_label: Label = %OutputLabel
 @onready var output_dot: Panel = %OutputDot
 @onready var rig_label: Label = %RigLabel
+@onready var palette: CommandPalette = %CommandPalette
 
 
 func _ready() -> void:
@@ -49,6 +50,9 @@ func _ready() -> void:
 			ctx.set_workspace(StudioContext.Workspace.STAGE)
 		right_tabs.current_tab = right_tabs.get_tab_idx_from_control(%Inspector))
 	%SettingsButton.pressed.connect(%SettingsWindow.open)
+	palette.setup(ctx.actions)
+	%SearchButton.pressed.connect(palette.open)
+	_register_actions()
 	_apply_workspace(ctx.workspace)
 	# First launch: Stage with the fixture Library in front of the left dock.
 	left_tabs.current_tab = left_tabs.get_tab_idx_from_control(%Library)
@@ -56,6 +60,29 @@ func _ready() -> void:
 
 	# Audio files dropped anywhere on the window go into the song library.
 	get_window().files_dropped.connect(_on_files_dropped)
+
+
+## The app-wide actions of the Ctrl+K search. Other features register their own
+## on ctx.actions (see ActionRegistry); this is just the ones that belong to
+## the window itself. The shortcut text is only shown, _unhandled_input below
+## does the real work.
+func _register_actions() -> void:
+	var a := ctx.actions
+	var has_selection := func() -> bool: return ctx.selected != null
+	a.register(&"edit.undo", "Undo", ctx.undo, {category = "Edit", shortcut = "Ctrl+Z", keywords = "revert"})
+	a.register(&"edit.redo", "Redo", ctx.redo, {category = "Edit", shortcut = "Ctrl+R", keywords = "again"})
+	a.register(&"edit.remove_fixture", "Remove selected fixture", func() -> void: ctx.remove_fixture(ctx.selected),
+		{category = "Fixture", shortcut = "Delete", keywords = "delete", enabled = has_selection})
+	a.register(&"edit.rename_fixture", "Rename selected fixture", func() -> void: ctx.request_rename(ctx.selected),
+		{category = "Fixture", shortcut = "F2", enabled = has_selection})
+	a.register(&"transport.play", "Play / pause", ctx.toggle_play, {category = "Transport", shortcut = "Space", keywords = "start stop"})
+	a.register(&"transport.start", "Back to start", func() -> void: ctx.seek(0.0), {category = "Transport", shortcut = "Home", keywords = "rewind"})
+	a.register(&"output.blackout", "Toggle blackout", func() -> void: ctx.blackout = not ctx.blackout,
+		{category = "Output", shortcut = "Esc", keywords = "lights off dark"})
+	a.register(&"workspace.stage", "Go to Stage", ctx.set_workspace.bind(StudioContext.Workspace.STAGE), {category = "Workspace", shortcut = "1", keywords = "rig build"})
+	a.register(&"workspace.program", "Go to Program", ctx.set_workspace.bind(StudioContext.Workspace.PROGRAM), {category = "Workspace", shortcut = "2", keywords = "timeline show"})
+	a.register(&"workspace.live", "Go to Live", ctx.set_workspace.bind(StudioContext.Workspace.LIVE), {category = "Workspace", shortcut = "3", keywords = "perform"})
+	a.register(&"app.settings", "Open settings", %SettingsWindow.open, {category = "App", keywords = "preferences quality units language"})
 
 
 func _on_files_dropped(files: PackedStringArray) -> void:
@@ -163,6 +190,8 @@ func _on_command_key(key: InputEventKey) -> void:
 				_undo()
 		KEY_R, KEY_Y:
 			_redo()
+		KEY_K:
+			palette.toggle()
 		_:
 			return
 	get_viewport().set_input_as_handled()
