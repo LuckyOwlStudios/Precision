@@ -75,3 +75,33 @@ The VirtualDJ link has only been tested against that stand-in, not real VirtualD
 command names come from VirtualDJ's documentation and an open-source app that uses the same
 plugin; `get_activedeck`, `get_songlength` and `get_position` should be confirmed on a real
 copy, as should the `os2lDirectIp` setting name.
+
+## Starting on the downbeat
+
+Each song stores where its first beat is (`Song.beat_offset`, set with **First beat here** on the timeline). The ruler grid, bar numbers and snapping start there, so clips snapped to the grid start exactly on the downbeat while the DJ's deck plays the song.
+
+When a song's waveform is ready and its BPM is known, the app guesses the first beat from the first loud hit and the beat phase (good to about 20 ms). A hand-set first beat is never overwritten. Ctrl+K "Find first beat automatically" guesses again (undoable).
+
+Test with VirtualDJ: import a song with a known BPM, wait for the waveform, check the cyan first-beat flag sits on the first kick (fix it with **First beat here** if not), then turn on DJ sync, load the song on a deck and play from the start: the first clip snapped to bar 1 should fire on the first kick.
+
+
+## Fallback looks (songs with no show)
+
+If the DJ plays a track that isn't in your library, or a song you haven't programmed yet, the
+lights don't have to sit still. While a song with no clips is playing and the lights are live
+(following the DJ, or the Live workspace), the app plays a built-in beat-reactive look
+(`shows/fallback_looks.gd`) picked from the tempo:
+
+| Tempo | Look |
+|---|---|
+| under 100 BPM | **Chill**: slow colour drift, wide slow sweep, gentle pulse |
+| 100-124 | **Groove**: circles, pulse on every beat, a chase on the build |
+| 124-140 | **Drive**: faster circles, hard pulse, bouncing chase then a strobe on the lift |
+| 140+ | **Hard**: fast circles, full-depth pulse, quick chase and a fast strobe on the lift |
+
+Tempos under 70 are read as half-time. Every look is a 64-beat phrase (groove, build, lift) that
+loops, so it stays on the beat when the DJ moves the pitch fader. It switches look only when the
+tempo moves a few BPM past a boundary. Turn it off with *Fallback look for unknown songs* in the
+DJ tab. It never changes your saved shows, and the moment you add a clip to a song its own show
+plays instead. The look keeps time from the DJ's playhead, so its build lands on the beat but
+not necessarily on the track's real downbeat.

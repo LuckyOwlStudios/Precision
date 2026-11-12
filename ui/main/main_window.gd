@@ -53,6 +53,7 @@ func _ready() -> void:
 	palette.setup(ctx.actions)
 	ctx.actions.register(&"look.copy", "Copy look", func() -> void: _copy_look(), {category = "Fixture", shortcut = "Ctrl+C", keywords = "copy colour settings"})
 	ctx.actions.register(&"look.paste", "Paste look", func() -> void: _paste_look(), {category = "Fixture", shortcut = "Ctrl+V", keywords = "paste colour settings", enabled = func() -> bool: return not ctx.look_clipboard.is_empty()})
+	ctx.actions.register(&"group.make", "Group selected fixtures", func() -> void: _make_group(), {category = "Fixture", shortcut = "Ctrl+G", keywords = "save named group selection", enabled = func() -> bool: return not ctx.selection_fixtures().is_empty()})
 	%SearchButton.pressed.connect(palette.open)
 	_register_actions()
 	_apply_workspace(ctx.workspace)
@@ -79,11 +80,25 @@ func _register_actions() -> void:
 		{category = "Fixture", shortcut = "F2", enabled = has_selection})
 	a.register(&"transport.play", "Play / pause", ctx.toggle_play, {category = "Transport", shortcut = "Space", keywords = "start stop"})
 	a.register(&"transport.start", "Back to start", func() -> void: ctx.seek(0.0), {category = "Transport", shortcut = "Home", keywords = "rewind"})
+	a.register(&"transport.guess_first_beat", "Find first beat automatically", ctx.guess_first_beat, {category = "Transport", keywords = "downbeat grid bar one detect align", enabled = func() -> bool: return ctx.song != null and ctx.song.bpm > 0.0 and not ctx.song.peaks.is_empty()})
+
+	a.register(&"transport.tap_tempo", "Tap tempo", ctx.tap_tempo,
+		{category = "Transport", shortcut = "Y", keywords = "bpm beat tempo tap",
+		enabled = func() -> bool: return not ctx.following_dj()})
 	a.register(&"output.blackout", "Toggle blackout", func() -> void: ctx.blackout = not ctx.blackout,
 		{category = "Output", shortcut = "Esc", keywords = "lights off dark"})
+	a.register(&"output.grand_master_full", "Grand master to full", func() -> void: ctx.grand_master = 1.0,
+		{category = "Output", keywords = "master brightness intensity dimmer 100"})
+	a.register(&"output.grand_master_half", "Grand master to 50%", func() -> void: ctx.grand_master = 0.5,
+		{category = "Output", keywords = "master brightness intensity dimmer half"})
+	a.register(&"output.grand_master_down", "Grand master down 10%", func() -> void: ctx.grand_master -= 0.1,
+		{category = "Output", keywords = "master brightness intensity dimmer lower dim"})
+	a.register(&"output.grand_master_up", "Grand master up 10%", func() -> void: ctx.grand_master += 0.1,
+		{category = "Output", keywords = "master brightness intensity dimmer raise"})
 	a.register(&"workspace.stage", "Go to Stage", ctx.set_workspace.bind(StudioContext.Workspace.STAGE), {category = "Workspace", shortcut = "1", keywords = "rig build"})
 	a.register(&"workspace.program", "Go to Program", ctx.set_workspace.bind(StudioContext.Workspace.PROGRAM), {category = "Workspace", shortcut = "2", keywords = "timeline show"})
 	a.register(&"workspace.live", "Go to Live", ctx.set_workspace.bind(StudioContext.Workspace.LIVE), {category = "Workspace", shortcut = "3", keywords = "perform"})
+	a.register(&"fixture.new_profile", "New fixture profile", %Library.new_profile, {category = "Fixture", keywords = "create add import channel chart open fixture library gdtf"})
 	a.register(&"app.settings", "Open settings", %SettingsWindow.open, {category = "App", keywords = "preferences quality units language"})
 
 
@@ -160,6 +175,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_SPACE:
 			ctx.toggle_play()
+		KEY_Y:
+			ctx.tap_tempo()
 		KEY_HOME:
 			ctx.seek(0.0) # back to the start; the timeline scrolls there too
 		KEY_ESCAPE:
@@ -200,6 +217,8 @@ func _on_command_key(key: InputEventKey) -> void:
 				return
 		KEY_D:
 			ctx.duplicate_requested.emit()
+		KEY_G:
+			_make_group()
 		KEY_K:
 			palette.toggle()
 		_:
@@ -222,6 +241,14 @@ func _paste_look() -> bool:
 		return false
 	ctx.paste_look(targets)
 	return true
+
+
+## Ctrl+G: save the picked fixtures as a group and ask for its name.
+func _make_group() -> bool:
+	var g := ctx.make_group()
+	if g:
+		ctx.group_rename_requested.emit(g)
+	return g != null
 
 
 func _undo() -> void:

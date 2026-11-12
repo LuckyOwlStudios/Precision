@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://ui/panels/fixture_library_panel.gd" id="1_uv6v4"]
+[ext_resource type="PackedScene" path="res://ui/panels/profile_editor.tscn" id="2_editor"]
 
 [node name="FixtureLibraryPanel" type="MarginContainer" unique_id=1271215408]
 theme_override_constants/margin_left = 20
@@ -30,10 +31,9 @@ uppercase = true
 [node name="AddButton" type="Button" parent="Column/Heading/Row" unique_id=192116327]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Add a fixture profile (coming soon)"
+tooltip_text = "New fixture profile: type in a channel chart or import one"
 focus_mode = 0
 theme_type_variation = &"FlatButton"
-disabled = true
 text = "+"
 
 [node name="Rule" type="HSeparator" parent="Column/Heading" unique_id=368185605]
@@ -60,3 +60,19 @@ layout_mode = 2
 theme_type_variation = &"Caption"
 text = "Drag onto the stage, or double-click to hang centre stage."
 autowrap_mode = 3
+
+[node name="ProfileEditor" parent="." instance=ExtResource("2_editor")]
+unique_name_in_owner = true
+
+[node name="ProfileMenu" type="PopupMenu" parent="."]
+unique_name_in_owner = true
+item_count = 2
+item_0/text = "Edit profile…"
+item_0/id = 0
+item_1/text = "Delete profile"
+item_1/id = 1
+
+[node name="ConfirmDelete" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Delete fixture profile"
+ok_button_text = "Delete"

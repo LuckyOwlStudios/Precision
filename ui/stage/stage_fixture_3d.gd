@@ -319,7 +319,7 @@ func _process(_delta: float) -> void:
 	if fixture == null or not is_instance_valid(fixture):
 		return
 	# out() = what is being sent, including effects running on the timeline.
-	var level := 0.0 if (ctx and ctx.blackout) else float(fixture.out("dimmer"))
+	var level := 0.0 if (ctx and ctx.blackout) else float(fixture.out("dimmer")) * (ctx.grand_master if ctx else 1.0)
 	level *= _strobe_gate()
 	var c := _mix(fixture.out("color"), float(fixture.out("white")))
 	if body == FixtureCatalog.Body.STROBE:

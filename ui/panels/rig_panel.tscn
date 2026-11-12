@@ -38,6 +38,55 @@ text = "−"
 [node name="Rule" type="HSeparator" parent="Column/Heading" unique_id=599705823]
 layout_mode = 2
 
+[node name="GroupsRow" type="HBoxContainer" parent="Column" unique_id=1100000001]
+layout_mode = 2
+
+[node name="GroupsTitle" type="Label" parent="Column/GroupsRow" unique_id=1100000002]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionTitle"
+text = "Groups"
+uppercase = true
+
+[node name="AddGroup" type="Button" parent="Column/GroupsRow" unique_id=1100000003]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Save the selected fixtures as a group (Ctrl+G)"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "+"
+
+[node name="DeleteGroup" type="Button" parent="Column/GroupsRow" unique_id=1100000004]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Delete the highlighted group (the fixtures stay)"
+focus_mode = 0
+theme_type_variation = &"FlatButton"
+text = "−"
+
+[node name="Groups" type="ItemList" parent="Column" unique_id=1100000005]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+auto_height = true
+max_text_lines = 1
+
+[node name="GroupEditor" type="LineEdit" parent="Column/Groups" unique_id=1100000006]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+placeholder_text = "Group name"
+
+[node name="GroupsHint" type="Label" parent="Column" unique_id=1100000007]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+text = "Pick fixtures, then press Ctrl+G to save them as a group."
+autowrap_mode = 3
+
+[node name="Rule2" type="HSeparator" parent="Column" unique_id=1100000008]
+layout_mode = 2
+
 [node name="List" type="ItemList" parent="Column" unique_id=763420825]
 unique_name_in_owner = true
 layout_mode = 2
