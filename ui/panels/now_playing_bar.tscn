@@ -153,6 +153,16 @@ tooltip_text = "Tap along to the beat to set the tempo (Y). Effects and chases f
 focus_mode = 0
 text = "TAP"
 
+[node name="GrandMaster" type="HSlider" parent="Row" unique_id=1858308600]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Grand master: scales the brightness of every light. Double-click to reset to full."
+focus_mode = 0
+step = 1.0
+value = 100.0
+
 [node name="Blackout" type="Button" parent="Row" unique_id=1858308539]
 unique_name_in_owner = true
 layout_mode = 2

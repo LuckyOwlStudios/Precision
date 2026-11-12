@@ -84,6 +84,14 @@ func _register_actions() -> void:
 		enabled = func() -> bool: return not ctx.following_dj()})
 	a.register(&"output.blackout", "Toggle blackout", func() -> void: ctx.blackout = not ctx.blackout,
 		{category = "Output", shortcut = "Esc", keywords = "lights off dark"})
+	a.register(&"output.grand_master_full", "Grand master to full", func() -> void: ctx.grand_master = 1.0,
+		{category = "Output", keywords = "master brightness intensity dimmer 100"})
+	a.register(&"output.grand_master_half", "Grand master to 50%", func() -> void: ctx.grand_master = 0.5,
+		{category = "Output", keywords = "master brightness intensity dimmer half"})
+	a.register(&"output.grand_master_down", "Grand master down 10%", func() -> void: ctx.grand_master -= 0.1,
+		{category = "Output", keywords = "master brightness intensity dimmer lower dim"})
+	a.register(&"output.grand_master_up", "Grand master up 10%", func() -> void: ctx.grand_master += 0.1,
+		{category = "Output", keywords = "master brightness intensity dimmer raise"})
 	a.register(&"workspace.stage", "Go to Stage", ctx.set_workspace.bind(StudioContext.Workspace.STAGE), {category = "Workspace", shortcut = "1", keywords = "rig build"})
 	a.register(&"workspace.program", "Go to Program", ctx.set_workspace.bind(StudioContext.Workspace.PROGRAM), {category = "Workspace", shortcut = "2", keywords = "timeline show"})
 	a.register(&"workspace.live", "Go to Live", ctx.set_workspace.bind(StudioContext.Workspace.LIVE), {category = "Workspace", shortcut = "3", keywords = "perform"})
