@@ -79,6 +79,7 @@ func _register_actions() -> void:
 		{category = "Fixture", shortcut = "F2", enabled = has_selection})
 	a.register(&"transport.play", "Play / pause", ctx.toggle_play, {category = "Transport", shortcut = "Space", keywords = "start stop"})
 	a.register(&"transport.start", "Back to start", func() -> void: ctx.seek(0.0), {category = "Transport", shortcut = "Home", keywords = "rewind"})
+	a.register(&"transport.guess_first_beat", "Find first beat automatically", ctx.guess_first_beat, {category = "Transport", keywords = "downbeat grid bar one detect align", enabled = func() -> bool: return ctx.song != null and ctx.song.bpm > 0.0 and not ctx.song.peaks.is_empty()})
 	a.register(&"output.blackout", "Toggle blackout", func() -> void: ctx.blackout = not ctx.blackout,
 		{category = "Output", shortcut = "Esc", keywords = "lights off dark"})
 	a.register(&"workspace.stage", "Go to Stage", ctx.set_workspace.bind(StudioContext.Workspace.STAGE), {category = "Workspace", shortcut = "1", keywords = "rig build"})

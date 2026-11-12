@@ -30,6 +30,8 @@ var beat_offset: float = 0.0
 ## {"time": seconds, "name": String}; a phrase runs until the next one starts.
 ## Kept in seconds so they stay on the music if the tempo is corrected.
 var phrases: Array[Dictionary] = []
+## True once you placed the first beat yourself; the automatic guess then leaves it alone.
+var beat_offset_set: bool = false
 
 ## The light show linked to this song. When the song plays, this show plays.
 ## The show format is not built yet, so for now this is a name plus the path
@@ -75,6 +77,7 @@ func to_dict() -> Dictionary:
 		"show_id": show_id,
 		"show_name": show_name,
 		"beat_offset": beat_offset,
+		"beat_offset_set": beat_offset_set,
 		"phrases": phrases.duplicate(true),
 	}
 
@@ -93,6 +96,7 @@ static func from_dict(d: Dictionary) -> Song:
 	s.show_id = str(d.get("show_id", ""))
 	s.show_name = str(d.get("show_name", ""))
 	s.beat_offset = maxf(0.0, float(d.get("beat_offset", 0.0)))
+	s.beat_offset_set = bool(d.get("beat_offset_set", false))
 	for p: Variant in d.get("phrases", []):
 		if p is Dictionary and (p as Dictionary).has("time"):
 			s.phrases.append({"time": float(p.time), "name": str(p.get("name", ""))})
@@ -115,11 +119,12 @@ func phrase_index_at(seconds: float) -> int:
 
 ## The beat-grid and phrase state as one plain value, for undo.
 func marks_state() -> Dictionary:
-	return {"beat_offset": beat_offset, "phrases": phrases.duplicate(true)}
+	return {"beat_offset": beat_offset, "beat_offset_set": beat_offset_set, "phrases": phrases.duplicate(true)}
 
 
 func apply_marks_state(state: Dictionary) -> void:
 	beat_offset = float(state.beat_offset)
+	beat_offset_set = bool(state.get("beat_offset_set", beat_offset_set))
 	phrases.clear()
 	for p: Dictionary in state.phrases:
 		phrases.append(p.duplicate())
