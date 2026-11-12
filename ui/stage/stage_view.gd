@@ -66,7 +66,7 @@ const ORTHO_VIEWS := {
 }
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
-const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\nH  hide selection · Shift+H  isolate it · Alt+H  show all\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -599,6 +599,8 @@ func _notification(what: int) -> void:
 func _pick_at(at: Vector2) -> Object:
 	var best: StagePick.Hit = null
 	for fx: DMXFixture in _visuals:
+		if _is_hidden(fx):
+			continue
 		var hit := StagePick.ray_node(_camera, at, _visuals[fx], fx)
 		if hit and hit.beats(best):
 			best = hit
@@ -606,6 +608,8 @@ func _pick_at(at: Vector2) -> Object:
 		return best.target # in a plan the truss covers the lights hung under it: lights win
 	if ctx.workspace == StudioContext.Workspace.STAGE:
 		for p in _pieces():
+			if _is_hidden(p):
+				continue
 			var hit := StagePick.ray_node(_camera, at, p, p, p.bounds)
 			if hit and hit.beats(best):
 				best = hit
@@ -616,6 +620,8 @@ func _pick_at(at: Vector2) -> Object:
 	var near_fx: DMXFixture = null
 	var best_d := PICK_RADIUS_PX
 	for fx: DMXFixture in _visuals:
+		if _is_hidden(fx):
+			continue
 		var c := (_visuals[fx] as StageFixture3D).center()
 		if _camera.is_position_behind(c):
 			continue
@@ -1425,6 +1431,59 @@ func _set_selection(items: Array) -> void:
 	_update_gizmo()
 
 
+# ---------------------------------------------------------------- hide / isolate (editor view only)
+
+## Hidden things are only left out of this view: no picking, no box select. The
+## fixture itself is untouched, so DMX output and cues carry on as before.
+func _is_hidden(o: Object) -> bool:
+	if o is DMXFixture:
+		return _visuals.has(o) and not (_visuals[o] as Node3D).visible
+	return o is Node3D and not (o as Node3D).visible
+
+
+func _set_hidden(o: Object, hidden: bool) -> void:
+	if o is DMXFixture:
+		if _visuals.has(o):
+			(_visuals[o] as Node3D).visible = not hidden
+	elif o is Node3D:
+		(o as Node3D).visible = not hidden
+
+
+## Everything that can be hidden: every fixture and set piece.
+func _all_things() -> Array[Object]:
+	var list: Array[Object] = []
+	for fx: DMXFixture in _visuals:
+		list.append(fx)
+	for p in _pieces():
+		list.append(p)
+	return list
+
+
+## H: hide what is selected (and drop it from the selection).
+func _hide_selection() -> void:
+	var sel := _selection()
+	if sel.is_empty():
+		return
+	_set_selection([])
+	for o in sel:
+		_set_hidden(o, true)
+
+
+## Shift+H: hide everything except the selection.
+func _isolate_selection() -> void:
+	var keep := _selection()
+	if keep.is_empty():
+		return
+	for o in _all_things():
+		_set_hidden(o, not keep.has(o))
+
+
+## Alt+H: show everything again.
+func _unhide_all() -> void:
+	for o in _all_things():
+		_set_hidden(o, false)
+
+
 func _begin_box(at: Vector2, add: bool) -> void:
 	_boxing = true
 	_box_from = at
@@ -1465,11 +1524,11 @@ func _end_box(at: Vector2) -> void:
 func _things_in(rect: Rect2) -> Array[Object]:
 	var list: Array[Object] = []
 	for fx: DMXFixture in _visuals:
-		if _on_screen_in((_visuals[fx] as StageFixture3D).center(), rect):
+		if not _is_hidden(fx) and _on_screen_in((_visuals[fx] as StageFixture3D).center(), rect):
 			list.append(fx)
 	if ctx.workspace == StudioContext.Workspace.STAGE:
 		for p in _pieces():
-			if _on_screen_in(p.world_bounds().get_center(), rect):
+			if not _is_hidden(p) and _on_screen_in(p.world_bounds().get_center(), rect):
 				list.append(p)
 	return list
 
