@@ -28,7 +28,7 @@ long as the unique names stay.
 | `ui/stage/stage_view.tscn` | The 3D stage: camera, environment, floor grid, overlay buttons. |
 | `ui/stage/stage_room.tscn` | The club room. `StageSurface` boxes (floor, walls, booth) are what fixtures stick to; its `Set` node is the truss rig, built from structure pieces. |
 | `structure/pieces/*.tscn` | Structure pieces: base plate, truss 0.5 / 1 / 2 / 3 m, corner box. Any scene added here shows up in the library. |
-| `ui/stage/fixtures/*.tscn` | The 3D model of each fixture type (par, spot mover, wash mover, bar, strobe), with its truss clamps as `MountPoint` nodes. |
+| `ui/stage/fixtures/*.tscn` | The 3D model of each fixture type (par, spot mover, wash mover, bar, strobe), with its truss clamps as `MountPoint` nodes. `fixtures/models/` has exact models of real fixtures (Wash Bar Light, LED Ring Beam; see `docs/led_ring_beam.md`). |
 | `ui/stage/fixtures/parts/omega_bracket.tscn` | The omega bracket a moving head hangs from; each mover clamp has one under it. |
 
 ### Placing fixtures
