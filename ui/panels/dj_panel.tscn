@@ -106,6 +106,18 @@ layout_mode = 2
 theme_type_variation = &"Subtitle"
 autowrap_mode = 3
 
+[node name="FallbackLooks" type="CheckBox" parent="Padding/Column" unique_id=1920384751]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "When the DJ plays a song that has no show, play a beat-reactive look picked from its tempo, instead of leaving the lights as they are."
+text = "Fallback look for unknown songs"
+
+[node name="FallbackStatus" type="Label" parent="Padding/Column" unique_id=1920384752]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Subtitle"
+autowrap_mode = 3
+
 [node name="OffsetField" type="HBoxContainer" parent="Padding/Column" unique_id=719540415]
 layout_mode = 2
 
