@@ -79,6 +79,9 @@ func _register_actions() -> void:
 		{category = "Fixture", shortcut = "F2", enabled = has_selection})
 	a.register(&"transport.play", "Play / pause", ctx.toggle_play, {category = "Transport", shortcut = "Space", keywords = "start stop"})
 	a.register(&"transport.start", "Back to start", func() -> void: ctx.seek(0.0), {category = "Transport", shortcut = "Home", keywords = "rewind"})
+	a.register(&"transport.tap_tempo", "Tap tempo", ctx.tap_tempo,
+		{category = "Transport", shortcut = "Y", keywords = "bpm beat tempo tap",
+		enabled = func() -> bool: return not ctx.following_dj()})
 	a.register(&"output.blackout", "Toggle blackout", func() -> void: ctx.blackout = not ctx.blackout,
 		{category = "Output", shortcut = "Esc", keywords = "lights off dark"})
 	a.register(&"workspace.stage", "Go to Stage", ctx.set_workspace.bind(StudioContext.Workspace.STAGE), {category = "Workspace", shortcut = "1", keywords = "rig build"})
@@ -160,6 +163,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_SPACE:
 			ctx.toggle_play()
+		KEY_Y:
+			ctx.tap_tempo()
 		KEY_HOME:
 			ctx.seek(0.0) # back to the start; the timeline scrolls there too
 		KEY_ESCAPE:
