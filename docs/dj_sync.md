@@ -75,3 +75,11 @@ The VirtualDJ link has only been tested against that stand-in, not real VirtualD
 command names come from VirtualDJ's documentation and an open-source app that uses the same
 plugin; `get_activedeck`, `get_songlength` and `get_position` should be confirmed on a real
 copy, as should the `os2lDirectIp` setting name.
+
+## Starting on the downbeat
+
+Each song stores where its first beat is (`Song.beat_offset`, set with **First beat here** on the timeline). The ruler grid, bar numbers and snapping start there, so clips snapped to the grid start exactly on the downbeat while the DJ's deck plays the song.
+
+When a song's waveform is ready and its BPM is known, the app guesses the first beat from the first loud hit and the beat phase (good to about 20 ms). A hand-set first beat is never overwritten. Ctrl+K "Find first beat automatically" guesses again (undoable).
+
+Test with VirtualDJ: import a song with a known BPM, wait for the waveform, check the cyan first-beat flag sits on the first kick (fix it with **First beat here** if not), then turn on DJ sync, load the song on a deck and play from the start: the first clip snapped to bar 1 should fire on the first kick.
