@@ -132,4 +132,4 @@ func test_click_aims_group() -> void:
 	view._gui_input(esc)
 	check(not view._aiming and not view._group.is_empty(), "Esc leaves Point at and keeps the selection")
 	view._set_selection([])
-	check(view._aim_button.disabled, "the button is off with nothing selected")
+	check(view._aim_button.disabled and not view._aim_button.visible, "the button is hidden with nothing selected")
