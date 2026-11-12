@@ -28,7 +28,7 @@ extends Control
 ##                                       WASD move, Q/E down/up, Shift faster,
 ##                                       Alt slower, wheel sets the fly speed
 ##   Alt+left drag                     -> orbit       Middle drag -> pan
-##   Mouse wheel                       -> zoom        F -> frame the rig
+##   Mouse wheel                       -> zoom        F -> frame selection / rig
 ##   Top / Front / Side buttons        -> orthographic drawing views (numpad 7 / 1 / 3, numpad 5
 ##                                       back to perspective): no perspective, true to scale,
 ##                                       with grid, labels, trim heights and beam coverage
@@ -66,7 +66,7 @@ const ORTHO_VIEWS := {
 }
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
-const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame the rig\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame selection (or the rig)\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -813,6 +813,11 @@ func _gui_input(event: InputEvent) -> void:
 					return
 				_draft_measure.button_pressed = not _draft_measure.button_pressed
 			KEY_F:
+				if _flying:
+					return
+				if _frame_selection():
+					accept_event()
+					return
 				if _is_ortho():
 					_set_view(_view_preset) # back to the whole stage
 					accept_event()
@@ -1405,6 +1410,32 @@ func _selection() -> Array[Object]:
 
 ## Select exactly `items` (fixtures and/or pieces). One item is an ordinary
 ## selection (inspector, gizmo); two or more make a group.
+## Frame the camera on whatever is selected (fixtures, truss, or a group).
+## Returns false when nothing is selected so F can fall back to the whole rig.
+func _frame_selection() -> bool:
+	var points: Array[Vector3] = []
+	for o: Object in _selection():
+		if not is_instance_valid(o):
+			continue
+		if o is DMXFixture and _visuals.has(o):
+			points.append((_visuals[o] as StageFixture3D).center())
+		elif o is Node3D:
+			points.append((o as Node3D).global_position)
+	if points.is_empty():
+		return false
+	var box := AABB(points[0], Vector3.ZERO)
+	for pt in points:
+		box = box.expand(pt)
+	_pivot.position = box.get_center()
+	if _is_ortho():
+		_ortho_size = maxf(box.get_longest_axis_size() * 1.6, 3.0)
+	else:
+		var radius := maxf(box.size.length() * 0.5, 0.4) # a single fixture is ~0.8 m across
+		_distance = clampf(radius * 3.0, 1.5, 60.0)
+	_update_camera()
+	return true
+
+
 func _set_selection(items: Array) -> void:
 	if items.size() == 1:
 		_group.clear()
