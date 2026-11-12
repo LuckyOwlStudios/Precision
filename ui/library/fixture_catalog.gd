@@ -40,8 +40,11 @@ static func entries() -> Array[Entry]:
 	list.append(Entry.new("Moving heads", _profile("Generic Wash Mover 16-bit (11ch)", ["pan", "pan_fine", "tilt", "tilt_fine", "dimmer", "red", "green", "blue", "white", "strobe", "speed"], {"speed": 0}), Body.MOVING_HEAD, "Mover"))
 	list.append(Entry.new("Bars and strobes", _profile("Generic RGB Bar (4ch)", ["dimmer", "red", "green", "blue"]), Body.BAR, "Bar"))
 	# "Wash Bar Light" (28 RGBW LEDs), from its user manual. Its 2/8-channel
-	# effect modes and 112/114-channel per-pixel modes are not profiled yet.
-	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light RGBW (4ch)", ["red", "green", "blue", "white"]), Body.BAR, "Bar"))
+	# effect modes are not profiled yet.
+	var rgbw := PackedStringArray(["red", "green", "blue", "white"])
+	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light RGBW (4ch)", rgbw), Body.BAR, "Bar"))
 	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light RGBW (6ch)", ["dimmer", "strobe", "red", "green", "blue", "white"]), Body.BAR, "Bar"))
+	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light 28 pixels (112ch)", FixtureProfile.pixel_channels(rgbw, 28)), Body.BAR, "Bar"))
+	list.append(Entry.new("Bars and strobes", _profile("Wash Bar Light 28 pixels (114ch)", FixtureProfile.pixel_channels(rgbw, 28, ["dimmer", "strobe"])), Body.BAR, "Bar"))
 	list.append(Entry.new("Bars and strobes", _profile("Generic Strobe (2ch)", ["dimmer", "strobe"]), Body.STROBE, "Strobe"))
 	return list

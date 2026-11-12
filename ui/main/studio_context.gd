@@ -1032,7 +1032,7 @@ func _set_looks_values(values: Dictionary, secs: float, look: Look) -> void:
 		var props: Dictionary = values[path]
 		for prop in props:
 			if fade:
-				_look_tween.tween_property(fx, NodePath(str(prop)), props[prop], secs)
+				fx.tween_to(_look_tween, str(prop), props[prop], secs)
 				added += 1
 			else:
 				fx.set(prop, props[prop])

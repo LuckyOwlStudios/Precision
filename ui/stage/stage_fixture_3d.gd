@@ -12,13 +12,16 @@ extends Node3D
 ## -Y) with the lights inside it, and a Marker for the selection brackets.
 ## The lens, halo, beam and marker materials are "local to scene", so every
 ## fixture on stage gets its own copies to colour.
+## Pixel fixtures (LED bars): give the scene a face with pixel_surface.gdshader
+## as `pixel_material`; every pixel of the fixture then lights its own cell,
+## laid out by the profile's pixel_grid(). Profiles without pixels light
+## `default_pixel_grid` cells all in the fixture's colour.
 ## Its MountPoint nodes are the truss clamps: they say where the fixture grips
 ## a tube when hung, and show only while it is (see set_rigged). How many
 ## clamps it has also decides which ways it can be turned on stage (see
 ## MountRotation); "Rotating on stage" below overrides that per scene.
 
 const MOUNT_HEIGHT := 3.4 ## default hanging height when placed without snapping
-const BAR_PIXELS := 8
 const DEFAULT_BEAM_LENGTH := 6.0 ## metres
 const DEFAULT_BEAM_HALF_ANGLE := 25.0 ## degrees, for a light with no spot cone (the bars)
 
@@ -38,6 +41,10 @@ static var _iris: Texture2D
 @export var glow_material: ShaderMaterial ## halo around each lit lens
 @export var beam_material: ShaderMaterial ## the beam cone
 @export var marker_material: ShaderMaterial ## selection brackets
+## The light-emitting face of a pixel fixture (pixel_surface.gdshader). Optional.
+@export var pixel_material: ShaderMaterial
+## Cells drawn on the pixel face when the profile has no pixels of its own.
+@export var default_pixel_grid: Vector2i = Vector2i(8, 1)
 
 @export_group("Rotating on stage")
 ## Swing around the truss tube it hangs from. Auto: yes, if it has clamps.
@@ -59,6 +66,8 @@ var look: StageLook ## haze and quality; null renders with defaults
 var _lights: Array[Light3D] = []
 var _beam_strength := 1.0
 var _marker_tween: Tween
+var _pixel_image: Image ## one texel per pixel, uploaded to pixel_material
+var _pixel_texture: ImageTexture
 var _selected := false
 static var _body_boxes: Dictionary = {} ## scene path -> AABB, see body_box_of
 
@@ -304,16 +313,13 @@ func _process(_delta: float) -> void:
 	# out() = what is being sent, including effects running on the timeline.
 	var level := 0.0 if (ctx and ctx.blackout) else float(fixture.out("dimmer"))
 	level *= _strobe_gate()
-	var c: Color = fixture.out("color")
-	var wh := float(fixture.out("white"))
-	var am := float(fixture.out("amber"))
-	# Add white/amber channels on top of RGB so RGBW fixtures preview sensibly.
-	c = Color(
-		minf(c.r + wh + am, 1.0),
-		minf(c.g + wh + am * 0.6, 1.0),
-		minf(c.b + wh + float(fixture.out("uv")) * 0.5, 1.0))
+	var c := _mix(fixture.out("color"), float(fixture.out("white")))
 	if body == FixtureCatalog.Body.STROBE:
 		c = Color.WHITE
+	if pixel_material:
+		# Each pixel lights its own cell; glow, beam and light take the average.
+		c = _update_pixels(c)
+		pixel_material.set_shader_parameter("energy", 7.0 * level)
 
 	beam_material.set_shader_parameter("beam_color", c)
 	beam_material.set_shader_parameter("intensity", _beam_intensity() * level * _beam_strength)
@@ -331,6 +337,46 @@ func _process(_delta: float) -> void:
 	if body == FixtureCatalog.Body.MOVING_HEAD:
 		_yoke.rotation_degrees.y = (float(fixture.out("pan")) - 0.5) * fixture.profile.pan_range_deg
 		_head.rotation_degrees.x = -(float(fixture.out("tilt")) - 0.5) * fixture.profile.tilt_range_deg
+
+
+## A colour plus the white/amber/uv channels on top of RGB, so RGBW fixtures
+## preview sensibly.
+func _mix(rgb: Color, wh: float) -> Color:
+	var am := float(fixture.out("amber"))
+	return Color(
+		minf(rgb.r + wh + am, 1.0),
+		minf(rgb.g + wh + am * 0.6, 1.0),
+		minf(rgb.b + wh + float(fixture.out("uv")) * 0.5, 1.0))
+
+
+## Write every pixel's colour into the pixel face's texture. `whole` is the
+## fixture's own colour, used for every cell when the profile has no pixels.
+## Returns the average colour, for the glow, beam and light.
+func _update_pixels(whole: Color) -> Color:
+	var pr := fixture.profile
+	var count := pr.pixel_count() if pr else 0
+	var grid := pr.pixel_grid() if count > 0 else default_pixel_grid
+	grid = grid.max(Vector2i.ONE)
+	if _pixel_image == null or _pixel_image.get_size() != grid:
+		_pixel_image = Image.create(grid.x, grid.y, false, Image.FORMAT_RGBA8)
+		_pixel_texture = ImageTexture.create_from_image(_pixel_image)
+		pixel_material.set_shader_parameter("pixel_data", _pixel_texture)
+		pixel_material.set_shader_parameter("grid", grid)
+	var sum := Color(0, 0, 0, 0)
+	var i := 0
+	for y in grid.y:
+		for x in grid.x:
+			var c := whole
+			if i < count:
+				c = _mix(fixture.pixel_color(i), fixture.pixel_white(i))
+			elif count > 0:
+				c = Color.BLACK # a layout cell with no pixel behind it
+			_pixel_image.set_pixel(x, y, Color(c, 1.0))
+			sum += c
+			i += 1
+	_pixel_texture.update(_pixel_image)
+	var avg := sum / float(i)
+	return Color(avg.r, avg.g, avg.b)
 
 
 ## The strobe channel as a flash pattern: 0-9 open, then 1 to 20 flashes a second.
