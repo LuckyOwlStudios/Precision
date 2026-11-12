@@ -55,6 +55,12 @@ long as the unique names stay.
   session is one step; quick wheel or arrow nudges merge. While you type in a text field,
   Ctrl+Z undoes your typing instead. (Run from the Godot editor, the running window gets
   Ctrl+R; the editor's own shortcuts only apply while the editor has focus.)
+- **Action search**: **Ctrl+K** (Cmd+K on a Mac) opens a search over every action in the app, like
+  Blender's F3. Type a few letters ("undo", "go live", "dpl"), Up/Down to pick, Enter to run;
+  each row shows the action's shortcut. Features add their own with
+  `ctx.actions.register(&"fixture.duplicate", "Duplicate", callable, {category = "Fixture",
+  shortcut = "Shift+D", keywords = "copy clone", enabled = callable_returning_bool})`
+  (see `ui/palette/action_registry.gd`).
 - **Rename**: F2, double-click the fixture, or type in the inspector's **Name** field.
   Double-click a row in **On stage** to rename it in place. An empty name goes back to "Par 3".
   Your name is display only; cues still find the fixture by its node name.
