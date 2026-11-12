@@ -204,6 +204,11 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.set_root = _set
 	ctx.truss_pipes = _pipes
 	ctx.stage_surfaces = _surfaces
+	# The truss set is part of the show file. The set as it comes in the scene is
+	# what "New show" goes back to.
+	_default_structure = StructureCodec.save(_set)
+	ctx.shows.register_section(&"structure", func() -> Variant: return StructureCodec.save(_set, _ghost),
+		_load_structure, func() -> void: _load_structure(_default_structure), 10)
 	_sync_fixtures()
 
 
@@ -1443,6 +1448,20 @@ func _cancel_grab() -> void:
 
 
 # ---------------------------------------------------------------- structure pieces (the truss set)
+
+var _default_structure: Dictionary = {}
+
+
+## Replace the whole set (opening a show, or New): see StructureCodec.
+func _load_structure(data: Variant) -> void:
+	_clear_ghost()
+	_piece_drag = null
+	_selected_piece = null
+	_group.clear()
+	StructureCodec.load_data(_set, data)
+	_rebuild_pipes()
+	_refresh_marks()
+
 
 func _pieces(ignore: StructurePiece = null) -> Array[StructurePiece]:
 	var list: Array[StructurePiece] = []

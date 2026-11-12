@@ -72,6 +72,7 @@ const META_PROFILE_LABEL := &"profile_label"
 @onready var show_player: ShowPlayer = $ShowPlayer
 @onready var music_player: AudioStreamPlayer = $Music
 @onready var dj: DJSync = $DJSync ## follows the DJ software; off until a source is picked
+@onready var shows: ShowManager = $Shows ## the show file: New, Open, Save, last show on launch
 
 ## Everything the Ctrl+K action search can run. Features register their own
 ## actions here (see ActionRegistry).
@@ -130,6 +131,11 @@ const HISTORY_STEPS := 300
 func _ready() -> void:
 	history.max_steps = HISTORY_STEPS
 	load_swatches()
+	shows.setup(self)
+	shows.register_section(&"rig", func() -> Variant: return RigCodec.save(self),
+		func(data: Variant) -> void: RigCodec.load_data(self, data), func() -> void: RigCodec.clear(self), 20)
+	shows.register_section(&"cues", _cues_to_data, _cues_from_data, _cues_clear, 30)
+	shows.register_section(&"stage", _stage_to_data, _stage_from_data, _stage_reset, 40)
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
 	show_player.ctx = self
@@ -1334,6 +1340,96 @@ func _set_clip_data(sh: SongShow, clip: ShowClip, data: Dictionary) -> void:
 		show_changed.emit()
 		if clip == selected_clip:
 			clip_selected.emit(clip) # the settings panel re-reads it
+
+
+# ---------------------------------------------------------------- show file
+
+## Called by ShowManager just before it replaces the show: let go of everything
+## that points into the old one (selection, undo steps, running fades and effects).
+func begin_show_load() -> void:
+	history.clear_history()
+	pick([]) # clears the stage view's selection too
+	select(null)
+	select_piece(null)
+	select_clip(null)
+	if editing_look:
+		editing_look = null
+		_pre_edit_values = {}
+		look_editing_changed.emit(null)
+	if _look_tween:
+		_look_tween.kill()
+		_look_tween = null
+	_applied_look = null
+	cue_stack.stop()
+	show_player.release_all()
+	look_clipboard.clear()
+
+
+## Called when the new show is in place: tell the panels to read it again.
+func end_show_load() -> void:
+	rebuild_name_counters()
+	fixtures_changed.emit()
+	cues_changed.emit()
+	looks_changed.emit()
+	show_changed.emit()
+
+
+## "Par 3" and "Par 7" in the rig: the next Par is "Par 8".
+func rebuild_name_counters() -> void:
+	_counters.clear()
+	var rx := RegEx.create_from_string("^(.*\\S)\\s+(\\d+)$")
+	for fx in fixtures():
+		var m := rx.search(String(fx.name))
+		if m:
+			_counters[m.get_string(1)] = maxi(int(_counters.get(m.get_string(1), 0)), int(m.get_string(2)))
+
+
+func _cues_to_data() -> Variant:
+	var list: Array = []
+	for cue in cue_stack.cues:
+		list.append({"name": cue.cue_name, "fade": cue.fade_time, "values": cue.values})
+	return {"cues": list}
+
+
+func _cues_from_data(data: Variant) -> void:
+	_cues_clear()
+	if not data is Dictionary:
+		return
+	for e: Variant in (data as Dictionary).get("cues", []):
+		var entry: Dictionary = e
+		var cue := LightCue.new()
+		cue.cue_name = str(entry.get("name", ""))
+		cue.fade_time = float(entry.get("fade", 1.0))
+		var values: Dictionary = ShowCodec.decode(entry.get("values", {}))
+		for path: Variant in values:
+			var props: Dictionary = values[path]
+			if props.has("strobe"):
+				props["strobe"] = int(props["strobe"]) # JSON has no ints
+		cue.values = values
+		cue_stack.cues.append(cue)
+
+
+func _cues_clear() -> void:
+	cue_stack.stop()
+	cue_stack.cues.clear()
+	cue_stack.current = -1
+
+
+func _stage_to_data() -> Variant:
+	return {"mirror_axis": "z" if symmetry.axis == StageSymmetry.Axis.Z else "x", "mirror_center": symmetry.center}
+
+
+func _stage_from_data(data: Variant) -> void:
+	if not data is Dictionary:
+		return
+	var d: Dictionary = data
+	symmetry.axis = StageSymmetry.Axis.Z if str(d.get("mirror_axis", "x")) == "z" else StageSymmetry.Axis.X
+	symmetry.center = ShowCodec.decode(d.get("mirror_center", Vector3.ZERO))
+
+
+func _stage_reset() -> void:
+	symmetry.axis = StageSymmetry.Axis.X
+	symmetry.center = Vector3.ZERO
 
 
 # ---------------------------------------------------------------- demo
