@@ -269,7 +269,7 @@ func _draw() -> void:
 	# Fixture lanes: a thin live colour strip so you can see each light at a glance.
 	for lane in lanes:
 		var fx: DMXFixture = lane.fx
-		var c: Color = fx.out("color") * (0.0 if ctx.blackout else float(fx.out("dimmer")))
+		var c: Color = fx.out("color") * (0.0 if ctx.blackout else float(fx.out("dimmer")) * ctx.grand_master)
 		c.a = 1.0
 		draw_rect(Rect2(HEADER_W - 6, lane.y + 8, 3, lane.h - 16), c)
 

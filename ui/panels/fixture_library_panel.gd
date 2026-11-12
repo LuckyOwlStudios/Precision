@@ -11,6 +11,11 @@ var _pieces: Array[StructureCatalog.Entry] = []
 
 @onready var _search: LineEdit = %Search
 @onready var _tree: Tree = %Tree
+@onready var _editor: ProfileEditor = %ProfileEditor
+@onready var _menu: PopupMenu = %ProfileMenu
+@onready var _confirm: ConfirmationDialog = %ConfirmDelete
+
+var _menu_entry: FixtureCatalog.Entry ## the "My fixtures" profile the menu is for
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -21,9 +26,60 @@ func _ready() -> void:
 	_search.text_changed.connect(func(_t: String) -> void: _rebuild())
 	_tree.set_drag_forwarding(_get_drag, Callable(), Callable())
 	_tree.item_activated.connect(_on_activated)
-	_entries = FixtureCatalog.entries()
+	%AddButton.pressed.connect(new_profile)
+	_editor.saved.connect(func(profile: FixtureProfile) -> void: reload(profile))
+	_tree.item_mouse_selected.connect(_on_item_mouse_selected)
+	_menu.id_pressed.connect(_on_menu)
+	_confirm.confirmed.connect(_on_delete_confirmed)
 	_pieces = StructureCatalog.entries()
+	reload()
+
+
+## Opens the profile editor on a blank profile.
+func new_profile() -> void:
+	_editor.open_new()
+
+
+## Re-reads the catalog (after a profile was saved or deleted). `select` is a
+## just-saved profile to highlight.
+func reload(select: FixtureProfile = null) -> void:
+	_entries = FixtureCatalog.entries()
 	_rebuild()
+	if select == null:
+		return
+	for g in _tree.get_root().get_children():
+		for item in g.get_children():
+			var meta: Variant = item.get_metadata(0)
+			if meta is int and _entries[int(meta)].profile.fixture_name == select.fixture_name:
+				item.select(0)
+				_tree.scroll_to_item(item)
+				return
+
+
+func _on_item_mouse_selected(at: Vector2, button: int) -> void:
+	if button != MOUSE_BUTTON_RIGHT:
+		return
+	var e := _selected_entry()
+	if e == null or e.category != FixtureCatalog.USER_CATEGORY:
+		return
+	_menu_entry = e
+	_menu.position = Vector2i(_tree.get_screen_position() + at)
+	_menu.popup()
+
+
+func _on_menu(id: int) -> void:
+	if _menu_entry == null:
+		return
+	if id == 0:
+		_editor.open_edit(_menu_entry.profile)
+	else:
+		_confirm.dialog_text = "Delete \"%s\"? Fixtures already on the stage keep working." % _menu_entry.profile.fixture_name
+		_confirm.popup_centered()
+
+
+func _on_delete_confirmed() -> void:
+	if _menu_entry != null and ProfileStore.delete(_menu_entry.profile):
+		reload()
 
 
 func _rebuild() -> void:
@@ -44,7 +100,8 @@ func _rebuild() -> void:
 			groups[e.category] = g
 		var item := _tree.create_item(groups[e.category])
 		item.set_text(0, e.profile.fixture_name)
-		item.set_tooltip_text(0, "%d channels: %s" % [e.profile.channels.size(), e.profile.summary()])
+		item.set_tooltip_text(0, "%d channels: %s" % [e.profile.channels.size(), e.profile.summary()]
+				+ ("\nRight-click to edit or delete." if e.category == FixtureCatalog.USER_CATEGORY else ""))
 		item.set_metadata(0, i)
 	var structure: TreeItem = null
 	for i in _pieces.size():

@@ -119,14 +119,21 @@ func _process(_delta: float) -> void:
 	for i in chans.size():
 		var px := profile.channel_pixel(i)
 		var v := _raw.get(chans[i], -1) as int
+		if v >= 0 and chans[i] == "dimmer":
+			v = roundi(v * universe.grand_master) # raw dimmer still obeys the grand master
 		if v < 0:
 			v = _pixel_value(profile.channel_base(i), px) if px >= 0 else _value_for(chans[i])
 		universe.set_channel(start_address + i, v)
 
 
+## The dimmer after the universe's grand master.
+func _master_dimmer() -> float:
+	return float(out("dimmer")) * (universe.grand_master if universe else 1.0)
+
+
 ## One pixel's channel ("red" of pixel 3), from pixel_color/pixel_white.
 func _pixel_value(base: String, px: int) -> int:
-	var k := 1.0 if profile.has_channel("dimmer") else float(out("dimmer"))
+	var k := 1.0 if profile.has_channel("dimmer") else _master_dimmer()
 	match base:
 		"red": return _u8(pixel_color(px).r * k)
 		"green": return _u8(pixel_color(px).g * k)
@@ -141,7 +148,7 @@ func _value_for(channel_name: String) -> int:
 		return _raw[channel_name]
 
 	# Fixtures with no dimmer channel get a virtual dimmer applied to the colors.
-	var d: float = out("dimmer")
+	var d := _master_dimmer()
 	var c: Color = out("color")
 	var k := 1.0 if profile.has_channel("dimmer") else d
 	match channel_name:
