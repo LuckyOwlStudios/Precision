@@ -13,9 +13,14 @@ extends Control
 
 enum Kind { NONE, PLAN, FRONT, SIDE }
 
+## Grid, ruler and scale bar steps in metres. Imperial uses the feet tables
+## below instead (see minor_steps()), so lines land on whole feet.
 const MINOR_STEPS: Array[float] = [0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
 const MAJOR_STEPS: Array[float] = [1.0, 2.0, 5.0, 10.0, 20.0]
 const BAR_STEPS: Array[float] = [0.5, 1.0, 2.0, 5.0, 10.0]
+const MINOR_FEET: Array[float] = [0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0]
+const MAJOR_FEET: Array[float] = [1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]
+const BAR_FEET: Array[float] = [1.0, 2.0, 5.0, 10.0, 20.0, 50.0]
 const MIN_MINOR_PX := 14.0
 const MIN_MAJOR_PX := 64.0
 const FONT_SIZE := 12
@@ -68,6 +73,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	visible = false
+	AppSettings.hub().changed.connect(func(key: StringName) -> void:
+		if key == &"units":
+			queue_redraw())
 
 
 func _process(_delta: float) -> void:
@@ -152,6 +160,26 @@ func clear_measurement() -> void:
 	queue_redraw()
 
 
+## The step tables for the chosen units, in metres.
+static func minor_steps() -> Array[float]:
+	return _in_metres(MINOR_FEET) if Units.is_imperial() else MINOR_STEPS
+
+
+static func major_steps() -> Array[float]:
+	return _in_metres(MAJOR_FEET) if Units.is_imperial() else MAJOR_STEPS
+
+
+static func bar_steps() -> Array[float]:
+	return _in_metres(BAR_FEET) if Units.is_imperial() else BAR_STEPS
+
+
+static func _in_metres(feet: Array[float]) -> Array[float]:
+	var out: Array[float] = []
+	for f in feet:
+		out.append(Units.from_display(f))
+	return out
+
+
 ## Smallest step in `steps` that is at least `at_least`, the biggest if none is.
 static func pick_step(steps: Array[float], at_least: float) -> float:
 	for s in steps:
@@ -214,9 +242,9 @@ func _text_width(text: String, font_size := FONT_SIZE) -> float:
 
 func _draw_grid() -> void:
 	var ppm := _px_per_m()
-	var minor := pick_step(MINOR_STEPS, MIN_MINOR_PX / ppm)
+	var minor := pick_step(minor_steps(), MIN_MINOR_PX / ppm)
 	var major := minor
-	for m in MAJOR_STEPS:
+	for m in major_steps():
 		if m >= minor and m * ppm >= MIN_MAJOR_PX and _multiple(m, minor):
 			major = m
 			break
@@ -254,11 +282,17 @@ func _draw_grid() -> void:
 
 static func _multiple(value: float, step: float) -> bool:
 	var n := value / step
-	return absf(n - roundf(n)) < 0.001
+	return absf(n - roundf(n)) < 0.001 # tolerant: feet steps are inexact in metres
 
 
+## A length in metres as a number in the chosen unit, no unit sign: "3.05".
 static func _metres(value: float) -> String:
-	return String.num(snappedf(value, 0.01), 2)
+	return "%.2f" % snappedf(Units.to_display(value), 0.01)
+
+
+## The same with its unit: "3.05 m" or "10.00 ft".
+static func _len(value: float) -> String:
+	return "%s %s" % [_metres(value), Units.suffix()]
 
 
 ## Which way is the back of the stage and which way the audience, on the plan.
@@ -342,11 +376,11 @@ func _draw_beam(fx: DMXFixture) -> void:
 		var width := 0.0
 		for i in RIM_RAYS / 2:
 			width = maxf(width, rim[i].distance_to(rim[i + RIM_RAYS / 2]))
-		var tag := "Ø %s m" % _metres(width) # centred above where it lands, clear of the label below the fixture
+		var tag := "Ø %s" % _len(width) # centred above where it lands, clear of the label below the fixture
 		_text(to + Vector2(-_text_width(tag, SMALL_FONT_SIZE) * 0.5, -10.0), tag, Color(c, 0.95), SMALL_FONT_SIZE)
 	else:
 		var mid := from.lerp(to, 0.62)
-		_text(mid + Vector2(6, 0), "%s m throw" % _metres(origin.distance_to(centre)), Color(c, 0.95), SMALL_FONT_SIZE)
+		_text(mid + Vector2(6, 0), "%s throw" % _len(origin.distance_to(centre)), Color(c, 0.95), SMALL_FONT_SIZE)
 
 
 func _draw_fixtures(fixtures: Array[DMXFixture]) -> void:
@@ -363,13 +397,13 @@ func _draw_fixtures(fixtures: Array[DMXFixture]) -> void:
 			var bottom := camera.unproject_position(Vector3(mount.x, 0.0, mount.z))
 			draw_dashed_line(top, bottom, Color(UIPalette.TEXT_DIM, 0.55), 1.0, 4.0)
 			draw_line(bottom + Vector2(-5, 0), bottom + Vector2(5, 0), Color(UIPalette.TEXT_DIM, 0.8), 1.0)
-			var tag := "%s m" % _metres(mount.y)
+			var tag := _len(mount.y)
 			_text(Vector2(top.x - _text_width(tag, SMALL_FONT_SIZE) - 6.0, top.y + (bottom.y - top.y) * 0.3 + 4.0), tag, UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
 		if not show_labels:
 			continue
 		var lines: Array[String] = [StudioContext.display_name(fx), _address_of(fx)]
 		if kind == Kind.PLAN:
-			lines.append("h %s m" % _metres(mount.y))
+			lines.append("h %s" % _len(mount.y))
 		# Always centred just below the dot, so fixtures in a row have labels in a row.
 		var line_h := float(FONT_SIZE) + 2.0
 		var y := at.y + 18.0
@@ -404,8 +438,8 @@ func _draw_measure() -> void:
 	draw_circle(sb, 4.0, c)
 	var dx := absf((b - a).dot(h))
 	var dy := absf((b - a).dot(v))
-	var label := "%s m" % _metres((b - a).length())
-	var detail := "%s across · %s %s" % [_metres(dx), _metres(dy), "deep" if kind == Kind.PLAN else "high"]
+	var label := _len((b - a).length())
+	var detail := "%s across · %s %s" % [_len(dx), _len(dy), "deep" if kind == Kind.PLAN else "high"]
 	var mid := (sa + sb) * 0.5
 	_text(mid + Vector2(10, -8), label, c)
 	if dx > 0.005 and dy > 0.005:
@@ -417,7 +451,7 @@ func _draw_measure() -> void:
 
 func _draw_scale_bar() -> void:
 	var ppm := _px_per_m()
-	var metres := pick_step(BAR_STEPS, 80.0 / ppm)
+	var metres := pick_step(bar_steps(), 80.0 / ppm)
 	var length := metres * ppm
 	var y := size.y - 24.0
 	var x0 := size.x * 0.5 - length * 0.5
@@ -426,11 +460,11 @@ func _draw_scale_bar() -> void:
 	draw_line(Vector2(x0, y), Vector2(x0 + length, y), c, 2.0)
 	for x in [x0, x0 + length]:
 		draw_line(Vector2(x, y - 5), Vector2(x, y + 5), c, 2.0)
-	var label := "%s m" % _metres(metres)
+	var label := _len(metres)
 	_text(Vector2(size.x * 0.5 - _text_width(label) * 0.5, y - 9), label, c)
 
 
-## Where the cursor is in metres, and what snaps: bottom left above the hints.
+## Where the cursor is, and what snaps: bottom left above the hints.
 func _draw_readout() -> void:
 	if cursor.x < 0.0:
 		return
@@ -440,11 +474,11 @@ func _draw_readout() -> void:
 	var text: String
 	match kind:
 		Kind.PLAN:
-			text = "X %.2f m   Z %.2f m" % [a, -b]
+			text = "X %s   Z %s" % [_len(a), _len(-b)]
 		Kind.FRONT:
-			text = "X %.2f m   Height %.2f m" % [a, b]
+			text = "X %s   Height %s" % [_len(a), _len(b)]
 		_:
-			text = "Z %.2f m   Height %.2f m" % [a, b]
+			text = "Z %s   Height %s" % [_len(a), _len(b)]
 	if measuring:
 		text += "   ·   click to measure"
 	_text(Vector2(MARGIN, size.y - 52.0), text, UIPalette.TEXT_DIM)
@@ -460,8 +494,8 @@ func _draw_title_block(fixture_count: int) -> void:
 	var y := rect.position.y + 24.0
 	_text(Vector2(x, y), "PRECISION  ·  Light plot", UIPalette.ACCENT, 14)
 	_text(Vector2(x, y + 22), view_name(), UIPalette.TEXT)
-	var grid := pick_step(MINOR_STEPS, MIN_MINOR_PX / _px_per_m())
-	_text(Vector2(x, y + 42), "%d fixtures  ·  grid %s m" % [fixture_count, _metres(grid)], UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
+	var grid := pick_step(minor_steps(), MIN_MINOR_PX / _px_per_m())
+	_text(Vector2(x, y + 42), "%d fixtures  ·  grid %s" % [fixture_count, _len(grid)], UIPalette.TEXT_DIM, SMALL_FONT_SIZE)
 	_text(Vector2(x, y + 58), Time.get_datetime_string_from_system(false, true), UIPalette.TEXT_FAINT, SMALL_FONT_SIZE)
 
 
