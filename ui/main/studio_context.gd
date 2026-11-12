@@ -45,6 +45,8 @@ signal show_changed
 ## A clip on the timeline was selected (null = none).
 signal clip_selected(clip: ShowClip)
 signal song_changed(song: Song)
+## The song's first beat or phrase markers changed (timeline redraws on its own).
+signal marks_changed
 ## The linked show should start: fired when a song starts playing from
 ## stopped or paused. The show player will listen to this once shows exist.
 signal show_started(song: Song)
@@ -946,6 +948,86 @@ func beats_to_seconds(beats: float) -> float:
 
 func seconds_to_beats(seconds: float) -> float:
 	return seconds * bpm / 60.0
+
+
+# ------------------------------------------- beat grid alignment & phrases
+
+## Where bar 1 starts, in timeline beats (0 when the first beat is at the start).
+func first_beat_beats() -> float:
+	return seconds_to_beats(song.beat_offset) if song else 0.0
+
+
+## Move the beat grid so bar 1 starts at `seconds` in the audio.
+func set_beat_offset(seconds: float) -> void:
+	if song == null or following_dj():
+		return
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	after.beat_offset = clampf(seconds, 0.0, maxf(0.0, song.duration))
+	_record_marks("Align beat grid", song, before, after)
+
+
+## Put the first beat under the playhead (the usual way: play, hear the first
+## kick, pause, press the button).
+func set_first_beat_here() -> void:
+	set_beat_offset(beats_to_seconds(position_beats))
+
+
+## Shift the grid by a few milliseconds for fine tuning.
+func nudge_beat_offset(delta_seconds: float) -> void:
+	if song:
+		set_beat_offset(song.beat_offset + delta_seconds)
+
+
+## Add a phrase starting at `seconds`. Returns it, or {} with no song.
+func add_phrase(seconds: float, phrase_name: String) -> Dictionary:
+	if song == null:
+		return {}
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	var phrase := {"time": maxf(0.0, seconds), "name": phrase_name}
+	after.phrases.append(phrase)
+	_record_marks("Add phrase", song, before, after)
+	return phrase
+
+
+func remove_phrase(index: int) -> void:
+	if song == null or index < 0 or index >= song.phrases.size():
+		return
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	after.phrases.remove_at(index)
+	_record_marks("Delete phrase", song, before, after)
+
+
+func rename_phrase(index: int, phrase_name: String) -> void:
+	if song == null or index < 0 or index >= song.phrases.size():
+		return
+	var before := song.marks_state()
+	var after := before.duplicate(true)
+	after.phrases[index].name = phrase_name
+	_record_marks("Rename phrase", song, before, after)
+
+
+## Record a change that was already made live on the song (dragging a phrase
+## or the first-beat flag) as one undo step. `before` is song.marks_state() from
+## when the drag began.
+func commit_marks(action: String, before: Dictionary) -> void:
+	if song and before != song.marks_state():
+		_record_marks(action, song, before, song.marks_state())
+
+
+## `from_state` -> `to_state` as one undo step; the song already shows
+## `from_state` unless a drag has been live-editing it.
+func _record_marks(action: String, s: Song, from_state: Dictionary, to_state: Dictionary) -> void:
+	record(action, _apply_marks.bind(s, to_state), _apply_marks.bind(s, from_state), true)
+
+
+func _apply_marks(s: Song, state: Dictionary) -> void:
+	s.apply_marks_state(state)
+	library.update(s)
+	marks_changed.emit()
+	transport_changed.emit()
 
 
 # ---------------------------------------------------------------- songs
