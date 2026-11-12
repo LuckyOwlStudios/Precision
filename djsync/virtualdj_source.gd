@@ -46,6 +46,19 @@ var _info_now := false
 var _deck_duration := 0.0
 var _abs_bpm := 0.0
 
+## Diagnostics: everything VirtualDJ was asked and answered, so a wrong
+## command name or answer format on a real copy is easy to spot. See
+## diagnostics_report() and docs/virtualdj_test_plan.md.
+const LOG_LINES := 300
+var _log: PackedStringArray = []
+## script -> {"last": String, "count": int, "errors": int, "empty": int, "max_ms": float}
+var _stats: Dictionary = {}
+var _started_us := 0
+var _polls := 0
+var os2l_beats := 0
+var os2l_changes := 0
+var _last_beat_pos := -1
+
 
 func _init() -> void:
 	source_name = "VirtualDJ"
@@ -55,6 +68,8 @@ func start() -> void:
 	if _running:
 		return
 	_running = true
+	_started_us = Time.get_ticks_usec()
+	_note("start host=%s port=%d os2l=%s password=%s" % [host, port, use_os2l, "set" if not password.is_empty() else "none"])
 	if use_os2l:
 		os2l = OS2LListener.new()
 		os2l.name = "OS2L"
@@ -64,6 +79,12 @@ func start() -> void:
 		os2l.beat_received.connect(_on_os2l_beat)
 	_set_connected(false, "Looking for VirtualDJ on %s:%d..." % [host, port])
 	_run()
+
+
+func _set_connected(value: bool, detail: String) -> void:
+	if value != connected or detail != status_detail:
+		_note("connection: %s - %s" % ["up" if value else "down", detail])
+	super(value, detail)
 
 
 func stop() -> void:
@@ -96,6 +117,7 @@ func _run() -> void:
 
 
 func _poll_once() -> void:
+	_polls += 1
 	var deck_raw: Variant = await _query("get_activedeck")
 	if deck_raw == null:
 		return
@@ -168,6 +190,12 @@ func _read_track_info(p: String, deck: int) -> bool:
 
 
 func _on_os2l_beat(pos: int, p_bpm: float, change: bool, _strength: float) -> void:
+	os2l_beats += 1
+	if os2l_beats <= 3 or change or (_last_beat_pos >= 0 and pos != _last_beat_pos + 1):
+		_note("os2l beat pos=%d bpm=%.2f change=%s (after %d)" % [pos, p_bpm, change, _last_beat_pos])
+	if change:
+		os2l_changes += 1
+	_last_beat_pos = pos
 	if change:
 		_info_now = true # a new track or a jump: re-read straight away
 	_report_beat(pos, p_bpm)
@@ -205,9 +233,11 @@ func _query(script: String) -> Variant:
 	if _busy:
 		return null
 	_busy = true
+	var t0 := Time.get_ticks_usec()
 	var answer: Variant = await _request(script)
 	_busy = false
 	if answer == null:
+		_note("NO ANSWER to: %s" % script)
 		_http.close()
 		_set_connected(false, "Lost VirtualDJ on %s:%d" % [host, port])
 		if playing:
@@ -216,6 +246,7 @@ func _query(script: String) -> Variant:
 	if not connected:
 		_set_connected(true, "Connected to VirtualDJ on %s:%d" % [host, port])
 	var s := strip_quotes(str(answer))
+	_record(script, s, float(Time.get_ticks_usec() - t0) / 1000.0)
 	return "" if s.begins_with("error") else s
 
 
@@ -246,6 +277,8 @@ func _request(script: String) -> Variant:
 					if code == 401 or code == 403:
 						_set_connected(false, "VirtualDJ refused the password")
 						return null
+					if code >= 400:
+						_note("HTTP %d for: %s" % [code, script])
 					return body.get_string_from_utf8() if code < 400 else ""
 				return null
 			_:
@@ -255,6 +288,65 @@ func _request(script: String) -> Variant:
 		else:
 			await get_tree().process_frame
 	return null
+
+
+# ----------------------------------------------------------- diagnostics
+
+func _note(text: String) -> void:
+	var t := float(Time.get_ticks_usec() - _started_us) / 1_000_000.0
+	_log.append("[%7.2f] %s" % [t, text])
+	if _log.size() > LOG_LINES:
+		_log.remove_at(0)
+
+
+func _record(script: String, answer: String, ms: float) -> void:
+	var st: Dictionary = _stats.get(script, {"last": "", "count": 0, "errors": 0, "empty": 0, "max_ms": 0.0})
+	st["count"] += 1
+	st["max_ms"] = maxf(st["max_ms"], ms)
+	var bad := answer.begins_with("error")
+	if bad:
+		st["errors"] += 1
+	elif answer.is_empty():
+		st["empty"] += 1
+	# Log the first answer, and every change of a slow-moving one, but not
+	# the position/play read on every poll.
+	if st["count"] == 1 or (answer != st["last"] and not script.ends_with("get_position")):
+		_note("%s -> '%s'%s" % [script, answer, "   <-- VirtualDJ didn't understand this" if bad else ""])
+	st["last"] = answer
+	_stats[script] = st
+
+
+## A text report to paste into a bug report: settings, link health, the
+## last answer to every command and the recent log.
+func diagnostics_report() -> String:
+	var secs := maxf(float(Time.get_ticks_usec() - _started_us) / 1_000_000.0, 0.001)
+	var out := PackedStringArray()
+	out.append("Precision VirtualDJ diagnostics")
+	out.append("Godot %s" % Engine.get_version_info().get("string", "?"))
+	out.append("host=%s port=%d password=%s os2l=%s" % [host, port, "set" if not password.is_empty() else "none", use_os2l])
+	out.append("connected=%s (%s)" % [connected, status_detail])
+	out.append("running %.1fs, %d polls (%.1f/s, wanted %.0f/s)" % [secs, _polls, _polls / secs, poll_hz])
+	out.append("active deck=%d playing=%s bpm=%.2f duration=%.2fs abs_bpm=%.2f" % [active_deck, playing, bpm, _deck_duration, _abs_bpm])
+	if track:
+		out.append("track: '%s' by '%s' file='%s' deck=%d" % [track.title, track.artist, track.file_path, track.deck])
+	else:
+		out.append("track: none")
+	out.append("position now=%.3fs" % position_seconds())
+	if os2l:
+		out.append("OS2L: listening=%s clients=%d beats=%d changes=%d" % [os2l.is_listening(), os2l.client_count(), os2l_beats, os2l_changes])
+	else:
+		out.append("OS2L: off")
+	out.append("")
+	out.append("Commands (count / errors / empty / slowest ms / last answer):")
+	var keys := _stats.keys()
+	keys.sort()
+	for k: String in keys:
+		var st: Dictionary = _stats[k]
+		out.append("  %-42s %5d %3d %3d %6.1f  '%s'" % [k, st["count"], st["errors"], st["empty"], st["max_ms"], st["last"]])
+	out.append("")
+	out.append("Recent events:")
+	out.append_array(_log)
+	return "\n".join(out)
 
 
 # --------------------------------------------------------------- parsing

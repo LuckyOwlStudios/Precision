@@ -47,6 +47,7 @@ func _ready() -> void:
 	_kind.item_selected.connect(func(i: int) -> void: _switch(i as DJSync.Kind))
 	_offset.value_changed.connect(func(v: float) -> void: ctx.dj.light_offset_ms = v)
 	%Reconnect.pressed.connect(func() -> void: _switch(DJSync.Kind.VIRTUALDJ))
+	%CopyDiagnostics.pressed.connect(_copy_diagnostics)
 	%SimLoad.pressed.connect(_sim_load)
 	_sim_play.pressed.connect(func() -> void:
 		var sim := _sim()
@@ -72,6 +73,16 @@ func _switch(k: DJSync.Kind) -> void:
 		if ctx.song:
 			_sim_song.select(maxi(0, _sim_songs.find(ctx.song)))
 			_sim_load()
+
+
+func _copy_diagnostics() -> void:
+	var vdj := ctx.dj.source as VirtualDJSource if ctx else null
+	if vdj == null:
+		return
+	DisplayServer.clipboard_set(vdj.diagnostics_report())
+	%CopyDiagnostics.text = "Copied!"
+	await get_tree().create_timer(1.5).timeout
+	%CopyDiagnostics.text = "Copy diagnostics"
 
 
 func _sim() -> SimulatedDJSource:
