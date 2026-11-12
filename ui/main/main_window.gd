@@ -169,6 +169,8 @@ func _on_command_key(key: InputEventKey) -> void:
 		KEY_V:
 			if not _paste_look():
 				return
+		KEY_D:
+			ctx.duplicate_requested.emit()
 		_:
 			return
 	get_viewport().set_input_as_handled()

@@ -66,7 +66,7 @@ const ORTHO_VIEWS := {
 }
 const FLY_KEYS: Array[Key] = [KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E]
 const HINT_MORE := "" ## the "?" button beside the hint opens the full list
-const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\nH  hide selection · Shift+H  isolate it · Alt+H  show all\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\nCtrl+C / Ctrl+V  copy a fixture's look, paste on the selection\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame selection (or the rig)\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
+const SHORTCUTS_BBCODE := "[b]Select[/b]\nClick  pick fixture or truss\nDrag empty space  box select (Shift adds)\nEsc  deselect · Delete  remove\nH  hide selection · Shift+H  isolate it · Alt+H  show all\n\n[b]Edit[/b]\nW  move gizmo · E  rotate gizmo (Ctrl while dragging snaps)\nR  turn truss piece · Shift drag  re-stick to a surface\nF2  rename · Ctrl+D  duplicate (copies follow the mouse, click to drop) · M  mirror · Ctrl+Z / Ctrl+R  undo / redo\nCtrl+C / Ctrl+V  copy a fixture's look, paste on the selection\n\n[b]Camera[/b]\nRight drag  fly (WASD, Q/E down/up, Shift faster, Alt slower, wheel speed)\nAlt + left drag  orbit · Middle drag  pan · Wheel  zoom · F  frame selection (or the rig)\nTouch: two fingers pinch zoom / orbit, three pan\n\n[b]View[/b]\nZ  work lights / show lights\nNumpad 7 / 1 / 3  top plan / front / side (drawing views, true to scale)\nNumpad 5  perspective and back\nIn a drawing view: D  measure · right or middle drag  pan · wheel  zoom to cursor\nTouch: two fingers pan, pinch zoom\n? or F1  this list"
 
 var ctx: StudioContext
 
@@ -126,6 +126,10 @@ var _group_target: Object ## the member pressed on
 var _group_plane := Plane() ## level plane through it: the group slides across the floor plan
 var _group_grab := Vector3.ZERO
 var _group_before: Array[Transform3D] = []
+var _grab_copies: Array[DMXFixture] = [] ## Ctrl+D copies following the mouse until you click
+var _grab_start: Array[Transform3D] = []
+var _grab_plane := Plane(Vector3.UP, 0.0)
+var _grab_origin := Vector3.ZERO
 
 # Point at: aim the selected moving heads at a spot on the stage.
 var _aiming := false
@@ -178,6 +182,7 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.selection_changed.connect(_on_selection_changed)
 	ctx.pick_requested.connect(func(list: Array) -> void: _set_selection(list))
 	ctx.delete_requested.connect(_delete_selected)
+	ctx.duplicate_requested.connect(_duplicate_selected)
 	ctx.fixture_moved.connect(_on_fixture_moved)
 	ctx.workspace_changed.connect(_on_workspace_changed)
 	ctx.piece_moved.connect(func(p: StructurePiece) -> void:
@@ -704,6 +709,13 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
+		if _grabbing() and mb.pressed and (mb.button_index == MOUSE_BUTTON_LEFT or mb.button_index == MOUSE_BUTTON_RIGHT):
+			if mb.button_index == MOUSE_BUTTON_LEFT:
+				_confirm_grab()
+			else:
+				_cancel_grab()
+			accept_event()
+			return
 		if mb.pressed:
 			_dismiss_empty_hint() # any click on the stage except the demo button (which eats its own)
 		match mb.button_index:
@@ -760,7 +772,9 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		_drafting.cursor = mm.position
-		if _flying:
+		if _grabbing() and not _flying:
+			_update_grab(mm.position, mm.ctrl_pressed)
+		elif _flying:
 			_look(mm.relative)
 		elif _orbiting:
 			_yaw -= mm.relative.x * 0.3
@@ -798,6 +812,13 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event() # flying (see _process), not the W / E gizmo shortcuts
 			return
 		if not k.pressed or k.echo:
+			return
+		if _grabbing() and (k.keycode == KEY_ESCAPE or k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER):
+			if k.keycode == KEY_ESCAPE:
+				_cancel_grab()
+			else:
+				_confirm_grab()
+			accept_event()
 			return
 		if k.ctrl_pressed or k.meta_pressed:
 			return # Ctrl+Z, Ctrl+R... are the main window's, not W / E / R / Z here
@@ -1031,14 +1052,16 @@ func _update_help() -> void:
 		text = "Click or drag where the lights should point · Esc or T when done"
 		if _aim_unreachable > 0:
 			text += " · %d can't reach it" % _aim_unreachable
+	elif _grabbing():
+		text = "Move the mouse to place the copies · Click or Enter drops them · Esc or right click cancels"
 	elif _flying:
 		text = "Flying %.1f m/s · WASD move · Q/E down/up · Shift faster · Alt slower · Wheel speed" % _fly_speed
 	elif not _group.is_empty():
-		text = "W move · E rotate · Delete remove · Esc deselect" + HINT_MORE
+		text = "W move · E rotate · Ctrl+D duplicate · Delete remove · Esc deselect" + HINT_MORE
 	elif _selected_piece:
 		text = "Drag to move · R turn · Delete remove · Esc deselect" + HINT_MORE
 	elif ctx and ctx.selected:
-		text = "W move · E rotate · F2 rename · Delete remove" + HINT_MORE
+		text = "W move · E rotate · Ctrl+D duplicate · F2 rename · Delete remove" + HINT_MORE
 	elif _is_ortho():
 		text = "Drag to box select · Right drag pan · Wheel zoom · D measure · Numpad 5 perspective"
 	else:
@@ -1191,6 +1214,87 @@ func _with_twins(items: Array) -> Array:
 			if twin and not all.has(twin):
 				all.append(twin)
 	return all
+
+
+# ---------------------------------------------------------------- duplicate (Ctrl+D)
+
+func _grabbing() -> bool:
+	return not _grab_copies.is_empty()
+
+
+## Ctrl+D: copy the selected fixtures (a box selection too). The copies are
+## patched to the next free addresses and follow the mouse over the floor, like
+## Blender's grab, until you click (keep), or press Esc / right click (cancel).
+func _duplicate_selected() -> void:
+	if _grabbing():
+		return
+	var fxs: Array = _selection().filter(func(o: Object) -> bool: return o is DMXFixture)
+	if fxs.is_empty():
+		return
+	var copies := ctx.duplicate_fixtures(fxs)
+	if copies.is_empty():
+		return
+	_grab_copies = copies
+	ctx.grabbing = true
+	_set_selection(copies)
+	_grab_start.clear()
+	for fx in copies:
+		_grab_start.append(StudioContext.fixture_transform(fx))
+	if not is_visible_in_tree():
+		# No stage in view to place them on (Live): drop them a metre over.
+		var moved: Array[Transform3D] = []
+		for xf in _grab_start:
+			moved.append(xf.translated(Vector3(1.0, 0.0, 0.0)))
+		_place_group(_grab_copies, moved)
+		_confirm_grab()
+		return
+	var centre := (_visuals[copies[0]] as StageFixture3D).center()
+	_grab_plane = Plane(Vector3.UP, centre.y)
+	var hit: Variant = _ray_plane(_grab_plane, get_local_mouse_position())
+	_grab_origin = hit if hit != null else centre
+	_update_help()
+
+
+func _update_grab(at: Vector2, ctrl_held: bool) -> void:
+	var hit: Variant = _ray_plane(_grab_plane, at)
+	if hit == null:
+		return
+	var delta: Vector3 = (hit as Vector3) - _grab_origin
+	delta.y = 0.0
+	if _snapping(ctrl_held):
+		delta.x = snappedf(delta.x, TransformGizmo.MOVE_STEP)
+		delta.z = snappedf(delta.z, TransformGizmo.MOVE_STEP)
+	var xfs: Array[Transform3D] = []
+	for xf in _grab_start:
+		xfs.append(xf.translated(delta))
+	_place_group(_grab_copies, xfs)
+
+
+## Keep the copies where they are, as one undo step.
+func _confirm_grab() -> void:
+	var fxs: Array = _grab_copies.duplicate()
+	_grab_copies.clear()
+	ctx.grabbing = false
+	_grab_start.clear()
+	var indices: Array[int] = []
+	for fx: DMXFixture in fxs:
+		indices.append(fx.get_index())
+	ctx.record_added_all("Duplicate %d fixture%s" % [fxs.size(), "" if fxs.size() == 1 else "s"], fxs,
+		_attach_group.bind(fxs, indices, [], []), _detach_group.bind(fxs, []))
+	_update_help()
+
+
+## Throw the copies away; nothing was recorded, so there is nothing to undo.
+func _cancel_grab() -> void:
+	var fxs: Array = _grab_copies.duplicate()
+	_grab_copies.clear()
+	ctx.grabbing = false
+	_grab_start.clear()
+	_set_selection([])
+	ctx.detach_fixtures(fxs)
+	for fx: DMXFixture in fxs:
+		fx.free()
+	_update_help()
 
 
 # ---------------------------------------------------------------- structure pieces (the truss set)
