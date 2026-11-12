@@ -137,6 +137,8 @@ func _ready() -> void:
 	shows.setup(self)
 	shows.register_section(&"rig", func() -> Variant: return RigCodec.save(self),
 		func(data: Variant) -> void: RigCodec.load_data(self, data), func() -> void: RigCodec.clear(self), 20)
+	# Positions belong to the show (it has its own fixtures); effect presets stay global.
+	shows.register_section(&"positions", positions.to_data, positions.from_data, positions.clear, 26)
 	shows.register_section(&"cues", _cues_to_data, _cues_from_data, _cues_clear, 30)
 	shows.register_section(&"stage", _stage_to_data, _stage_from_data, _stage_reset, 40)
 	library.songs_changed.connect(_on_library_changed)
@@ -1151,7 +1153,6 @@ func cancel_look_edit() -> void:
 func _set_look_data(look: Look, data: Dictionary) -> void:
 	look.values = (data["values"] as Dictionary).duplicate(true)
 	look.fade_time = float(data["fade"])
-	looks.save(look)
 	looks_changed.emit()
 
 
@@ -1240,7 +1241,6 @@ func update_position(p: PositionPreset) -> void:
 
 func _set_position_values(p: PositionPreset, data: Dictionary) -> void:
 	p.values = data.duplicate(true)
-	positions.save(p)
 	positions_changed.emit()
 
 

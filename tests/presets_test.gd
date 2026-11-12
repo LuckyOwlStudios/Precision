@@ -13,14 +13,8 @@ func _init() -> void:
 	root.add_child(main)
 	await process_frame
 	var ctx: StudioContext = main.get_node("%Studio")
-	ctx.positions.root_dir = "user://presets_test"
-	ctx.positions.load_positions()
-	for p in ctx.positions.positions.duplicate():
-		ctx.positions.remove(p)
-	ctx.looks.root_dir = "user://presets_test"
-	ctx.looks.load_looks()
-	for l in ctx.looks.looks.duplicate():
-		ctx.looks.remove(l)
+	ctx.positions.clear()
+	ctx.looks.clear()
 	ctx.effects.root_dir = "user://presets_test"
 	ctx.effects.load_presets()
 	for p in ctx.effects.presets.duplicate():
@@ -65,8 +59,8 @@ func _init() -> void:
 	ctx.rename_position(pos, "Stage front")
 	ctx.show_player.evaluate(ctx.show, 1.0)
 	_expect(is_equal_approx(m.live.get("pan", -1.0), 0.25), "renaming keeps the link")
-	ctx.positions.load_positions()
-	_expect(ctx.positions.find(pos.id) != null, "position survives a reload")
+	ctx.positions.from_data(JSON.parse_string(JSON.stringify(ShowCodec.encode(ctx.positions.to_data()))))
+	_expect(ctx.positions.find(pos.id) != null, "position survives the show file")
 	ctx.positions.remove(ctx.positions.find(pos.id))
 	ctx.show_player.evaluate(ctx.show, 1.0)
 	_expect(not m.live.has("pan") or is_equal_approx(m.live.pan, m.pan), "a deleted position does nothing")
@@ -82,6 +76,15 @@ func _init() -> void:
 	_expect(m.live.get("color") == Color.BLUE, "editing the look changes the show")
 	ctx.show_player.evaluate(ctx.show, 0.0)
 	_expect(lc != null, "look clip exists")
+
+	# Both shelves are part of the show file, and a new show starts without them.
+	_expect(ctx.looks.looks.size() == 1, "one look before the file round trip")
+	var look_data: Variant = JSON.parse_string(JSON.stringify(ShowCodec.encode(ctx.looks.to_data())))
+	ctx.looks.clear()
+	_expect(ctx.looks.looks.is_empty(), "a new show has no looks")
+	ctx.looks.from_data(look_data)
+	_expect(ctx.looks.find(look.id) != null and ctx.looks.looks[0].values[str(ctx.rig.get_path_to(m))]["color"] == Color.BLUE, "looks come back from the show file")
+	look = ctx.looks.find(look.id)
 
 	# Effect clips stay linked to their preset until changed.
 	var pulse := EffectPreset.make("Mine", "dimmer", {"level": 0.2}, 8.0)
@@ -104,10 +107,6 @@ func _init() -> void:
 	var builtin := ctx.effects.find("builtin_00")
 	_expect(not ctx.update_preset_from_clip(ec, builtin), "built-in presets can't be updated")
 
-	for p in ctx.positions.positions.duplicate():
-		ctx.positions.remove(p)
-	for l in ctx.looks.looks.duplicate():
-		ctx.looks.remove(l)
 	for p in ctx.effects.presets.duplicate():
 		ctx.effects.remove(p)
 	print("presets_test: %s" % ("FAILED (%d)" % _failed if _failed else "all passed"))
