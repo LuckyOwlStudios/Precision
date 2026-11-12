@@ -8,11 +8,16 @@ extends Control
 ##   Drag a preset from the Effects shelf onto a lane (or onto the music lane
 ##   for every fixture). Drag a clip to move it, drag its ends to stretch it.
 ##   Right-click a clip for Duplicate / Save as preset / Delete.
+##   Ruler: right-click to add a phrase (intro, drop...) or set where the first
+##   beat is; drag a phrase flag (snaps to bars, Alt = free) or the cyan first-beat
+##   flag to move it; M adds a phrase at the playhead.
 ##   Wheel (or the scrollbar) scrolls time, Shift+wheel scrolls lanes, Ctrl+wheel
 ##   zooms, Home goes back to the start. Click a lane's name to select that fixture.
 
 const HEADER_W := 168.0
-const RULER_H := 26.0
+const RULER_H := 42.0
+const PHRASE_H := 16.0 ## phrase flags along the top of the ruler
+const FLAG_GRAB := 7.0 ## px either side of a marker that grabs it
 const MUSIC_H := 52.0
 const LANE_H := 30.0
 const ROW_H := 24.0 ## one row of clips inside a lane
@@ -26,7 +31,7 @@ var scroll_y := 0.0 ## lanes scrolled up by this many pixels
 var snap_beats := 1.0
 var _scrubbing := false
 
-enum Drag { NONE, MOVE, LEFT, RIGHT }
+enum Drag { NONE, MOVE, LEFT, RIGHT, PHRASE, FIRST_BEAT }
 var _drag := Drag.NONE
 var _drag_clip: ShowClip
 var _drag_before: Dictionary
@@ -42,8 +47,21 @@ var _last_pos := 0.0
 var _was_playing := false
 var _menu: PopupMenu
 var _menu_clip: ShowClip
+var _marks_menu: PopupMenu
+var _add_sub: PopupMenu
+var _kind_sub: PopupMenu
+var _rename_dialog: ConfirmationDialog
+var _rename_edit: LineEdit
+var _menu_phrase := -1 ## phrase under a right-click, or -1
+var _menu_seconds := 0.0 ## where a right-click landed, snapped to a bar
+var _menu_seconds_raw := 0.0 ## the same, unsnapped
+var _drag_phrase: Dictionary
+var _drag_marks: Dictionary ## the song's marks when a marker drag began
 
 enum MenuItem { DUPLICATE, SAVE_PRESET, DELETE }
+enum MarksItem { FIRST_HERE, FIRST_AT, NUDGE_BACK, NUDGE_FWD, RESET_GRID, RENAME, DELETE_PHRASE }
+const ADD_BASE := 100 ## "Add phrase" submenu ids: ADD_BASE + index in PhraseKinds.KINDS
+const KIND_BASE := 200 ## "Change to" submenu ids
 
 
 func _ready() -> void:
@@ -55,6 +73,27 @@ func _ready() -> void:
 	_menu.add_item("Delete", MenuItem.DELETE)
 	_menu.id_pressed.connect(_on_menu)
 	add_child(_menu)
+	_marks_menu = PopupMenu.new()
+	_add_sub = PopupMenu.new()
+	_kind_sub = PopupMenu.new()
+	for i in PhraseKinds.KINDS.size():
+		_add_sub.add_item(PhraseKinds.KINDS[i], ADD_BASE + i)
+		_kind_sub.add_item(PhraseKinds.KINDS[i], KIND_BASE + i)
+	_add_sub.id_pressed.connect(_on_marks_menu)
+	_kind_sub.id_pressed.connect(_on_marks_menu)
+	_marks_menu.id_pressed.connect(_on_marks_menu)
+	_marks_menu.add_child(_add_sub)
+	_marks_menu.add_child(_kind_sub)
+	add_child(_marks_menu)
+	_rename_dialog = ConfirmationDialog.new()
+	_rename_dialog.title = "Rename phrase"
+	_rename_edit = LineEdit.new()
+	_rename_edit.custom_minimum_size = Vector2(240, 0)
+	_rename_dialog.add_child(_rename_edit)
+	_rename_dialog.register_text_enter(_rename_edit)
+	_rename_dialog.confirmed.connect(func() -> void:
+		ctx.rename_phrase(_menu_phrase, _rename_edit.text.strip_edges()))
+	add_child(_rename_dialog)
 
 
 func _notification(what: int) -> void:
@@ -140,8 +179,12 @@ func _beat_at(x: float) -> float:
 	return scroll_beats + (x - HEADER_W) / px_per_beat
 
 
+## Snap to the beat grid, which starts at the song's first beat.
 func _snap(b: float) -> float:
-	return b if snap_beats <= 0.0 else roundf(b / snap_beats) * snap_beats
+	if snap_beats <= 0.0:
+		return b
+	var fb := ctx.first_beat_beats()
+	return fb + roundf((b - fb) / snap_beats) * snap_beats
 
 
 func _process(_delta: float) -> void:
@@ -178,24 +221,29 @@ func _draw() -> void:
 		draw_line(Vector2(0, lane.y + lane.h), Vector2(w, lane.y + lane.h), UIPalette.HAIRLINE)
 	draw_line(Vector2(0, RULER_H + MUSIC_H), Vector2(w, RULER_H + MUSIC_H), UIPalette.HAIRLINE)
 
-	# Grid: beats faint, bars stronger, every 4th bar labelled.
-	var first := floori(scroll_beats)
-	var last := ceili(scroll_beats + (w - HEADER_W) / px_per_beat)
-	for b in range(first, last + 1):
-		var x := _x(b)
+	# Grid: beats faint, bars stronger, every 4th bar labelled. It starts at the
+	# song's first beat, so a track with a silent intro still lines up.
+	var fb := ctx.first_beat_beats()
+	var first := floori(scroll_beats - fb)
+	var last := ceili(scroll_beats + (w - HEADER_W) / px_per_beat - fb)
+	for k in range(first, last + 1):
+		var x := _x(fb + k)
 		if x < HEADER_W:
 			continue
-		var is_bar := b % 4 == 0
+		var is_bar := posmod(k, 4) == 0
 		var col := Color(1, 1, 1, 0.07) if is_bar else Color(1, 1, 1, 0.025)
 		if (not is_bar) and px_per_beat < 8.0:
 			continue
-		draw_line(Vector2(x, RULER_H), Vector2(x, h), col)
+		draw_line(Vector2(x, PHRASE_H), Vector2(x, h), col)
 		if is_bar:
 			draw_line(Vector2(x, RULER_H - 8), Vector2(x, RULER_H), UIPalette.TEXT_FAINT)
-			var bar_no := b / 4 + 1
-			if (bar_no - 1) % (4 if px_per_beat < 14 else 1) == 0:
+			var bar_no := floori(k / 4.0) + 1
+			if bar_no >= 1 and (bar_no - 1) % (4 if px_per_beat < 14 else 1) == 0:
 				draw_string(mono, Vector2(x + 4, RULER_H - 9), str(bar_no), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIPalette.TEXT_DIM)
 	draw_line(Vector2(HEADER_W, RULER_H), Vector2(w, RULER_H), UIPalette.HAIRLINE)
+
+	if ctx.song:
+		_draw_phrases(font, w)
 
 	# Music lane: the song's waveform on the beat grid, or a drop hint.
 	var music_rect := Rect2(HEADER_W + 8, RULER_H + 8, w - HEADER_W - 16, MUSIC_H - 16)
@@ -236,9 +284,10 @@ func _draw() -> void:
 	# Ruler and music lane stay put over scrolled lanes.
 	draw_rect(Rect2(0, 0, HEADER_W, RULER_H + MUSIC_H), UIPalette.SIDE_BG)
 	draw_string(bold, Vector2(UIPalette.COLUMN_PAD, RULER_H + MUSIC_H * 0.5 + 5), ctx.song_title if ctx.song else "Music", HORIZONTAL_ALIGNMENT_LEFT, HEADER_W - 28, 12, UIPalette.TEXT)
-	draw_string(font, Vector2(UIPalette.COLUMN_PAD, RULER_H + MUSIC_H * 0.5 + 21), "%d BPM · 4/4" % roundi(ctx.bpm), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIPalette.BEAT)
+	draw_string(font, Vector2(UIPalette.COLUMN_PAD, RULER_H + MUSIC_H * 0.5 + 21), ("%d BPM · 4/4" % roundi(ctx.bpm)) + ((" · 1st beat %.2fs" % ctx.song.beat_offset) if ctx.song and ctx.song.beat_offset > 0.0 else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIPalette.BEAT)
 	draw_line(Vector2(0, RULER_H + MUSIC_H), Vector2(w, RULER_H + MUSIC_H), UIPalette.HAIRLINE)
 	draw_line(Vector2(HEADER_W, 0), Vector2(HEADER_W, RULER_H + MUSIC_H), UIPalette.HAIRLINE)
+	draw_string(mono, Vector2(UIPalette.COLUMN_PAD, PHRASE_H - 5), "PHRASES", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIPalette.TEXT_FAINT)
 	draw_string(mono, Vector2(UIPalette.COLUMN_PAD, RULER_H - 9), "BAR", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIPalette.TEXT_FAINT)
 	if lanes.is_empty():
 		draw_string(font, Vector2(HEADER_W + 12, RULER_H + MUSIC_H + 20), "Add fixtures in the Stage workspace, then drag effects from the Effects tab onto their lanes", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIPalette.TEXT_FAINT)
@@ -250,6 +299,34 @@ func _draw() -> void:
 	if px >= HEADER_W:
 		draw_line(Vector2(px, 0), Vector2(px, h), UIPalette.LIVE, 1.5)
 		draw_colored_polygon(PackedVector2Array([Vector2(px - 6, 0), Vector2(px + 6, 0), Vector2(px, 8)]), UIPalette.LIVE)
+
+
+## Phrase flags along the top of the ruler, tinted bands down the music lane,
+## and the cyan first-beat flag.
+func _draw_phrases(font: Font, w: float) -> void:
+	var song := ctx.song
+	for i in song.phrases.size():
+		var ph: Dictionary = song.phrases[i]
+		var x0 := _x(ctx.seconds_to_beats(ph.time))
+		var x1 := w
+		if i + 1 < song.phrases.size():
+			x1 = _x(ctx.seconds_to_beats(song.phrases[i + 1].time))
+		if x1 <= HEADER_W or x0 >= w:
+			continue
+		var col := PhraseKinds.color_for(ph.name)
+		var vx0 := maxf(x0, HEADER_W)
+		draw_rect(Rect2(vx0, 0, x1 - vx0, PHRASE_H - 1), Color(col, 0.28))
+		draw_rect(Rect2(vx0, RULER_H, x1 - vx0, MUSIC_H), Color(col, 0.07))
+		if x0 >= HEADER_W:
+			draw_rect(Rect2(x0, 0, 2, PHRASE_H - 1), col)
+			draw_line(Vector2(x0, RULER_H), Vector2(x0, RULER_H + MUSIC_H), Color(col, 0.6))
+		var room := x1 - vx0 - 8.0
+		if room > 12.0:
+			draw_string(font, Vector2(vx0 + 6, PHRASE_H - 5), ph.name, HORIZONTAL_ALIGNMENT_LEFT, room, 10, col.lightened(0.35))
+	var fx := _x(ctx.first_beat_beats())
+	if fx >= HEADER_W - 1.0:
+		draw_line(Vector2(fx, PHRASE_H), Vector2(fx, RULER_H + MUSIC_H), Color(UIPalette.BEAT, 0.55), 1.5)
+		draw_colored_polygon(PackedVector2Array([Vector2(fx - 5, PHRASE_H + 1), Vector2(fx + 5, PHRASE_H + 1), Vector2(fx, PHRASE_H + 9)]), UIPalette.BEAT)
 
 
 ## Peaks drawn as one vertical line per pixel column, centred in the lane.
@@ -375,6 +452,10 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				_release()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			if ctx.song and mb.position.x >= HEADER_W and mb.position.y < RULER_H + MUSIC_H:
+				_open_marks_menu(mb.position)
+				accept_event()
+				return
 			var hit := _clip_at(mb.position)
 			if not hit.is_empty():
 				_menu_clip = hit.clip
@@ -415,6 +496,9 @@ func _gui_input(event: InputEvent) -> void:
 			_scrub(mm.position.x)
 		else:
 			_update_cursor(mm.position)
+	elif event is InputEventKey and event.is_pressed() and (event as InputEventKey).keycode == KEY_M and not (event as InputEventKey).ctrl_pressed and ctx.song:
+		add_phrase_at_playhead()
+		accept_event()
 	elif event is InputEventKey and event.is_pressed() and ctx.selected_clip:
 		var key := event as InputEventKey
 		if key.keycode == KEY_DELETE or key.keycode == KEY_BACKSPACE:
@@ -433,6 +517,8 @@ func _press(pos: Vector2) -> void:
 		var li := _lane_index_at(pos.y)
 		if li >= 0:
 			ctx.select(_lanes()[li].fx) # a lane's name picks that fixture
+		return
+	if pos.y < RULER_H and ctx.song and not ctx.following_dj() and _press_marker(pos):
 		return
 	var hit := _clip_at(pos)
 	if hit.is_empty():
@@ -457,7 +543,115 @@ func _press(pos: Vector2) -> void:
 		_drag = Drag.MOVE
 
 
+## Grab a phrase flag or the first-beat flag on the ruler, if one is under `pos`.
+func _press_marker(pos: Vector2) -> bool:
+	var song := ctx.song
+	var fx := _x(ctx.first_beat_beats())
+	if pos.y >= PHRASE_H and absf(pos.x - fx) <= FLAG_GRAB:
+		_drag = Drag.FIRST_BEAT
+		_drag_marks = song.marks_state()
+		return true
+	var i := _phrase_at(pos)
+	if i >= 0:
+		_drag = Drag.PHRASE
+		_drag_phrase = song.phrases[i]
+		_drag_marks = song.marks_state()
+		return true
+	return false
+
+
+## Index of the phrase flag under `pos` (ruler's top strip), or -1.
+func _phrase_at(pos: Vector2) -> int:
+	if pos.y >= RULER_H or pos.x < HEADER_W:
+		return -1
+	var best := -1
+	var best_d := FLAG_GRAB + 1.0
+	for i in ctx.song.phrases.size():
+		var d := absf(pos.x - _x(ctx.seconds_to_beats(ctx.song.phrases[i].time)))
+		if d < best_d and (pos.y < PHRASE_H or d <= FLAG_GRAB * 0.5):
+			best = i
+			best_d = d
+	return best
+
+
+func _drag_marker(pos: Vector2) -> void:
+	var song := ctx.song
+	var b := _beat_at(pos.x)
+	if _drag == Drag.FIRST_BEAT:
+		song.beat_offset = clampf(ctx.beats_to_seconds(b), 0.0, song.duration)
+	else:
+		var fb := ctx.first_beat_beats()
+		if not Input.is_key_pressed(KEY_ALT):
+			b = fb + roundf((b - fb) / 4.0) * 4.0 # phrases start on a bar
+		_drag_phrase.time = clampf(ctx.beats_to_seconds(b), 0.0, song.duration)
+		song.sort_phrases()
+	ctx.marks_changed.emit()
+
+
+func _open_marks_menu(pos: Vector2) -> void:
+	_menu_phrase = _phrase_at(pos)
+	var b := _beat_at(pos.x)
+	var fb := ctx.first_beat_beats()
+	b = fb + roundf((b - fb) / 4.0) * 4.0
+	_menu_seconds_raw = maxf(0.0, ctx.beats_to_seconds(_beat_at(pos.x)))
+	_menu_seconds = maxf(0.0, ctx.beats_to_seconds(b))
+	_marks_menu.clear()
+	if _menu_phrase >= 0:
+		_marks_menu.add_item('Rename "%s"…' % ctx.song.phrases[_menu_phrase].name, MarksItem.RENAME)
+		_marks_menu.add_submenu_node_item("Change to", _kind_sub)
+		_marks_menu.add_item("Delete phrase", MarksItem.DELETE_PHRASE)
+		_marks_menu.add_separator()
+	_marks_menu.add_submenu_node_item("Add phrase here", _add_sub)
+	_marks_menu.add_separator()
+	_marks_menu.add_item("First beat at playhead", MarksItem.FIRST_HERE)
+	_marks_menu.add_item("First beat here", MarksItem.FIRST_AT)
+	_marks_menu.add_item("Nudge grid earlier (10 ms)", MarksItem.NUDGE_BACK)
+	_marks_menu.add_item("Nudge grid later (10 ms)", MarksItem.NUDGE_FWD)
+	_marks_menu.add_item("Reset grid to start", MarksItem.RESET_GRID)
+	_marks_menu.position = Vector2i(get_screen_position() + pos)
+	_marks_menu.popup()
+
+
+func _on_marks_menu(id: int) -> void:
+	if id >= KIND_BASE:
+		var phrase_name := PhraseKinds.KINDS[id - KIND_BASE]
+		if _menu_phrase >= 0:
+			ctx.rename_phrase(_menu_phrase, phrase_name)
+	elif id >= ADD_BASE:
+		ctx.add_phrase(_menu_seconds, PhraseKinds.KINDS[id - ADD_BASE])
+	else:
+		match id:
+			MarksItem.FIRST_HERE:
+				ctx.set_first_beat_here()
+			MarksItem.FIRST_AT:
+				ctx.set_beat_offset(_menu_seconds_raw)
+			MarksItem.NUDGE_BACK:
+				ctx.nudge_beat_offset(-0.01)
+			MarksItem.NUDGE_FWD:
+				ctx.nudge_beat_offset(0.01)
+			MarksItem.RESET_GRID:
+				ctx.set_beat_offset(0.0)
+			MarksItem.RENAME:
+				_rename_edit.text = ctx.song.phrases[_menu_phrase].name
+				_rename_dialog.popup_centered()
+				_rename_edit.grab_focus()
+				_rename_edit.select_all()
+			MarksItem.DELETE_PHRASE:
+				ctx.remove_phrase(_menu_phrase)
+
+
+## M: drop a phrase at the playhead, named after the usual running order of a
+## dance track (intro, build, drop...).
+func add_phrase_at_playhead() -> void:
+	var order := ["Intro", "Build", "Drop", "Breakdown", "Build", "Drop", "Outro"]
+	var n := ctx.song.phrases.size()
+	ctx.add_phrase(ctx.beats_to_seconds(ctx.position_beats), order[mini(n, order.size() - 1)])
+
+
 func _drag_to(pos: Vector2) -> void:
+	if _drag == Drag.PHRASE or _drag == Drag.FIRST_BEAT:
+		_drag_marker(pos)
+		return
 	var clip := _drag_clip
 	var delta := (pos.x - _drag_from_x) / px_per_beat
 	var min_len := snap_beats if snap_beats > 0.0 else 0.25
@@ -483,6 +677,10 @@ func _drag_to(pos: Vector2) -> void:
 func _release() -> void:
 	_scrubbing = false
 	if _drag == Drag.NONE:
+		return
+	if _drag == Drag.PHRASE or _drag == Drag.FIRST_BEAT:
+		ctx.commit_marks("Align beat grid" if _drag == Drag.FIRST_BEAT else "Move phrase", _drag_marks)
+		_drag = Drag.NONE
 		return
 	var action := "Move effect" if _drag == Drag.MOVE else "Stretch effect"
 	_drag = Drag.NONE
