@@ -32,6 +32,11 @@ const SCENES := {
 	FixtureCatalog.Body.STROBE: "res://ui/stage/fixtures/strobe.tscn",
 }
 const SPOT_MOVER_SCENE := "res://ui/stage/fixtures/spot_mover.tscn"
+## Exact 3D models of real fixtures, by the start of the profile's name. A
+## profile listed here uses its own model instead of the generic body scene.
+const MODEL_SCENES := {
+	"Wash Bar Light": "res://ui/stage/fixtures/models/wash_bar_light.tscn",
+}
 const WASH_MOVER_SCENE := "res://ui/stage/fixtures/wash_mover.tscn"
 
 static var _iris: Texture2D
@@ -83,6 +88,9 @@ static func create(p_fixture: DMXFixture) -> StageFixture3D:
 
 ## The body scene for a kind of fixture. `profile_label` tells spot movers from washes.
 static func scene_path(p_body: FixtureCatalog.Body, profile_label: String) -> String:
+	for prefix: String in MODEL_SCENES:
+		if profile_label.begins_with(prefix):
+			return MODEL_SCENES[prefix]
 	if p_body == FixtureCatalog.Body.MOVING_HEAD:
 		return WASH_MOVER_SCENE if profile_label.to_lower().contains("wash") else SPOT_MOVER_SCENE
 	return SCENES.get(p_body, SCENES[FixtureCatalog.Body.PAR])
@@ -362,17 +370,21 @@ func _update_pixels(whole: Color) -> Color:
 		_pixel_texture = ImageTexture.create_from_image(_pixel_image)
 		pixel_material.set_shader_parameter("pixel_data", _pixel_texture)
 		pixel_material.set_shader_parameter("grid", grid)
+	# RGB (plus amber/uv mixed in) in the colour, white in alpha, so a face
+	# with separate white and colour LED rows can light each from its own part.
 	var sum := Color(0, 0, 0, 0)
 	var i := 0
 	for y in grid.y:
 		for x in grid.x:
-			var c := whole
+			var rgb := whole
+			var wh := 0.0
 			if i < count:
-				c = _mix(fixture.pixel_color(i), fixture.pixel_white(i))
+				rgb = _mix(fixture.pixel_color(i), 0.0)
+				wh = fixture.pixel_white(i)
 			elif count > 0:
-				c = Color.BLACK # a layout cell with no pixel behind it
-			_pixel_image.set_pixel(x, y, Color(c, 1.0))
-			sum += c
+				rgb = Color.BLACK # a layout cell with no pixel behind it
+			_pixel_image.set_pixel(x, y, Color(rgb.r, rgb.g, rgb.b, wh))
+			sum += Color(minf(rgb.r + wh, 1.0), minf(rgb.g + wh, 1.0), minf(rgb.b + wh, 1.0))
 			i += 1
 	_pixel_texture.update(_pixel_image)
 	var avg := sum / float(i)
