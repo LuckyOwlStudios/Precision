@@ -110,6 +110,10 @@ var workspace: Workspace = Workspace.STAGE
 # Transport
 var bpm: float = 128.0
 var playing: bool = false
+## Playing, but the song hasn't reached its first downbeat yet (an intro or
+## silence before beat 1). The playhead waits at beat 0 and the show holds
+## until the downbeat arrives.
+var in_lead_in: bool = false
 var position_beats: float = 0.0
 var length_beats: float = 256.0 ## 64 bars of 4/4 until a song sets the length
 var song_title: String = ""
@@ -132,6 +136,7 @@ func _ready() -> void:
 	load_swatches()
 	library.songs_changed.connect(_on_library_changed)
 	looks.looks_changed.connect(looks_changed.emit)
+	library.song_updated.connect(_on_song_updated)
 	show_player.ctx = self
 
 	music_player.finished.connect(_on_music_finished)
@@ -150,7 +155,9 @@ func _process(delta: float) -> void:
 	if song and music_player.playing:
 		# The audio clock is the master: lights follow the music, not the frame rate.
 		var t := music_player.get_playback_position() + AudioServer.get_time_since_last_mix() - AudioServer.get_output_latency()
-		position_beats = clampf(seconds_to_beats(t), 0.0, length_beats)
+		var raw := seconds_to_beats(t)
+		in_lead_in = raw < 0.0
+		position_beats = clampf(raw, 0.0, length_beats)
 	else:
 		position_beats += delta * bpm / 60.0
 		if position_beats >= length_beats:
@@ -167,9 +174,14 @@ func _follow_dj() -> void:
 	var changed := now_playing != playing
 	playing = now_playing
 	if song:
-		var beats := clampf(seconds_to_beats(dj.position_seconds()), 0.0, length_beats)
-		changed = changed or not is_equal_approx(beats, position_beats)
+		var raw := seconds_to_beats(dj.position_seconds())
+		var beats := clampf(raw, 0.0, length_beats)
+		var lead := playing and raw < 0.0
+		changed = changed or not is_equal_approx(beats, position_beats) or lead != in_lead_in
+		in_lead_in = lead
 		position_beats = beats
+	else:
+		in_lead_in = false
 	if changed:
 		transport_changed.emit()
 
@@ -902,9 +914,11 @@ func toggle_play() -> void:
 		if playing:
 			if position_beats >= length_beats:
 				position_beats = 0.0
-			music_player.play(beats_to_seconds(position_beats))
+			music_player.play(_audio_seconds(position_beats))
+			in_lead_in = position_beats <= 0.0 and song.first_beat > 0.0
 			show_started.emit(song)
 		else:
+			in_lead_in = false
 			music_player.stop() # position_beats keeps where we paused
 	transport_changed.emit()
 
@@ -913,6 +927,7 @@ func stop() -> void:
 	if following_dj():
 		return
 	playing = false
+	in_lead_in = false
 	position_beats = 0.0
 	music_player.stop()
 	transport_changed.emit()
@@ -923,7 +938,10 @@ func seek(beats: float) -> void:
 		return
 	position_beats = clampf(beats, 0.0, length_beats)
 	if song and music_player.playing:
-		music_player.seek(beats_to_seconds(position_beats))
+		music_player.seek(_audio_seconds(position_beats))
+		in_lead_in = position_beats <= 0.0 and song.first_beat > 0.0
+	else:
+		in_lead_in = false
 	transport_changed.emit()
 
 
@@ -940,12 +958,71 @@ func set_bpm(value: float) -> void:
 	transport_changed.emit()
 
 
+## Beat 0 is the song's first downbeat, not the start of the audio file.
 func beats_to_seconds(beats: float) -> float:
-	return beats * 60.0 / bpm
+	return _first_beat() + beats * 60.0 / bpm
 
 
+## Negative while the song is still in its intro, before the first downbeat.
 func seconds_to_beats(seconds: float) -> float:
-	return seconds * bpm / 60.0
+	return (seconds - _first_beat()) * bpm / 60.0
+
+
+func _first_beat() -> float:
+	return song.first_beat if song else 0.0
+
+
+## Where to start the audio for a playhead position. The very start of the
+## timeline plays the song from its first sample, so the intro is heard.
+func _audio_seconds(beats: float) -> float:
+	return 0.0 if beats <= 0.0 else beats_to_seconds(beats)
+
+
+## Where the audio is right now, in seconds into the file.
+func current_seconds() -> float:
+	if following_dj():
+		return dj.position_seconds()
+	if song and music_player.playing:
+		return music_player.get_playback_position()
+	return _audio_seconds(position_beats)
+
+
+## The beat the show should be evaluated at: held before the first downbeat.
+func show_beat() -> float:
+	return -1.0 if in_lead_in else position_beats
+
+
+## Say where the song's first downbeat is, in seconds into the audio. The
+## playhead stays on the same moment of the music; the show moves with the grid.
+func set_first_beat(seconds: float, by_hand := true) -> void:
+	_move_grid(seconds, current_seconds(), by_hand)
+
+
+## "Set downbeat at playhead": the current moment of the music is beat 1.
+func set_downbeat_here() -> void:
+	set_first_beat(current_seconds())
+
+
+## Forget a hand-set downbeat and guess again from the waveform.
+func guess_downbeat() -> void:
+	if song == null:
+		return
+	var guess := BeatGrid.estimate_first_beat(song.peaks, Song.PEAKS_PER_SECOND, song.bpm)
+	if guess >= 0.0:
+		_move_grid(guess, current_seconds(), false)
+
+
+func _move_grid(first_beat: float, keep_seconds: float, by_hand: bool) -> void:
+	if song == null:
+		return
+	song.first_beat = maxf(first_beat, 0.0)
+	song.first_beat_set = by_hand
+	length_beats = seconds_to_beats(song.duration)
+	var raw := seconds_to_beats(keep_seconds)
+	position_beats = clampf(raw, 0.0, length_beats)
+	in_lead_in = playing and raw < 0.0
+	library.update(song)
+	transport_changed.emit()
 
 
 # ---------------------------------------------------------------- songs
@@ -956,6 +1033,7 @@ func load_song(s: Song) -> void:
 		return
 	var was_playing := playing and not following_dj()
 	playing = false
+	in_lead_in = false
 	position_beats = 0.0
 	music_player.stop()
 	song = s
@@ -986,6 +1064,17 @@ func import_songs(paths: PackedStringArray) -> Array[Song]:
 	if song == null and not added.is_empty():
 		load_song(added[0])
 	return added
+
+
+## The waveform finished and the downbeat guess may have moved the grid.
+func _on_song_updated(s: Song) -> void:
+	if s != song or bpm <= 0.0:
+		return
+	var l := seconds_to_beats(s.duration)
+	if not is_equal_approx(l, length_beats):
+		length_beats = l
+		position_beats = clampf(position_beats, 0.0, length_beats)
+		transport_changed.emit()
 
 
 func _on_library_changed() -> void:

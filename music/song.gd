@@ -22,6 +22,13 @@ var file_path: String = ""
 var source_path: String = ""
 var imported_at: int = 0 ## unix seconds
 
+## Where the first downbeat (beat 1 of bar 1) falls in the audio, in seconds.
+## Show beat 0 is this moment, so a show's first clip lands on the downbeat
+## even when the track opens with an intro, silence or a pickup.
+var first_beat: float = 0.0
+## True once you set it by hand; the automatic guess never overwrites it.
+var first_beat_set: bool = false
+
 ## The light show linked to this song. When the song plays, this show plays.
 ## The show format is not built yet, so for now this is a name plus the path
 ## the show will be saved to (see SongLibrary.show_path_for()).
@@ -63,6 +70,8 @@ func to_dict() -> Dictionary:
 		"file_path": file_path,
 		"source_path": source_path,
 		"imported_at": imported_at,
+		"first_beat": first_beat,
+		"first_beat_set": first_beat_set,
 		"show_id": show_id,
 		"show_name": show_name,
 	}
@@ -79,6 +88,8 @@ static func from_dict(d: Dictionary) -> Song:
 	s.file_path = str(d.get("file_path", ""))
 	s.source_path = str(d.get("source_path", ""))
 	s.imported_at = int(d.get("imported_at", 0))
+	s.first_beat = float(d.get("first_beat", 0.0))
+	s.first_beat_set = bool(d.get("first_beat_set", false))
 	s.show_id = str(d.get("show_id", ""))
 	s.show_name = str(d.get("show_name", ""))
 	return s

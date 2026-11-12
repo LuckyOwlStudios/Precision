@@ -15,6 +15,7 @@ var _colors: PackedColorArray = []
 @onready var _bpm: SpinBox = %Bpm
 @onready var _beats: Array[Panel] = [%Beat1, %Beat2, %Beat3, %Beat4]
 @onready var _blackout: Button = %Blackout
+@onready var _downbeat: Button = %Downbeat
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -35,6 +36,9 @@ func _ready() -> void:
 	_bpm.value_changed.connect(func(v: float) -> void:
 		if ctx:
 			ctx.set_bpm(v))
+	_downbeat.pressed.connect(func() -> void:
+		if ctx:
+			ctx.set_downbeat_here())
 	_blackout.toggled.connect(func(on: bool) -> void: ctx.blackout = on)
 
 
@@ -44,6 +48,7 @@ func _sync() -> void:
 	_play.icon_kind = TransportButton.Icon.PAUSE if ctx.playing else TransportButton.Icon.PLAY
 	_title.text = ctx.song_title if not ctx.song_title.is_empty() else "No song loaded"
 	_show.text = ctx.show_name
+	_downbeat.disabled = ctx.song == null
 	_progress.max_value = ctx.length_beats
 	_progress.set_value_no_signal(ctx.position_beats)
 	var beat := int(ctx.position_beats) % 4

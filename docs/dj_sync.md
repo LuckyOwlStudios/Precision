@@ -75,3 +75,13 @@ The VirtualDJ link has only been tested against that stand-in, not real VirtualD
 command names come from VirtualDJ's documentation and an open-source app that uses the same
 plugin; `get_activedeck`, `get_songlength` and `get_position` should be confirmed on a real
 copy, as should the `os2lDirectIp` setting name.
+
+## Starting on the downbeat
+
+A show's beat 0 is the song's **first downbeat** (`Song.first_beat`), not the first sample of the file. If a track has an intro or silence before beat 1, the playhead waits at beat 0 and the show holds until the DJ's deck reaches the downbeat, then the first clip starts exactly there.
+
+- When a song's waveform is ready (and its BPM is known) the app guesses the downbeat from the first loud hit and the beat phase. It is good to about 20 ms.
+- To correct it: scrub to the first kick, pause, click **Downbeat** in the now-playing bar (or Ctrl+K "Set downbeat at playhead"). A hand-set downbeat is never overwritten. Ctrl+K "Find downbeat automatically" guesses again.
+- The **light offset** (DJ tab) still shifts everything earlier/later for interface and fixture lag.
+
+Test with VirtualDJ: import a song whose BPM is known, load it on a deck, check the Downbeat position by playing it locally (Space) once; then turn on DJ sync, play from the start of the track and watch the first clip fire on the first kick.

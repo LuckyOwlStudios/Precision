@@ -219,7 +219,22 @@ func _on_peaks_ready(song: Song, peaks: PackedFloat32Array) -> void:
 		var f := FileAccess.open(_peaks_file(song), FileAccess.WRITE)
 		if f:
 			f.store_var(peaks)
+	if songs.has(song):
+		guess_first_beat(song)
 	song_updated.emit(song)
+
+
+## Guess where the first downbeat is from the waveform, unless you set it by
+## hand. Needs the tempo and the waveform. Returns true if it changed.
+func guess_first_beat(song: Song) -> bool:
+	if song.first_beat_set or song.bpm <= 0.0 or song.peaks.is_empty():
+		return false
+	var t := BeatGrid.estimate_first_beat(song.peaks, Song.PEAKS_PER_SECOND, song.bpm)
+	if t < 0.0 or is_equal_approx(t, song.first_beat):
+		return false
+	song.first_beat = t
+	save_library()
+	return true
 
 
 # ----------------------------------------------------------- save / load

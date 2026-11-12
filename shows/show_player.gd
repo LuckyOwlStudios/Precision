@@ -18,7 +18,7 @@ var _driven: Array[DMXFixture] = [] ## fixtures that had a live layer last frame
 
 func _process(_delta: float) -> void:
 	if ctx:
-		evaluate(ctx.show, ctx.position_beats)
+		evaluate(ctx.show, ctx.show_beat())
 
 
 ## Put the show at beat `b` into the fixtures. Public so tests can call it.
