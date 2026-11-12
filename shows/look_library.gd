@@ -52,6 +52,15 @@ func add(look: Look) -> void:
 	looks_changed.emit()
 
 
+## The look with this id, or null (deleted since a show used it).
+func find(look_id: String) -> Look:
+	_ensure_loaded()
+	for l in looks:
+		if l.id == look_id:
+			return l
+	return null
+
+
 func remove(look: Look) -> void:
 	_ensure_loaded()
 	looks.erase(look)

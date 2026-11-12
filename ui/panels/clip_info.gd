@@ -65,6 +65,8 @@ func show_clip(clip: ShowClip) -> void:
 
 	for c in _params.get_children():
 		c.queue_free()
+	_link_box = null
+	_add_link_row()
 	for p: Dictionary in t.get("params", []):
 		_add_param(p)
 
@@ -121,8 +123,36 @@ func _toggle_target(on: bool, path: String) -> void:
 
 func _add_param(p: Dictionary) -> void:
 	var key: String = p.key
-	var value: Variant = _clip.params.get(key, p.default)
+	var value: Variant = _clip.effective_params(ctx.effects).get(key, p.default)
 	match p.kind:
+		EffectTemplates.REF:
+			var row := HBoxContainer.new()
+			var label := Label.new()
+			label.text = p.label
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(label)
+			var pick := OptionButton.new()
+			pick.custom_minimum_size.x = 150
+			var ids: Array[String] = []
+			var names: Array[String] = []
+			if p.source == "positions":
+				for item in ctx.positions.positions:
+					ids.append(item.id)
+					names.append(item.position_name)
+			else:
+				for item in ctx.looks.looks:
+					ids.append(item.id)
+					names.append(item.look_name)
+			if not str(value).is_empty() and not ids.has(str(value)):
+				ids.append(str(value))
+				names.append("(deleted)")
+			for i in ids.size():
+				pick.add_item(names[i])
+				pick.set_item_metadata(i, ids[i])
+			pick.selected = ids.find(str(value)) # -1 shows nothing chosen yet
+			pick.item_selected.connect(func(i: int) -> void: _set_ref(key, str(pick.get_item_metadata(i)), pick.get_item_text(i)))
+			row.add_child(pick)
+			_params.add_child(row)
 		EffectTemplates.FLOAT:
 			var row := VBoxContainer.new()
 			var label := Label.new()
@@ -205,8 +235,61 @@ func _add_number(grid: GridContainer, caption: String, value: float, lo: float, 
 
 
 func _set_param(key: String, value: Variant) -> void:
-	var change := func() -> void: _clip.params[key] = value
+	var change := func() -> void:
+		if not _clip.preset_id.is_empty():
+			# Changing a linked clip makes it its own: copy what it played, then change it.
+			_clip.params = _clip.effective_params(ctx.effects).duplicate(true)
+			_clip.preset_id = ""
+		_clip.params[key] = value
 	_edit(change, "Change effect", true)
+	if _link_box:
+		_link_box.visible = not _clip.preset_id.is_empty()
+
+
+## A Position/Look clip points at a saved one; choosing renames the clip after it.
+func _set_ref(key: String, ref_id: String, ref_name: String) -> void:
+	var change := func() -> void:
+		_clip.params[key] = ref_id
+		_clip.clip_name = ref_name
+	_edit(change, "Change effect")
+	_clip_name.text = _clip.clip_name
+
+
+var _link_box: VBoxContainer
+
+
+## While the clip follows an effect preset: say so, and offer to push this
+## clip's settings into the preset or let go of it.
+func _add_link_row() -> void:
+	if _clip.preset_id.is_empty():
+		return
+	var preset := ctx.effects.find(_clip.preset_id)
+	if preset == null or preset.template != _clip.template:
+		return
+	_link_box = VBoxContainer.new()
+	var note := Label.new()
+	note.theme_type_variation = &"Subtitle"
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.text = "Linked to the preset \"%s\": editing the preset changes every song that uses it. Changing a setting here makes this clip its own." % preset.preset_name
+	_link_box.add_child(note)
+	var buttons := HBoxContainer.new()
+	var unlink := Button.new()
+	unlink.text = "Unlink"
+	unlink.tooltip_text = "Keep these settings on this clip only"
+	unlink.pressed.connect(func() -> void:
+		ctx.unlink_clip(_clip)
+		show_clip(_clip))
+	buttons.add_child(unlink)
+	var update := Button.new()
+	update.text = "Update preset"
+	update.disabled = preset.built_in
+	update.tooltip_text = "Built-in presets can't change. Save as preset to make your own." if preset.built_in else "Make the preset match this clip, for every song that uses it"
+	update.pressed.connect(func() -> void:
+		ctx.update_preset_from_clip(_clip, preset)
+		show_clip(_clip))
+	buttons.add_child(update)
+	_link_box.add_child(buttons)
+	_params.add_child(_link_box)
 
 
 ## Change the clip with `change`, then record it as one undo step (dragging a

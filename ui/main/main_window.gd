@@ -28,11 +28,11 @@ extends Control
 func _ready() -> void:
 	if LuckyTheme.touch_wanted():
 		theme = LuckyTheme.build(true) # bigger buttons, rows and scrollbars for fingers
-	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Looks, %LiveLooks, %Cues, %DMX, %DJ, %Effects]:
+	for panel: Node in [%NowPlaying, stage, timeline, %Library, %OnStage, %Songs, %Inspector, %Looks, %Positions, %LiveLooks, %Cues, %DMX, %DJ, %Effects]:
 		panel.call("setup", ctx)
 
 	_title_tabs(left_tabs, ["Library", "Songs", "Effects"])
-	_title_tabs(right_tabs, ["Inspector", "Looks", "Looks", "Cues", "DMX", "DJ"])
+	_title_tabs(right_tabs, ["Inspector", "Looks", "Positions", "Looks", "Cues", "DMX", "DJ"])
 
 	workspace_tabs.current_tab = ctx.workspace
 	workspace_tabs.tab_changed.connect(func(i: int) -> void: ctx.set_workspace(i as StudioContext.Workspace))
@@ -107,7 +107,7 @@ func _title_tabs(tabs: TabContainer, titles: Array[String]) -> void:
 ##   Stage   - build the rig: On stage over Library on the left; Inspector (name,
 ##             patch, placement) + DMX patch map on the right. No timeline.
 ##   Program - write a song's show: On stage over Effects + Songs on the left; Inspector
-##             (look and aim) + Looks + Cues on the right, with the timeline below.
+##             (look and aim) + Looks + Positions + Cues on the right, with the timeline below.
 ##   Live    - run the night: no left dock; big Looks tiles, DJ sync + Cues on the right (wider dock), timeline below.
 func _apply_workspace(ws: StudioContext.Workspace) -> void:
 	workspace_tabs.set_current_tab(ws)
@@ -119,7 +119,7 @@ func _apply_workspace(ws: StudioContext.Workspace) -> void:
 			right = [%Inspector, %DMX]
 		StudioContext.Workspace.PROGRAM:
 			left = [%Effects, %Songs]
-			right = [%Inspector, %Looks, %Cues]
+			right = [%Inspector, %Looks, %Positions, %Cues]
 		StudioContext.Workspace.LIVE:
 			right = [%LiveLooks, %DJ, %Cues]
 	left_dock.visible = not left.is_empty()

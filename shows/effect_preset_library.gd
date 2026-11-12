@@ -43,6 +43,8 @@ static func built_ins() -> Array[EffectPreset]:
 		EffectPreset.make("Red", "color", {"color": Color("ff2a3d")}, 8.0),
 		EffectPreset.make("Blue", "color", {"color": Color("2a6bff")}, 8.0),
 		EffectPreset.make("Blackout", "dimmer", {"level": 0.0}, 4.0),
+		EffectPreset.make("Go to position", "position", {}, 8.0),
+		EffectPreset.make("Recall look", "look", {}, 16.0),
 	]
 	for i in list.size():
 		list[i].id = "builtin_%02d" % i

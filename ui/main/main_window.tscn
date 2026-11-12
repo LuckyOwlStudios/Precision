@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://ui/panels/effects_panel.tscn" id="13_fx"]
 [ext_resource type="PackedScene" path="res://ui/settings/settings_window.tscn" id="14_settings"]
 [ext_resource type="PackedScene" path="res://ui/panels/looks_panel.tscn" id="15_looks"]
+[ext_resource type="PackedScene" path="res://ui/panels/positions_panel.tscn" id="17_positions"]
 [ext_resource type="PackedScene" path="res://ui/palette/command_palette.tscn" id="16_palette"]
 
 [sub_resource type="StyleBoxFlat" id="Background"]
@@ -236,30 +237,36 @@ visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
+[node name="Positions" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" instance=ExtResource("17_positions")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
 [node name="LiveLooks" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=915000002 instance=ExtResource("15_looks")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 live_mode = true
-metadata/_tab_index = 2
+metadata/_tab_index = 3
 
 [node name="Cues" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=615594403 instance=ExtResource("10_cues")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-metadata/_tab_index = 3
+metadata/_tab_index = 4
 
 [node name="DMX" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=587719376 instance=ExtResource("11_dmx")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-metadata/_tab_index = 4
+metadata/_tab_index = 5
 
 [node name="DJ" parent="Layout/Body/RightSplit/RightDock/Column/RightTabs" unique_id=1485302954 instance=ExtResource("12_dj")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-metadata/_tab_index = 5
+metadata/_tab_index = 6
 
 [node name="RightFooter" type="PanelContainer" parent="Layout/Body/RightSplit/RightDock/Column" unique_id=79491683]
 custom_minimum_size = Vector2(0, 40)
