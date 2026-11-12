@@ -18,6 +18,14 @@ extends Node
 ## Raw value. Strobe ranges differ per fixture, so check the manual.
 @export_range(0, 255) var strobe: int = 0
 
+@export_group("Pixels")
+## Pixel fixtures (LED bars): a colour per pixel, multiplied by `color`'s
+## brightness rules like the master colour. Pixels past the end of this array
+## (or all of them, while it is empty) just show `color`. See pixel_color().
+@export var pixel_colors: PackedColorArray = PackedColorArray()
+## Per-pixel white, same rules: missing entries use `white`.
+@export var pixel_whites: PackedFloat32Array = PackedFloat32Array()
+
 @export_group("Position")
 ## 0..1 across the fixture's full range. Uses 16-bit if the profile has pan_fine.
 @export_range(0.0, 1.0) var pan: float = 0.5
@@ -32,7 +40,7 @@ var live: Dictionary = {}
 ## Raw per-channel overrides (name -> 0..255). These take priority over everything else.
 var _raw: Dictionary = {}
 
-const LOOK_PROPERTIES := ["dimmer", "color", "white", "amber", "uv", "strobe", "pan", "tilt"]
+const LOOK_PROPERTIES := ["dimmer", "color", "white", "amber", "uv", "strobe", "pan", "tilt", "pixel_colors", "pixel_whites"]
 
 
 func set_raw(channel_name: String, value: int) -> void:
@@ -52,6 +60,50 @@ func out(prop: String) -> Variant:
 	return live[prop] if live.has(prop) else get(prop)
 
 
+## Colour of pixel `i` (0-based) as being output: its own colour if the
+## pixel_colors being output has one, else the whole fixture's colour.
+func pixel_color(i: int) -> Color:
+	var pc: PackedColorArray = out("pixel_colors")
+	return pc[i] if i < pc.size() else out("color")
+
+
+## White of pixel `i` as being output (see pixel_color).
+func pixel_white(i: int) -> float:
+	var pw: PackedFloat32Array = out("pixel_whites")
+	return pw[i] if i < pw.size() else float(out("white"))
+
+
+## Add a fade of `prop` to `value` over `secs` to a running parallel tween.
+## Per-pixel arrays fade pixel by pixel (a Tween can't blend arrays of
+## different lengths); everything else is a normal tween_property.
+func tween_to(tween: Tween, prop: String, value: Variant, secs: float) -> void:
+	if value is PackedColorArray or value is PackedFloat32Array:
+		var from: Variant = get(prop)
+		tween.tween_method(func(w: float) -> void: set(prop, blend_pixels(from, value, w)), 0.0, 1.0, secs)
+	else:
+		tween.tween_property(self, NodePath(prop), value, secs)
+
+
+## Mix two per-pixel arrays by `w`. A missing entry counts as "follow the whole
+## fixture", so the result is as long as `to` once the fade has started.
+static func blend_pixels(from: Variant, to: Variant, w: float) -> Variant:
+	if w >= 1.0:
+		return to
+	if to is PackedColorArray:
+		var a: PackedColorArray = from
+		var b: PackedColorArray = to
+		var o := b.duplicate()
+		for i in mini(a.size(), b.size()):
+			o[i] = a[i].lerp(b[i], w)
+		return o if w > 0.0 else a
+	var fa: PackedFloat32Array = from
+	var fb: PackedFloat32Array = to
+	var fo := fb.duplicate()
+	for i in mini(fa.size(), fb.size()):
+		fo[i] = lerpf(fa[i], fb[i], w)
+	return fo if w > 0.0 else fa
+
+
 ## Snapshot of the current look, used by CueStack.record_cue().
 func capture() -> Dictionary:
 	var d := {}
@@ -65,7 +117,23 @@ func _process(_delta: float) -> void:
 		return
 	var chans := profile.channels
 	for i in chans.size():
-		universe.set_channel(start_address + i, _value_for(chans[i]))
+		var px := profile.channel_pixel(i)
+		var v := _raw.get(chans[i], -1) as int
+		if v < 0:
+			v = _pixel_value(profile.channel_base(i), px) if px >= 0 else _value_for(chans[i])
+		universe.set_channel(start_address + i, v)
+
+
+## One pixel's channel ("red" of pixel 3), from pixel_color/pixel_white.
+func _pixel_value(base: String, px: int) -> int:
+	var k := 1.0 if profile.has_channel("dimmer") else float(out("dimmer"))
+	match base:
+		"red": return _u8(pixel_color(px).r * k)
+		"green": return _u8(pixel_color(px).g * k)
+		"blue": return _u8(pixel_color(px).b * k)
+		"white": return _u8(pixel_white(px) * k)
+	# Other per-pixel channels (amber, uv, dimmer...) follow the whole fixture.
+	return _value_for(base)
 
 
 func _value_for(channel_name: String) -> int:

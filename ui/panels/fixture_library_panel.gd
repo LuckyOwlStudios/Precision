@@ -44,7 +44,7 @@ func _rebuild() -> void:
 			groups[e.category] = g
 		var item := _tree.create_item(groups[e.category])
 		item.set_text(0, e.profile.fixture_name)
-		item.set_tooltip_text(0, "%d channels: %s" % [e.profile.channels.size(), ", ".join(e.profile.channels)])
+		item.set_tooltip_text(0, "%d channels: %s" % [e.profile.channels.size(), e.profile.summary()])
 		item.set_metadata(0, i)
 	var structure: TreeItem = null
 	for i in _pieces.size():

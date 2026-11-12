@@ -66,12 +66,14 @@ static func get_template(id: String) -> Dictionary:
 				_f("beats", "Beats per step", 0.25, 8.0, 0.25, " beats", 1.0),
 				_b("reverse", "Reverse direction", false),
 				_b("bounce", "Bounce back", false),
+				_b("pixels", "Along each bar's pixels", false),
 			])
 		"rainbow":
 			return _t(id, "Rainbow", "Cycle through every colour.", COLOR_COLOR, [
 				_f("beats", "Beats per cycle", 1.0, 64.0, 1.0, " beats", 16.0),
 				_f("saturation", "Saturation", 0.0, 1.0, 0.05, "", 1.0),
 				_f("spread", "Spread", 0.0, 1.0, 0.05, "", 0.25),
+				_f("pixel_spread", "Spread across pixels", 0.0, 1.0, 0.05, "", 1.0),
 			])
 		"color":
 			return _t(id, "Colour", "Change colour for the length of the clip.", COLOR_COLOR, [
@@ -165,7 +167,8 @@ static func apply(id: String, params: Dictionary, t: float, index: int, count: i
 			var phase := fposmod(t / maxf(0.01, p.beats) + offset, 1.0)
 			v.dimmer *= lerpf(1.0, pow(1.0 - phase, 2.0), p.depth)
 		"chase":
-			var steps := maxi(1, count)
+			var px := fx.profile.pixel_count() if p.pixels else 0
+			var steps := px if px > 0 else maxi(1, count)
 			var step := int(floor(t / maxf(0.01, p.beats)))
 			var pos := step % steps
 			if p.bounce and steps > 1:
@@ -175,13 +178,38 @@ static func apply(id: String, params: Dictionary, t: float, index: int, count: i
 					pos = cycle - pos
 			if p.reverse:
 				pos = steps - 1 - pos
-			if pos != index:
+			if px > 0:
+				# One pixel lit at a time, running along the bar.
+				var colors := PackedColorArray()
+				var whites := PackedFloat32Array()
+				colors.resize(px)
+				whites.resize(px)
+				var on_color: Color = v.color
+				for i in px:
+					var c: Color = v.pixel_colors[i] if i < v.pixel_colors.size() else on_color
+					var w: float = v.pixel_whites[i] if i < v.pixel_whites.size() else float(v.white)
+					colors[i] = c if i == pos else Color.BLACK
+					whites[i] = w if i == pos else 0.0
+				v.pixel_colors = colors
+				v.pixel_whites = whites
+			elif pos != index:
 				v.dimmer = 0.0
 		"rainbow":
 			var hue := fposmod(t / maxf(0.01, p.beats) + offset, 1.0)
 			v.color = Color.from_hsv(hue, p.saturation, 1.0)
+			var px := fx.profile.pixel_count()
+			if px > 1 and p.pixel_spread > 0.0:
+				# Pixel bars: the colours roll along the bar.
+				var colors := PackedColorArray()
+				colors.resize(px)
+				for i in px:
+					colors[i] = Color.from_hsv(fposmod(hue + p.pixel_spread * i / px, 1.0), p.saturation, 1.0)
+				v.pixel_colors = colors
+			else:
+				v.pixel_colors = PackedColorArray() # whole bar in one colour
 		"color":
 			v.color = p.color
+			v.pixel_colors = PackedColorArray() # a colour clip colours every pixel
 		"dimmer":
 			v.dimmer = p.level
 

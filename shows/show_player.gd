@@ -59,7 +59,9 @@ static func _blend(before: Dictionary, after: Dictionary, w: float) -> void:
 		var z: Variant = after[k]
 		if a == z:
 			continue
-		if z is Color:
+		if z is PackedColorArray or z is PackedFloat32Array:
+			after[k] = DMXFixture.blend_pixels(a, z, w)
+		elif z is Color:
 			var from: Color = a
 			after[k] = from.lerp(z, w)
 		elif z is float or z is int:

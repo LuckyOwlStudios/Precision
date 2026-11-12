@@ -49,7 +49,7 @@ func go_to(index: int) -> void:
 		var props: Dictionary = cue.values[path]
 		for prop in props:
 			if fade:
-				_tween.tween_property(fx, NodePath(str(prop)), props[prop], cue.fade_time)
+				(fx as DMXFixture).tween_to(_tween, str(prop), props[prop], cue.fade_time)
 				added += 1
 			else:
 				fx.set(prop, props[prop])

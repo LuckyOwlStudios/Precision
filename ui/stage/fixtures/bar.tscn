@@ -4,6 +4,7 @@
 [ext_resource type="Shader" path="res://ui/stage/lens_glow.gdshader" id="2_d55ax"]
 [ext_resource type="Shader" path="res://ui/stage/beam.gdshader" id="3_m2ilq"]
 [ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_ognry"]
+[ext_resource type="Shader" path="res://ui/stage/pixel_surface.gdshader" id="5_pixel"]
 [ext_resource type="Script" path="res://ui/stage/mount_point.gd" id="10_mount"]
 [ext_resource type="Material" path="res://ui/stage/materials/clamp.tres" id="11_clamp"]
 [ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="13_black"]
@@ -54,10 +55,20 @@ roughness = 0.3
 [sub_resource type="BoxMesh" id="BoxMesh_5dcfb"]
 size = Vector3(1.04, 0.03, 0.14)
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_a3d53"]
-top_radius = 0.05
-bottom_radius = 0.05
-height = 0.012
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pixels"]
+resource_local_to_scene = true
+resource_name = "PixelFace"
+shader = ExtResource("5_pixel")
+shader_parameter/grid = Vector2i(8, 1)
+shader_parameter/energy = 0.0
+shader_parameter/gap = 0.18
+shader_parameter/roundness = 1.0
+shader_parameter/bleed = 0.12
+shader_parameter/face_size = Vector2(0.96, 0.07)
+shader_parameter/housing_color = Color(0.02745098, 0.03137255, 0.039215688, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_pixels"]
+size = Vector2(0.96, 0.07)
 
 [sub_resource type="QuadMesh" id="QuadMesh_15s47"]
 size = Vector2(2, 2)
@@ -96,6 +107,7 @@ lens_material = SubResource("StandardMaterial3D_levmg")
 glow_material = SubResource("ShaderMaterial_fevgs")
 beam_material = SubResource("ShaderMaterial_0yj5p")
 marker_material = SubResource("ShaderMaterial_57i1o")
+pixel_material = SubResource("ShaderMaterial_pixels")
 
 [node name="Yoke" type="Node3D" parent="." unique_id=1504226408]
 unique_name_in_owner = true
@@ -113,47 +125,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, 0)
 material_override = SubResource("StandardMaterial3D_jalyg")
 mesh = SubResource("BoxMesh_5dcfb")
 
-[node name="Lenses" type="Node3D" parent="Yoke/Head" unique_id=1404979015]
-
-[node name="Lens1" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=631116831]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.42, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens2" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=266106749]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens3" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=1995222010]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens4" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=1868286286]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens5" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=2016859426]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens6" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=760885540]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens7" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=738602663]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
-
-[node name="Lens8" type="MeshInstance3D" parent="Yoke/Head/Lenses" unique_id=1950529749]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.42, -0.06, 0)
-material_override = SubResource("StandardMaterial3D_levmg")
-mesh = SubResource("CylinderMesh_a3d53")
+[node name="PixelFace" type="MeshInstance3D" parent="Yoke/Head"]
+editor_description = "The LED face: one cell per pixel (pixel_surface.gdshader). StageFixture3D lays the cells out from the profile's pixel_grid(), or default_pixel_grid for a bar profile without pixels."
+transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 0, -0.0565, 0)
+material_override = SubResource("ShaderMaterial_pixels")
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_pixels")
 
 [node name="Glows" type="Node3D" parent="Yoke/Head" unique_id=131340699]
 

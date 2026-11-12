@@ -296,7 +296,7 @@ func _show(_changed: Variant = null) -> void:
 	_white_row.visible = _white_row.visible and all.any(func(f: DMXFixture) -> bool: return f.profile.has_channel("white"))
 	_strobe_row.visible = _strobe_row.visible and all.any(func(f: DMXFixture) -> bool: return f.profile.has_channel("strobe"))
 	_position_section.visible = _position_section.visible and all.any(func(f: DMXFixture) -> bool: return f.profile.has_channel("pan") or f.profile.has_channel("tilt"))
-	_channels.text = "Channels %d–%d: %s" % [fx.start_address, fx.start_address + fx.profile.channels.size() - 1, ", ".join(fx.profile.channels)]
+	_channels.text = "Channels %d–%d: %s" % [fx.start_address, fx.start_address + fx.profile.channels.size() - 1, fx.profile.summary()]
 	_syncing = true
 	# Inside _syncing: shrinking the range clamps the box, which would otherwise
 	# write that clamped angle into the newly selected fixture.
