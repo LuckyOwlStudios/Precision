@@ -38,6 +38,8 @@ func _ready() -> void:
 	_bpm.value_changed.connect(func(v: float) -> void:
 		if ctx:
 			ctx.set_bpm(v))
+	%Tap.pressed.connect(func() -> void: ctx.tap_tempo())
+
 	_master.value_changed.connect(func(v: float) -> void: ctx.grand_master = v / 100.0)
 	_master.gui_input.connect(func(e: InputEvent) -> void:
 		# Double-click the fader to snap back to full.
@@ -52,6 +54,8 @@ func _sync() -> void:
 	_play.icon_kind = TransportButton.Icon.PAUSE if ctx.playing else TransportButton.Icon.PLAY
 	_title.text = ctx.song_title if not ctx.song_title.is_empty() else "No song loaded"
 	_show.text = ctx.show_name
+	_bpm.set_value_no_signal(ctx.bpm) # also follows taps and song changes
+	%Tap.disabled = ctx.following_dj()
 	_progress.max_value = ctx.length_beats
 	_progress.set_value_no_signal(ctx.position_beats)
 	var beat := int(ctx.position_beats) % 4

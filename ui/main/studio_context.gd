@@ -78,6 +78,8 @@ const META_PROFILE_LABEL := &"profile_label"
 ## actions here (see ActionRegistry).
 var actions := ActionRegistry.new()
 
+var _tapper := TapTempo.new()
+
 var song: Song ## the song loaded on the timeline, or null
 
 var selected: DMXFixture
@@ -947,6 +949,17 @@ func set_bpm(value: float) -> void:
 			song.bpm = bpm
 			library.update(song)
 	transport_changed.emit()
+
+
+## One tap of the tap-tempo button / key. Two or more taps in a row set the
+## tempo, which drives every effect and chase. Ignored while following the DJ,
+## whose software owns the tempo.
+func tap_tempo() -> void:
+	if following_dj():
+		return
+	var value := _tapper.tap(Time.get_ticks_msec() / 1000.0)
+	if value > 0.0:
+		set_bpm(value)
 
 
 func beats_to_seconds(beats: float) -> float:
