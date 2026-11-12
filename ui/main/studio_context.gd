@@ -15,6 +15,10 @@ signal group_changed
 signal pick_requested(list: Array)
 ## A panel asks the stage view to delete whatever is selected (one fixture or a group).
 signal delete_requested
+## Ctrl+D: the stage view copies the selected fixtures and lets you place the copies.
+signal duplicate_requested
+## Ctrl+D copies are floating on the mouse (undo/redo wait until they are dropped).
+var grabbing := false
 ## The saved colour swatches changed (the inspector's swatch row listens).
 signal swatches_changed
 ## A fixture was moved or rotated on the stage (drag, gizmo or inspector).
@@ -225,6 +229,59 @@ func remove_fixture(fx: DMXFixture) -> void:
 		record_removed_all("Remove mirrored fixtures", pair, attach_fixtures.bind(pair, indices), detach_fixtures.bind(pair))
 		return
 	record_removed("Remove fixture", fx, _attach_fixture.bind(fx, fx.get_index()), _detach_fixture.bind(fx))
+
+
+## Copy `list` (rig order): same profile, look, mounting and body, each patched
+## to the next free address, named "Par 4" after "Par 3". Copies are not linked
+## to any mirror twin. Not recorded in the history: the caller does that once
+## the copies are placed.
+func duplicate_fixtures(list: Array) -> Array[DMXFixture]:
+	var sources: Array[DMXFixture] = []
+	for o: Object in list:
+		if o is DMXFixture and (o as DMXFixture).get_parent() == rig:
+			sources.append(o)
+	sources.sort_custom(func(a: DMXFixture, b: DMXFixture) -> bool: return a.get_index() < b.get_index())
+	var copies: Array[DMXFixture] = []
+	for src in sources:
+		var fx := DMXFixture.new()
+		fx.name = _next_name(String(src.name))
+		fx.profile = src.profile
+		fx.universe = universe
+		fx.start_address = next_free_address(src.profile.channels.size())
+		fx.dimmer = src.dimmer
+		fx.color = src.color
+		fx.white = src.white
+		fx.amber = src.amber
+		fx.uv = src.uv
+		fx.strobe = src.strobe
+		fx.pan = src.pan
+		fx.tilt = src.tilt
+		for key: StringName in [META_POSITION, META_BASIS, META_BODY, META_PROFILE_LABEL]:
+			if src.has_meta(key):
+				fx.set_meta(key, src.get_meta(key))
+		if src.has_meta(META_LABEL):
+			fx.set_meta(META_LABEL, _next_name(String(src.get_meta(META_LABEL))))
+		rig.add_child(fx)
+		copies.append(fx)
+	if not copies.is_empty():
+		fixtures_changed.emit()
+	return copies
+
+
+## "Par 3" -> "Par 4" (the first number not used by another fixture's name or label).
+func _next_name(base_name: String) -> String:
+	var rx := RegEx.create_from_string("\\s*\\d+$")
+	var stem := rx.sub(base_name, "").strip_edges()
+	if stem.is_empty():
+		stem = base_name
+	var taken := {}
+	for fx in fixtures():
+		taken[String(fx.name)] = true
+		taken[display_name(fx)] = true
+	var n := 2
+	while taken.has("%s %d" % [stem, n]):
+		n += 1
+	return "%s %d" % [stem, n]
 
 
 func _attach_fixture(fx: Object, index: int) -> void:
@@ -581,13 +638,13 @@ func end_step() -> void:
 
 
 func undo() -> bool:
-	if history.is_committing_action():
+	if grabbing or history.is_committing_action():
 		return false
 	return history.undo()
 
 
 func redo() -> bool:
-	if history.is_committing_action():
+	if grabbing or history.is_committing_action():
 		return false
 	return history.redo()
 

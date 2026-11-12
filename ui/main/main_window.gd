@@ -163,6 +163,8 @@ func _on_command_key(key: InputEventKey) -> void:
 				_undo()
 		KEY_R, KEY_Y:
 			_redo()
+		KEY_D:
+			ctx.duplicate_requested.emit()
 		_:
 			return
 	get_viewport().set_input_as_handled()
