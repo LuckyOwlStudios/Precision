@@ -1,0 +1,321 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/panels/profile_editor.gd" id="1_ed"]
+
+[node name="ProfileEditor" type="Window"]
+title = "Fixture profile"
+initial_position = 2
+size = Vector2i(760, 760)
+visible = false
+wrap_controls = true
+transient = true
+min_size = Vector2i(620, 560)
+script = ExtResource("1_ed")
+
+[node name="Background" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"CenterPanel"
+
+[node name="Margin" type="MarginContainer" parent="Background"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="Column" type="VBoxContainer" parent="Background/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Fixture profile"
+uppercase = true
+
+[node name="Hint" type="Label" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Enter the channels in the order the fixture's manual lists them. Channel 1 is the fixture's start address."
+autowrap_mode = 3
+
+[node name="NameRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="Background/Margin/Column/NameRow"]
+layout_mode = 2
+text = "Name"
+
+[node name="NameEdit" type="LineEdit" parent="Background/Margin/Column/NameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "e.g. Wash Bar Light (8ch)"
+
+[node name="BodyLabel" type="Label" parent="Background/Margin/Column/NameRow"]
+layout_mode = 2
+text = "Looks like"
+
+[node name="BodyType" type="OptionButton" parent="Background/Margin/Column/NameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Which 3D model stands in for it on the stage"
+
+[node name="ImportRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ImportLabel" type="Label" parent="Background/Margin/Column/ImportRow"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Import"
+
+[node name="ImportUrl" type="Button" parent="Background/Margin/Column/ImportRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Paste a fixture's page address from open-fixture-library.org"
+focus_mode = 0
+text = "Open Fixture Library…"
+
+[node name="ImportFile" type="Button" parent="Background/Margin/Column/ImportRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Open a fixture .json from the Open Fixture Library, or a .gdtf file"
+focus_mode = 0
+text = "From file…"
+
+[node name="ModeRow" type="HBoxContainer" parent="Background/Margin/Column/ImportRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ModeLabel" type="Label" parent="Background/Margin/Column/ImportRow/ModeRow"]
+layout_mode = 2
+text = "Mode"
+
+[node name="Modes" type="OptionButton" parent="Background/Margin/Column/ImportRow/ModeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "This fixture has several DMX modes; each is its own profile"
+
+[node name="UrlRow" type="HBoxContainer" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UrlEdit" type="LineEdit" parent="Background/Margin/Column/UrlRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "https://open-fixture-library.org/cameo/flat-pro-12"
+clear_button_enabled = true
+
+[node name="UrlGo" type="Button" parent="Background/Margin/Column/UrlRow"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Fetch"
+
+[node name="Rule" type="HSeparator" parent="Background/Margin/Column"]
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Background/Margin/Column/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AddRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AddLabel" type="Label" parent="Background/Margin/Column/AddRow"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "Add"
+
+[node name="Chips" type="HFlowContainer" parent="Background/Margin/Column/AddRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="AddOther" type="Button" parent="Background/Margin/Column/AddRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "A channel with your own name (mode, speed, gobo...)"
+focus_mode = 0
+text = "Other…"
+
+[node name="MoreRow" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PasteButton" type="Button" parent="Background/Margin/Column/MoreRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Paste the channel table from the manual and let Precision read it"
+focus_mode = 0
+text = "Paste a channel list…"
+
+[node name="PixelButton" type="Button" parent="Background/Margin/Column/MoreRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "For LED bars and strips where every pixel has its own channels"
+focus_mode = 0
+text = "Add pixels…"
+
+[node name="PasteBox" type="VBoxContainer" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PasteHelp" type="Label" parent="Background/Margin/Column/PasteBox"]
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = "One channel per line, like \"1 Dimmer\" or \"CH2: Red 0-255\". This replaces the channels above."
+autowrap_mode = 3
+
+[node name="PasteText" type="TextEdit" parent="Background/Margin/Column/PasteBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+placeholder_text = "1  Dimmer\n2  Red\n3  Green\n4  Blue"
+
+[node name="PasteApply" type="Button" parent="Background/Margin/Column/PasteBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+focus_mode = 0
+text = "Use this list"
+
+[node name="PixelBox" type="HBoxContainer" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PixelCount" type="SpinBox" parent="Background/Margin/Column/PixelBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "How many pixels"
+min_value = 1.0
+max_value = 512.0
+value = 8.0
+suffix = "pixels"
+
+[node name="PixelChannels" type="LineEdit" parent="Background/Margin/Column/PixelBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "What each pixel has, in order"
+text = "red, green, blue"
+placeholder_text = "red, green, blue, white"
+
+[node name="PixelCols" type="SpinBox" parent="Background/Margin/Column/PixelBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Pixel columns (0 = one row of all the pixels)"
+max_value = 64.0
+suffix = "cols"
+
+[node name="PixelRows" type="SpinBox" parent="Background/Margin/Column/PixelBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Pixel rows (0 = one row of all the pixels)"
+max_value = 64.0
+suffix = "rows"
+
+[node name="PixelApply" type="Button" parent="Background/Margin/Column/PixelBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Add"
+
+[node name="MoverBox" type="HBoxContainer" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MoverLabel" type="Label" parent="Background/Margin/Column/MoverBox"]
+layout_mode = 2
+text = "Moving head travel"
+
+[node name="PanRange" type="SpinBox" parent="Background/Margin/Column/MoverBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "How far pan turns across its full DMX range (from the manual)"
+min_value = 1.0
+max_value = 720.0
+value = 540.0
+prefix = "pan"
+suffix = "°"
+
+[node name="TiltRange" type="SpinBox" parent="Background/Margin/Column/MoverBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "How far tilt turns across its full DMX range (from the manual)"
+min_value = 1.0
+max_value = 360.0
+value = 270.0
+prefix = "tilt"
+suffix = "°"
+
+[node name="Status" type="Label" parent="Background/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Caption"
+text = " "
+autowrap_mode = 3
+
+[node name="Footer" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Spacer" type="Control" parent="Background/Margin/Column/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Cancel" type="Button" parent="Background/Margin/Column/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Cancel"
+
+[node name="Save" type="Button" parent="Background/Margin/Column/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"AccentButton"
+text = "Save profile"
+
+[node name="FileDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Import a fixture"
+size = Vector2i(640, 440)
+ok_button_text = "Open"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.json, *.gdtf ; Fixture files")
+
+[node name="Http" type="HTTPRequest" parent="."]
+unique_name_in_owner = true
+timeout = 15.0
