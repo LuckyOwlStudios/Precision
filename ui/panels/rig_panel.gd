@@ -11,10 +11,13 @@ var ctx: StudioContext
 var _syncing := false
 var _editing: DMXFixture
 var _push_queued := false
+var _editing_group: FixtureGroup
 
 @onready var _list: ItemList = %List
 @onready var _editor: LineEdit = %NameEditor ## floats over the row being renamed
 @onready var _empty: Control = %Empty
+@onready var _groups: ItemList = %Groups
+@onready var _group_editor: LineEdit = %GroupEditor
 
 
 func setup(p_ctx: StudioContext) -> void:
@@ -22,6 +25,9 @@ func setup(p_ctx: StudioContext) -> void:
 	ctx.fixtures_changed.connect(_rebuild)
 	ctx.selection_changed.connect(func(_fx: DMXFixture) -> void: _sync_selection())
 	ctx.group_changed.connect(_sync_selection)
+	ctx.groups_changed.connect(_rebuild_groups)
+	ctx.group_rename_requested.connect(_rename_group)
+	_rebuild_groups()
 	_rebuild()
 
 
@@ -31,6 +37,20 @@ func _ready() -> void:
 	_list.multi_selected.connect(func(_i: int, _on: bool) -> void: _queue_push())
 	_list.item_activated.connect(_start_rename) # double-click or Enter
 	_list.gui_input.connect(_on_list_input)
+	%AddGroup.pressed.connect(_add_group)
+	%DeleteGroup.pressed.connect(func() -> void:
+		var g := _selected_group()
+		if g:
+			ctx.delete_group(g))
+	_groups.item_selected.connect(func(i: int) -> void: ctx.recall_group(_groups.get_item_metadata(i))) # one click recalls
+	_groups.item_activated.connect(func(i: int) -> void: _start_group_rename(i)) # double-click renames
+	_groups.gui_input.connect(_on_groups_input)
+	_group_editor.text_submitted.connect(func(_t: String) -> void: _finish_group_rename(true))
+	_group_editor.focus_exited.connect(func() -> void: _finish_group_rename(true))
+	_group_editor.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventKey and (e as InputEventKey).pressed and (e as InputEventKey).keycode == KEY_ESCAPE:
+			_finish_group_rename(false)
+			_group_editor.accept_event())
 	_editor.text_submitted.connect(func(_t: String) -> void: _finish_rename(true))
 	_editor.focus_exited.connect(func() -> void: _finish_rename(true))
 	_editor.gui_input.connect(func(e: InputEvent) -> void:
@@ -122,3 +142,73 @@ func _finish_rename(apply: bool) -> void:
 	_editor.visible = false
 	if apply and is_instance_valid(fx):
 		ctx.rename_fixture(fx, _editor.text)
+
+
+# ---------------------------------------------------------------- groups
+
+func _rebuild_groups() -> void:
+	if ctx == null:
+		return
+	_groups.clear()
+	for g in ctx.groups.groups:
+		var live := ctx.group_fixtures(g).size()
+		var i := _groups.add_item("%s      %d" % [g.group_name, live])
+		_groups.set_item_metadata(i, g)
+		_groups.set_item_tooltip(i, "Click to select its fixtures\nDouble-click or F2 to rename")
+	_groups.visible = not ctx.groups.groups.is_empty()
+	%GroupsHint.visible = ctx.groups.groups.is_empty()
+	%DeleteGroup.disabled = ctx.groups.groups.is_empty()
+
+
+func _selected_group() -> FixtureGroup:
+	var sel := _groups.get_selected_items()
+	return _groups.get_item_metadata(sel[0]) if not sel.is_empty() else null
+
+
+func _add_group() -> void:
+	var g := ctx.make_group()
+	if g:
+		_rename_group(g)
+
+
+func _rename_group(g: FixtureGroup) -> void:
+	var i := ctx.groups.groups.find(g)
+	if i >= 0:
+		_start_group_rename(i)
+
+
+func _on_groups_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and (event as InputEventKey).pressed):
+		return
+	var g := _selected_group()
+	match (event as InputEventKey).keycode:
+		KEY_F2:
+			if g:
+				_rename_group(g)
+				_groups.accept_event()
+		KEY_DELETE:
+			if g:
+				ctx.delete_group(g)
+				_groups.accept_event()
+
+
+func _start_group_rename(index: int) -> void:
+	_editing_group = _groups.get_item_metadata(index)
+	_groups.select(index)
+	var r := _groups.get_item_rect(index)
+	_group_editor.position = r.position
+	_group_editor.size = Vector2(_groups.size.x - r.position.x - 4.0, r.size.y)
+	_group_editor.text = _editing_group.group_name
+	_group_editor.visible = true
+	_group_editor.grab_focus()
+	_group_editor.select_all()
+
+
+func _finish_group_rename(apply: bool) -> void:
+	if _editing_group == null:
+		return
+	var g := _editing_group
+	_editing_group = null
+	_group_editor.visible = false
+	if apply:
+		ctx.rename_group(g, _group_editor.text)

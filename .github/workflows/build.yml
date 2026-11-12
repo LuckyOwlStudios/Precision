@@ -1,0 +1,63 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2-stable"
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot and export templates
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          v="${GODOT_VERSION}"
+          curl -fsSL -o godot.zip "$base/Godot_v${v}_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "$base/Godot_v${v}_export_templates.tpz"
+          unzip -q godot.zip
+          sudo mv "Godot_v${v}_linux.x86_64" /usr/local/bin/godot
+          tpl="$HOME/.local/share/godot/export_templates/${v/-/.}"
+          mkdir -p "$tpl"
+          unzip -q templates.tpz -d templates_tmp
+          mv templates_tmp/templates/* "$tpl/"
+
+      - name: Import project
+        run: godot --headless --import || true
+
+      - name: Export Windows
+        run: |
+          mkdir -p build/windows build/linux build/macos
+          godot --headless --export-release "Windows" build/windows/Precision.exe
+
+      - name: Export Linux
+        run: godot --headless --export-release "Linux" build/linux/Precision.x86_64
+
+      - name: Export macOS
+        run: godot --headless --export-release "macOS" build/macos/Precision.zip
+
+      - name: Package
+        run: |
+          chmod +x build/linux/Precision.x86_64
+          (cd build/windows && zip -qr ../Precision-windows.zip .)
+          (cd build/linux && tar czf ../Precision-linux.tar.gz .)
+          mv build/macos/Precision.zip build/Precision-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Precision-windows
+          path: build/Precision-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Precision-linux
+          path: build/Precision-linux.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Precision-macos
+          path: build/Precision-macos.zip
