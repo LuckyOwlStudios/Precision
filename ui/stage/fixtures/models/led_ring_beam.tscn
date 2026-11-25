@@ -1,0 +1,304 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/stage/stage_fixture_3d.gd" id="1_stage"]
+[ext_resource type="Shader" path="res://ui/stage/lens_glow.gdshader" id="2_glow"]
+[ext_resource type="Shader" path="res://ui/stage/beam.gdshader" id="3_beam"]
+[ext_resource type="Shader" path="res://ui/stage/marker.gdshader" id="4_marker"]
+[ext_resource type="Shader" path="res://ui/stage/pixel_surface.gdshader" id="5_pixel"]
+[ext_resource type="Script" path="res://ui/stage/mount_point.gd" id="10_mount"]
+[ext_resource type="Material" path="res://ui/stage/materials/clamp.tres" id="11_clamp"]
+[ext_resource type="PackedScene" path="res://ui/stage/fixtures/parts/omega_bracket.tscn" id="12_omega"]
+[ext_resource type="Material" path="res://ui/stage/materials/black_metal.tres" id="13_black"]
+[ext_resource type="Material" path="res://ui/stage/materials/fixture_plastic.tres" id="14_plastic"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_lens"]
+resource_local_to_scene = true
+resource_name = "Lens"
+albedo_color = Color(0.02745098, 0.03137255, 0.039215688, 1)
+metallic = 0.2
+roughness = 0.08
+emission_enabled = true
+
+[sub_resource type="ShaderMaterial" id="Mat_glow"]
+resource_local_to_scene = true
+resource_name = "LensGlow"
+render_priority = 2
+shader = ExtResource("2_glow")
+shader_parameter/size = 0.4
+
+[sub_resource type="ShaderMaterial" id="Mat_beam"]
+resource_local_to_scene = true
+resource_name = "Beam"
+render_priority = 1
+shader = ExtResource("3_beam")
+shader_parameter/beam_length = 10.0
+shader_parameter/edge_softness = 2.4
+
+[sub_resource type="ShaderMaterial" id="Mat_marker"]
+resource_local_to_scene = true
+resource_name = "SelectionMarker"
+render_priority = 10
+shader = ExtResource("4_marker")
+shader_parameter/color = Color(1, 0.70980394, 0.2784314, 1)
+shader_parameter/style = 0
+shader_parameter/world_size = 0.5
+shader_parameter/appear = 0.0
+
+[sub_resource type="ShaderMaterial" id="Mat_ring"]
+resource_local_to_scene = true
+resource_name = "LedRing"
+shader = ExtResource("5_pixel")
+shader_parameter/grid = Vector2i(30, 1)
+shader_parameter/energy = 0.0
+shader_parameter/gap = 0.18
+shader_parameter/roundness = 1.0
+shader_parameter/bleed = 0.35
+shader_parameter/face_size = Vector2(0.3644, 0.014)
+shader_parameter/led_rows = 1
+shader_parameter/dots_per_pixel = 1
+shader_parameter/dot_size = 0.006
+shader_parameter/row_pos = PackedFloat32Array(0.5, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/row_kind = PackedInt32Array(1, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/housing_color = Color(0.1, 0.1, 0.11, 1)
+
+[sub_resource type="CylinderMesh" id="Mesh_base"]
+top_radius = 0.135
+bottom_radius = 0.135
+height = 0.09
+radial_segments = 8
+rings = 1
+
+[sub_resource type="CylinderMesh" id="Mesh_neck"]
+top_radius = 0.048
+bottom_radius = 0.055
+height = 0.06
+
+[sub_resource type="BoxMesh" id="Mesh_bridge"]
+size = Vector3(0.235, 0.03, 0.1)
+
+[sub_resource type="BoxMesh" id="Mesh_arm"]
+size = Vector3(0.035, 0.11, 0.1)
+
+[sub_resource type="CylinderMesh" id="Mesh_pivot"]
+top_radius = 0.05
+bottom_radius = 0.05
+height = 0.035
+radial_segments = 32
+
+[sub_resource type="CylinderMesh" id="Mesh_knob"]
+top_radius = 0.016
+bottom_radius = 0.016
+height = 0.014
+radial_segments = 16
+
+[sub_resource type="CylinderMesh" id="Mesh_shell"]
+top_radius = 0.06
+bottom_radius = 0.068
+height = 0.24
+radial_segments = 32
+
+[sub_resource type="CylinderMesh" id="Mesh_rear"]
+top_radius = 0.045
+bottom_radius = 0.06
+height = 0.02
+radial_segments = 32
+
+[sub_resource type="CylinderMesh" id="Mesh_bezel"]
+top_radius = 0.0705
+bottom_radius = 0.0705
+height = 0.012
+radial_segments = 48
+
+[sub_resource type="CylinderMesh" id="Mesh_ring"]
+top_radius = 0.066
+bottom_radius = 0.052
+height = 0.002
+radial_segments = 60
+rings = 1
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="CylinderMesh" id="Mesh_lens"]
+top_radius = 0.051
+bottom_radius = 0.051
+height = 0.004
+radial_segments = 48
+
+[sub_resource type="BoxMesh" id="Mesh_vent"]
+size = Vector3(0.07, 0.07, 0.012)
+
+[sub_resource type="QuadMesh" id="Mesh_quad"]
+size = Vector2(2, 2)
+
+[sub_resource type="CylinderMesh" id="Mesh_cone"]
+top_radius = 0.055
+bottom_radius = 0.2782
+height = 10.0
+radial_segments = 48
+rings = 6
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="StandardMaterial3D" id="Mat_display"]
+resource_name = "Display"
+albedo_color = Color(0, 0, 0, 1)
+emission_enabled = true
+emission = Color(0.23921569, 0.48235294, 1, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxMesh" id="Mesh_display"]
+size = Vector3(0.07, 0.03, 0.004)
+
+[sub_resource type="BoxMesh" id="Mesh_buttons"]
+size = Vector3(0.035, 0.035, 0.004)
+
+[node name="LedRingBeam" type="Node3D"]
+script = ExtResource("1_stage")
+body = 1
+lens_material = SubResource("Mat_lens")
+glow_material = SubResource("Mat_glow")
+beam_material = SubResource("Mat_beam")
+marker_material = SubResource("Mat_marker")
+ring_material = SubResource("Mat_ring")
+
+[node name="Yoke" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="Head" type="Node3D" parent="Yoke"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.06, 0)
+
+[node name="Shell" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.005, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_shell")
+
+[node name="RearCap" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.125, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("Mesh_rear")
+
+[node name="Vent" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0.062)
+material_override = ExtResource("13_black")
+mesh = SubResource("Mesh_vent")
+
+[node name="Bezel" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.122, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("Mesh_bezel")
+
+[node name="LedRing" type="MeshInstance3D" parent="Yoke/Head"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.129, 0)
+material_override = SubResource("Mat_ring")
+cast_shadow = 0
+mesh = SubResource("Mesh_ring")
+
+[node name="Lens" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1265, 0)
+material_override = SubResource("Mat_lens")
+mesh = SubResource("Mesh_lens")
+
+[node name="Glow" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.13, 0)
+material_override = SubResource("Mat_glow")
+cast_shadow = 0
+extra_cull_margin = 2.0
+mesh = SubResource("Mesh_quad")
+
+[node name="Beam" type="MeshInstance3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.13, 0)
+material_override = SubResource("Mat_beam")
+cast_shadow = 0
+mesh = SubResource("Mesh_cone")
+
+[node name="Light" type="SpotLight3D" parent="Yoke/Head"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, -0.132, 0)
+visible = false
+light_specular = 0.6
+shadow_bias = 0.04
+spot_range = 14.0
+spot_attenuation = 0.8
+spot_angle = 1.25
+spot_angle_attenuation = 0.35
+
+[node name="Bridge" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_bridge")
+
+[node name="Neck" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_neck")
+
+[node name="ArmLeft" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, -0.0075, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_arm")
+
+[node name="ArmRight" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, -0.0075, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_arm")
+
+[node name="PivotLeft" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.1, -0.06, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_pivot")
+
+[node name="PivotRight" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.1, -0.06, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_pivot")
+
+[node name="LockKnob" type="MeshInstance3D" parent="Yoke"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.1245, -0.06, 0)
+material_override = ExtResource("13_black")
+mesh = SubResource("Mesh_knob")
+
+[node name="Base" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.85, 0, 0.145, 0)
+
+[node name="Shape" type="MeshInstance3D" parent="Base"]
+transform = Transform3D(0.92387956, 0, 0.38268343, 0, 1, 0, -0.38268343, 0, 0.92387956, 0, 0, 0)
+material_override = ExtResource("14_plastic")
+mesh = SubResource("Mesh_base")
+
+[node name="Display" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.035, 0.145, 0.1085)
+material_override = SubResource("Mat_display")
+mesh = SubResource("Mesh_display")
+
+[node name="Buttons" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 0.145, 0.1085)
+material_override = ExtResource("13_black")
+mesh = SubResource("Mesh_buttons")
+
+[node name="Marker" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.06, 0)
+visible = false
+material_override = SubResource("Mat_marker")
+cast_shadow = 0
+extra_cull_margin = 4.0
+mesh = SubResource("Mesh_quad")
+
+[node name="ClampLeft" type="MeshInstance3D" parent="."]
+editor_description = "Truss clamp (MountPoint): its origin is the centre of the tube it grips; the tube runs along X. Shown only while the fixture hangs on a truss."
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1, 0.305, 0)
+material_override = ExtResource("11_clamp")
+script = ExtResource("10_mount")
+
+[node name="Omega" parent="ClampLeft" instance=ExtResource("12_omega")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.07, 0)
+
+[node name="ClampRight" type="MeshInstance3D" parent="."]
+editor_description = "Truss clamp (MountPoint): its origin is the centre of the tube it grips; the tube runs along X. Shown only while the fixture hangs on a truss."
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 0.305, 0)
+material_override = ExtResource("11_clamp")
+script = ExtResource("10_mount")
+
+[node name="Omega" parent="ClampRight" instance=ExtResource("12_omega")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.07, 0)

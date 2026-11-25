@@ -42,6 +42,18 @@ static func entries() -> Array[Entry]:
 	list.append(Entry.new("Pars", _profile("Generic RGBWA+UV Par (6ch)", ["red", "green", "blue", "white", "amber", "uv"]), Body.PAR, "Par"))
 	list.append(Entry.new("Moving heads", _profile("Generic Spot Mover (9ch)", ["pan", "tilt", "dimmer", "red", "green", "blue", "white", "strobe", "speed"], {"speed": 0}), Body.MOVING_HEAD, "Mover"))
 	list.append(Entry.new("Moving heads", _profile("Generic Wash Mover 16-bit (11ch)", ["pan", "pan_fine", "tilt", "tilt_fine", "dimmer", "red", "green", "blue", "white", "strobe", "speed"], {"speed": 0}), Body.MOVING_HEAD, "Mover"))
+	# "LED Beam Moving Head Light" (100W white LED + 30 RGB LED ring), from its
+	# user manual, which lists one mode. The channels with no look property
+	# (colour wheel, gobo, prism, focus, ring) are driven by their fixed value
+	# here. "shutter" is its strobe channel: unlike most fixtures 0 means dark,
+	# so it stays open (255). See docs/led_ring_beam.md.
+	var ring_beam := _profile("LED Ring Beam 100W (16ch)", ["pan", "pan_fine", "tilt", "tilt_fine", "speed", "dimmer", "shutter",
+			"color_wheel", "gobo", "prism", "focus", "ring_dimmer", "ring_shutter", "ring_effect", "ring_speed", "reset"],
+			{"speed": 0, "shutter": 255, "color_wheel": 0, "gobo": 0, "prism": 0, "focus": 0,
+			"ring_dimmer": 255, "ring_shutter": 4, "ring_effect": 0, "ring_speed": 0, "reset": 0})
+	ring_beam.pan_range_deg = 540.0
+	ring_beam.tilt_range_deg = 270.0
+	list.append(Entry.new("Moving heads", ring_beam, Body.MOVING_HEAD, "Mover"))
 	list.append(Entry.new("Bars and strobes", _profile("Generic RGB Bar (4ch)", ["dimmer", "red", "green", "blue"]), Body.BAR, "Bar"))
 	# "Wash Bar Light" (28 RGBW LEDs), from its user manual. Its 2/8-channel
 	# effect modes are not profiled yet.
