@@ -8,3 +8,6 @@ locale/*.translation
 
 # Export output
 /build/
+
+# Blender backup saves
+*.blend1

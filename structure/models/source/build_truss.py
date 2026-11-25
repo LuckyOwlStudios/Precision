@@ -1,9 +1,13 @@
-# Builds the straight truss models from Bryan's Blender box truss.
+# Builds the straight truss models from Bryan's Blender box truss,
+# box_truss_12in.blend in this folder. From the repo root:
 #
-#   blender -b <copy of box_truss_12in.blend> --python build_truss.py -- <out dir>
+#   blender -b structure/models/source/box_truss_12in.blend --python structure/models/source/build_truss.py
+#   godot --headless --path . --script res://tools/import_truss_models.gd
 #
-# Run it on a COPY of the .blend: it edits the meshes in memory for each
-# length and never saves, but a copy keeps the original safe either way.
+# The first writes truss_*.glb here, the second turns them into the meshes
+# the truss pieces load. The script edits the meshes in memory for each
+# length and never saves the .blend. An output folder can be given after
+# "--" to write the GLBs somewhere else.
 #
 # The .blend is a 2 m truss modelled at twice real size (chords 100 mm,
 # 480 mm apart, 4 m long). Stretching one model would squash the braces, so
@@ -14,6 +18,7 @@
 # real size and written as GLB.
 # The GLBs are then turned into Godot meshes by tools/import_truss_models.gd.
 
+import os
 import sys
 import bmesh
 import bpy
@@ -26,7 +31,7 @@ BRACE_BAY = 0.36  # zig-zag bay length to aim for, at 2x scale
 TOP_RUNG_X = 0.0  # a rung across the top in the .blend
 BOTTOM_RUNG_X = 0.36  # a rung across the bottom in the .blend
 
-out_dir = sys.argv[sys.argv.index("--") + 1]
+out_dir = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else os.path.dirname(os.path.abspath(__file__))
 blend = bpy.data.filepath
 
 
