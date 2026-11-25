@@ -25,5 +25,40 @@ func _gui_input(event: InputEvent) -> void:
 	if mb.double_click:
 		WindowControls.toggle_maximized()
 	elif DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN:
-		DisplayServer.window_start_drag()
+		_drag_window()
 	accept_event()
+
+
+## Drag from a maximized window restores it under the cursor first, then the OS
+## moves the window. A borderless window doesn't get Windows' own edge snapping,
+## so when the drag ends (on Windows the call blocks until the drop) we snap by
+## hand: top edge maximizes, left/right edge fills that half of the screen.
+func _drag_window() -> void:
+	var window := get_window()
+	if WindowControls.is_maximized():
+		var grab := DisplayServer.mouse_get_position()
+		var frac := float(get_global_mouse_position().x) / maxf(size.x, 1.0)
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		window.position = Vector2i(grab.x - int(window.size.x * frac), grab.y - int(get_global_mouse_position().y))
+	DisplayServer.window_start_drag()
+	if OS.get_name() == "Windows":
+		_snap_to_screen_edge()
+
+
+func _snap_to_screen_edge() -> void:
+	var window := get_window()
+	var mouse := DisplayServer.mouse_get_position()
+	var screen := DisplayServer.window_get_current_screen()
+	for i in DisplayServer.get_screen_count():
+		if DisplayServer.screen_get_usable_rect(i).has_point(mouse):
+			screen = i
+	var area := DisplayServer.screen_get_usable_rect(screen)
+	const EDGE := 4
+	if mouse.y <= area.position.y + EDGE:
+		window.current_screen = screen
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
+	elif mouse.x <= area.position.x + EDGE or mouse.x >= area.end.x - EDGE:
+		var half := Vector2i(area.size.x / 2, area.size.y)
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		window.size = half
+		window.position = area.position if mouse.x <= area.position.x + EDGE else Vector2i(area.end.x - half.x, area.position.y)
