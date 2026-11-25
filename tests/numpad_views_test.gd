@@ -38,7 +38,7 @@ func _init() -> void:
 	await frames(5)
 
 	await test_opposite_views()
-	await test_orbit_steps()
+	test_orbit_steps()
 	await test_audience_view()
 	await test_framing()
 	print("\n%d checks, %d failed" % [checks, failures])

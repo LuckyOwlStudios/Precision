@@ -40,8 +40,8 @@ func _init() -> void:
 	await frames(5)
 
 	await test_views_are_square_on()
-	await test_numpad_and_return()
-	await test_leaving_by_orbit()
+	test_numpad_and_return()
+	test_leaving_by_orbit()
 	await test_pan_and_zoom()
 	await test_touch()
 	await test_click_picks_fixture()
@@ -261,8 +261,8 @@ func test_snap_and_measure() -> void:
 	var fx: DMXFixture = ctx.fixtures()[0]
 	var mount := StudioContext.fixture_transform(fx).origin
 	var s := cam.unproject_position(mount) + Vector2(4, 3)
-	var snapped := d.snap_point(s, false)
-	check(is_equal_approx(snapped.x, mount.x) and is_equal_approx(snapped.z, mount.z), "a point near a fixture snaps onto it")
+	var snap := d.snap_point(s, false)
+	check(is_equal_approx(snap.x, mount.x) and is_equal_approx(snap.z, mount.z), "a point near a fixture snaps onto it")
 	check(view._draft_measure != null, "measure button exists")
 	key(KEY_D)
 	check(d.measuring, "D starts measuring")

@@ -39,8 +39,8 @@ func _init() -> void:
 	# Effect numbering: 0-51 inner, 52-55 effect 1, 252-255 effect 51.
 	_expect(LedRingPreview.effect_number(51) == 0 and LedRingPreview.effect_number(52) == 1, "effect 1 starts at 52")
 	_expect(LedRingPreview.effect_number(56) == 2 and LedRingPreview.effect_number(255) == 51, "effect 51 ends at 255")
-	var a := LedRingPreview.leds(60, 100, 0.0, Color.WHITE)
-	var b := LedRingPreview.leds(200, 100, 0.0, Color.WHITE)
+	var a := LedRingPreview.leds(60, 100, 0.0)
+	var b := LedRingPreview.leds(200, 100, 0.0)
 	_expect(a.size() == 30 and a != b, "different effects look different")
 	_expect(LedRingPreview.turns_per_second(255) > LedRingPreview.turns_per_second(0), "speed goes slow to fast")
 

@@ -71,7 +71,6 @@ func _init() -> void:
 	ctx.select(null)
 	view._on_left_press(_click(pos, true, true))
 	check(view._distance < dist0, "double-tapping a fixture frames it")
-	var before_mouse := view._distance
 	view._distance = 15.0
 	view._on_left_press(_click(pos, false, true))
 	check(is_equal_approx(view._distance, 15.0), "a mouse double-click still renames, not frames")

@@ -44,7 +44,7 @@ func _init() -> void:
 	_expect(_axes(par, pipes, surfaces).size() == 2, "par keeps both rings after turning")
 	await process_frame
 	var jaw := _first_mount_point(view, par)
-	_expect(jaw != null and absf(jaw.jaw_turn) > 0.5, "par's clamp jaw turns back to follow the tube (%s)" % [jaw.jaw_turn if jaw else "none"])
+	_expect(jaw != null and absf(jaw.jaw_turn) > 0.5, "par's clamp jaw turns back to follow the tube (%s)" % [str(jaw.jaw_turn) if jaw else "none"])
 	var jaw_x := jaw.global_basis * Basis(Vector3.UP, jaw.jaw_turn) * Vector3.RIGHT
 	var pipe := StageRoom.pipe_holding(pipes, StudioContext.fixture_transform(par), rules.mounts)
 	_expect(absf(jaw_x.normalized().dot(pipe.axis())) > 0.999, "par's clamp jaw runs along the tube")

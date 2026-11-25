@@ -58,12 +58,12 @@ func setup(p_ctx: StudioContext) -> void:
 	_saved_version = ctx.history.get_version()
 
 
-func register_section(id: StringName, save: Callable, load_data: Callable, reset: Callable, order := 50) -> void:
+func register_section(id: StringName, save_data: Callable, load_data: Callable, reset: Callable, order := 50) -> void:
 	for s in _sections:
 		if s.id == id:
 			push_warning("ShowManager: section '%s' registered twice" % id)
 			return
-	_sections.append({id = id, save = save, load = load_data, reset = reset, order = order})
+	_sections.append({id = id, save = save_data, load = load_data, reset = reset, order = order})
 	_sections.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.order < b.order)
 
 

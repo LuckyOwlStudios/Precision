@@ -103,7 +103,7 @@ func _draw() -> void:
 			draw_string(font, Vector2(0, row * cs + cs - 1), str(row * COLUMNS + 1), HORIZONTAL_ALIGNMENT_LEFT, GUTTER - 4, 9, UIPalette.TEXT_FAINT)
 	for a in range(1, 513):
 		var i := a - 1
-		var r := Rect2(Vector2(GUTTER + (i % COLUMNS) * cs, (i / COLUMNS) * cs), Vector2(cs - 1, cs - 1))
+		var r := Rect2(Vector2(GUTTER + (i % COLUMNS) * cs, floori(i / float(COLUMNS)) * cs), Vector2(cs - 1, cs - 1))
 		var list: Array = info.owners[a]
 		if list.is_empty():
 			draw_rect(r, UIPalette.INPUT_BG)
@@ -120,4 +120,4 @@ func _draw() -> void:
 			draw_rect(r.grow(0.5), Color(UIPalette.TEXT, 0.9), false, 1.0)
 	if _hover > 0:
 		var h := _hover - 1
-		draw_rect(Rect2(Vector2(GUTTER + (h % COLUMNS) * cs, (h / COLUMNS) * cs), Vector2(cs - 1, cs - 1)).grow(1), UIPalette.TEXT, false, 1.0)
+		draw_rect(Rect2(Vector2(GUTTER + (h % COLUMNS) * cs, floori(h / float(COLUMNS)) * cs), Vector2(cs - 1, cs - 1)).grow(1), UIPalette.TEXT, false, 1.0)

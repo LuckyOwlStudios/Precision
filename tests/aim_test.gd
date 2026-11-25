@@ -75,11 +75,11 @@ func test_maths() -> void:
 				ok = false
 				print("    off target ", t, " by ", rad_to_deg(dir.angle_to(want)), " deg")
 		check(ok, "%s: the beam lands on every reachable spot" % label)
-	var xf: Transform3D = mounts["hung upright"]
-	var down: Vector2 = Aim.pan_tilt_for(xf, Vector3(1, 0, 0), 540.0, 270.0, Vector2(0.7, 0.5))
+	var upright: Transform3D = mounts["hung upright"]
+	var down: Vector2 = Aim.pan_tilt_for(upright, Vector3(1, 0, 0), 540.0, 270.0, Vector2(0.7, 0.5))
 	check(is_equal_approx(down.x, 0.7) and absf(down.y - 0.5) < 0.01, "straight down keeps the pan it had")
-	check(Aim.pan_tilt_for(xf, Vector3(1, 3.4 - 0.18, 0), 270.0, 100.0) == null or true, "no crash for a target in the head")
-	var small: Variant = Aim.pan_tilt_for(xf, Vector3(8, 3.0, 0), 360.0, 90.0)
+	check(Aim.pan_tilt_for(upright, Vector3(1, 3.4 - 0.18, 0), 270.0, 100.0) == null or true, "no crash for a target in the head")
+	var small: Variant = Aim.pan_tilt_for(upright, Vector3(8, 3.0, 0), 360.0, 90.0)
 	check(small == null, "a spot beyond a small tilt range is reported unreachable")
 
 
