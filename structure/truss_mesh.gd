@@ -1,10 +1,11 @@
 @tool
 class_name TrussMesh
 extends MeshInstance3D
-## The lattice of tubes you see on a truss piece: four chords with zig-zag
-## lacing for a straight run, or the twelve edges of a corner box. The tubes
-## are too fiddly to place by hand, so the mesh is built from the settings
-## below (in the editor too) and not saved into the scene.
+## The lattice of tubes you see on a truss piece. Straight runs in the stock
+## lengths use the box truss modelled in Blender (structure/models; rebuild
+## them with structure/models/source/build_truss.py). Other lengths and the
+## corner box are built here from tubes. Either way the mesh is set up from
+## the settings below (in the editor too) and not saved into the scene.
 ## Fixtures clamp onto the TubeSnap nodes next to this one, not onto the mesh,
 ## so keep those in step if you change the size.
 
@@ -12,6 +13,13 @@ enum Shape { STRAIGHT, CORNER }
 
 const CHORD_RADIUS := MountPoint.TUBE_RADIUS
 const LACE_RADIUS := 0.011
+## The Blender models, by length in metres: one per stock straight piece.
+const MODELS: Dictionary[float, String] = {
+	0.5: "res://structure/models/truss_0_5m.res",
+	1.0: "res://structure/models/truss_1m.res",
+	2.0: "res://structure/models/truss_2m.res",
+	3.0: "res://structure/models/truss_3m.res",
+}
 
 @export var shape: Shape = Shape.STRAIGHT:
 	set(v):
@@ -41,6 +49,10 @@ func _validate_property(property: Dictionary) -> void:
 func _rebuild() -> void:
 	if not is_inside_tree():
 		return
+	var model := model_path()
+	if not model.is_empty():
+		mesh = load(model)
+		return
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	if shape == Shape.STRAIGHT:
@@ -48,6 +60,17 @@ func _rebuild() -> void:
 	else:
 		_corner(st)
 	mesh = st.commit()
+
+
+## The Blender model for these settings, or "" when there is none and the
+## lattice is built from tubes (corner boxes, odd lengths or sizes).
+func model_path() -> String:
+	if shape != Shape.STRAIGHT or not is_equal_approx(size, 0.29):
+		return ""
+	for l: float in MODELS:
+		if is_equal_approx(length, l):
+			return MODELS[l]
+	return ""
 
 
 ## A square box truss from `a` to `b`: four chords at the corners and zig-zag
