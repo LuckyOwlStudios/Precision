@@ -69,6 +69,9 @@ func _ready() -> void:
 
 	# Shows: the File menu, and closing the window asks about unsaved changes.
 	show_menu.setup(ctx, %FileButton, %ShowName)
+	# Not by broadcasting a close request: that would also reach the unsaved-changes
+	# dialog (a child window) and close it the moment it opens.
+	%WindowControls.close_requested.connect(show_menu.request_quit)
 	get_tree().auto_accept_quit = false
 	# Pick up where you left off. Not in headless runs (tests start from a clean rig).
 	if DisplayServer.get_name() != "headless":
