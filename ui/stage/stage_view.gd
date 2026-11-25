@@ -626,6 +626,7 @@ func _can_drop_data(at: Vector2, data: Variant) -> bool:
 
 func _drop_data(at: Vector2, data: Variant) -> void:
 	_drop_marker.visible = false
+	grab_focus() # a drag from the library leaves the keys there, so F / W / E would go nowhere
 	if (data as Dictionary).get("kind") == "structure":
 		_drop_piece(at, String((data as Dictionary)["path"]))
 		return
