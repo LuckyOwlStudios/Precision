@@ -2,6 +2,10 @@ class_name WindowControls
 extends HBoxContainer
 ## Minimize, maximize/restore and close buttons for the borderless window.
 
+## The close button was pressed. The main window answers by asking about unsaved
+## changes, same as when the OS asks the window to close.
+signal close_requested
+
 @onready var _minimize: WindowButton = %Minimize
 @onready var _maximize: WindowButton = %Maximize
 @onready var _close: WindowButton = %Close
@@ -10,7 +14,7 @@ extends HBoxContainer
 func _ready() -> void:
 	_minimize.pressed.connect(func() -> void: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED))
 	_maximize.pressed.connect(toggle_maximized)
-	_close.pressed.connect(func() -> void: get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
+	_close.pressed.connect(close_requested.emit)
 	get_window().size_changed.connect(_update_icons)
 	_update_icons()
 

@@ -28,4 +28,13 @@ func _init() -> void:
 		check(c != null and c.mouse_filter == Control.MOUSE_FILTER_PASS, n + " passes clicks to the title bar")
 	var handles := main.find_child("ResizeHandles", true, false)
 	check(handles != null and handles.get_child_count() == 8, "eight resize handles")
+	# Close with unsaved changes: the confirmation dialog must open and stay open.
+	var ctx: StudioContext = main.get_node("%Studio")
+	ctx.load_demo_rig()
+	await process_frame
+	var dialog := main.get_node("%ShowMenu").get_node("%UnsavedDialog") as ConfirmationDialog
+	if ctx.shows.is_dirty():
+		controls.close_requested.emit()
+		await process_frame
+		check(dialog.visible, "close button with unsaved changes keeps the dialog open")
 	quit(1 if failures > 0 else 0)
