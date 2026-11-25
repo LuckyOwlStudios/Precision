@@ -1,0 +1,29 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/window/window_controls.gd" id="1_ctl"]
+[ext_resource type="Script" path="res://ui/window/window_button.gd" id="1_btn"]
+
+[node name="WindowControls" type="HBoxContainer"]
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+script = ExtResource("1_ctl")
+
+[node name="Minimize" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("1_btn")
+glyph = 0
+tooltip_text = "Minimize"
+[node name="Maximize" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("1_btn")
+glyph = 1
+tooltip_text = "Maximize"
+[node name="Close" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("1_btn")
+glyph = 3
+tooltip_text = "Close"
+hover_color = Color(0.91, 0.07, 0.14, 1)
