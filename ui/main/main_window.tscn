@@ -18,6 +18,9 @@
 [ext_resource type="PackedScene" path="res://ui/panels/positions_panel.tscn" id="17_positions"]
 [ext_resource type="PackedScene" path="res://ui/palette/command_palette.tscn" id="16_palette"]
 [ext_resource type="PackedScene" path="res://ui/main/show_menu.tscn" id="17_show"]
+[ext_resource type="Script" path="res://ui/window/title_bar.gd" id="18_titlebar"]
+[ext_resource type="PackedScene" path="res://ui/window/window_controls.tscn" id="19_winctl"]
+[ext_resource type="PackedScene" path="res://ui/window/resize_handles.tscn" id="20_resize"]
 
 [sub_resource type="StyleBoxFlat" id="Background"]
 bg_color = Color(0.051, 0.059, 0.071, 1)
@@ -63,6 +66,7 @@ theme_override_constants/separation = 0
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_type_variation = &"HeaderBar"
+script = ExtResource("18_titlebar")
 
 [node name="Row" type="HBoxContainer" parent="Layout/Header" unique_id=504865547]
 layout_mode = 2
@@ -77,6 +81,7 @@ text = "Precision"
 
 [node name="Divider" type="VSeparator" parent="Layout/Header/Row" unique_id=999910696]
 layout_mode = 2
+mouse_filter = 1
 
 [node name="FileButton" type="MenuButton" parent="Layout/Header/Row"]
 unique_name_in_owner = true
@@ -97,10 +102,15 @@ theme_type_variation = &"Subtitle"
 text = "Untitled show"
 text_overrun_behavior = 3
 
-[node name="WorkspaceTabs" type="TabBar" parent="Layout/Header/Row" unique_id=1948362203]
-unique_name_in_owner = true
+[node name="DragSpaceLeft" type="Control" parent="Layout/Header/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 1
+
+[node name="WorkspaceTabs" type="TabBar" parent="Layout/Header/Row" unique_id=1948362203]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
 size_flags_vertical = 8
 focus_mode = 0
 theme_type_variation = &"WorkspaceTabs"
@@ -110,6 +120,11 @@ tab_count = 3
 tab_0/title = "STAGE"
 tab_1/title = "PROGRAM"
 tab_2/title = "LIVE"
+
+[node name="DragSpaceRight" type="Control" parent="Layout/Header/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
 
 [node name="SearchButton" type="Button" parent="Layout/Header/Row"]
 unique_name_in_owner = true
@@ -130,6 +145,9 @@ tooltip_text = "Open settings"
 focus_mode = 0
 theme_type_variation = &"FlatButton"
 text = "Settings"
+
+[node name="WindowControls" parent="Layout/Header/Row" instance=ExtResource("19_winctl")]
+layout_mode = 2
 
 [node name="NowPlaying" parent="Layout" unique_id=98046476 instance=ExtResource("3_now")]
 unique_name_in_owner = true
@@ -308,3 +326,6 @@ layout_mode = 1
 
 [node name="ShowMenu" parent="." instance=ExtResource("17_show")]
 unique_name_in_owner = true
+
+[node name="ResizeHandles" parent="." instance=ExtResource("20_resize")]
+layout_mode = 1
