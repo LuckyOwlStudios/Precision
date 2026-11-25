@@ -16,7 +16,6 @@ func _init() -> void:
 	await process_frame
 	var ctx: StudioContext = main.get_node("%Studio")
 	var shows := ctx.shows
-	var stage: StageView = main.get_node("%StageView")
 
 	# A rig to save: the demo, plus things the file has to carry.
 	var default_pieces := ctx.structure_pieces().size()
@@ -131,10 +130,10 @@ func _init() -> void:
 	# Codec round trip through real JSON text.
 	var sample := {"c": Color(0.1, 0.2, 0.3, 0.4), "v": Vector3(1, 2, 3), "x": Transform3D(Basis.from_euler(Vector3(0.3, 0.2, 0.1)), Vector3(4, 5, 6)),
 		"p": PackedColorArray([Color.RED]), "list": [1, "two", 3.5, true], "s": &"name"}
-	var round: Dictionary = ShowCodec.decode(JSON.parse_string(JSON.stringify(ShowCodec.encode(sample))))
-	_expect((round["c"] as Color).is_equal_approx(sample["c"]) and (round["v"] as Vector3).is_equal_approx(sample["v"]), "codec: Color, Vector3")
-	_expect((round["x"] as Transform3D).is_equal_approx(sample["x"]), "codec: Transform3D")
-	_expect((round["p"] as PackedColorArray)[0] == Color.RED and round["list"][1] == "two" and round["s"] == "name", "codec: packed arrays, lists, strings")
+	var decoded: Dictionary = ShowCodec.decode(JSON.parse_string(JSON.stringify(ShowCodec.encode(sample))))
+	_expect((decoded["c"] as Color).is_equal_approx(sample["c"]) and (decoded["v"] as Vector3).is_equal_approx(sample["v"]), "codec: Color, Vector3")
+	_expect((decoded["x"] as Transform3D).is_equal_approx(sample["x"]), "codec: Transform3D")
+	_expect((decoded["p"] as PackedColorArray)[0] == Color.RED and decoded["list"][1] == "two" and decoded["s"] == "name", "codec: packed arrays, lists, strings")
 
 	DirAccess.remove_absolute(PATH)
 	if had_session:

@@ -385,9 +385,9 @@ func _follow_playhead() -> void:
 		return
 	if not ctx.playing and not jumped:
 		return
-	var visible_beats := (size.x - HEADER_W) / px_per_beat
-	if pos > scroll_beats + visible_beats * 0.9 or pos < scroll_beats:
-		scroll_beats = maxf(0.0, pos - visible_beats * 0.1)
+	var span := (size.x - HEADER_W) / px_per_beat
+	if pos > scroll_beats + span * 0.9 or pos < scroll_beats:
+		scroll_beats = maxf(0.0, pos - span * 0.1)
 
 
 ## Scroll the view by hand (wheel, trackpad, scrollbar).

@@ -78,10 +78,10 @@ func _init() -> void:
 	fan.params.spread = 1.0
 	ctx.record_clip_change(fan, b2)
 	ctx.show_player.evaluate(ctx.show, 64.0)
-	var t0 := float(movers[0].live.tilt) - movers[0].tilt
-	var t1 := float(movers[1].live.tilt) - movers[1].tilt
-	var p0 := float(movers[0].live.pan) - movers[0].pan
-	var p1 := float(movers[1].live.pan) - movers[1].pan
+	var t0: float = float(movers[0].live.tilt) - movers[0].tilt
+	var t1: float = float(movers[1].live.tilt) - movers[1].tilt
+	var p0: float = float(movers[0].live.pan) - movers[0].pan
+	var p1: float = float(movers[1].live.pan) - movers[1].pan
 	_expect(p0 > 0.0 and p1 < 0.0 and absf(t0) < 0.001 and absf(t1) < 0.001, "spread puts the second mover on the other side")
 
 	# Effects only go on fixtures that can do them.

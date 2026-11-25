@@ -96,7 +96,10 @@ static func _blend(before: Dictionary, after: Dictionary, w: float) -> void:
 			after[k] = from.lerp(z, w)
 		elif z is float or z is int:
 			var mixed := lerpf(float(a), float(z), w)
-			after[k] = roundi(mixed) if z is int else mixed
+			if z is int:
+				after[k] = roundi(mixed)
+			else:
+				after[k] = mixed
 
 
 ## Let go of every fixture (when the show changes, for example).

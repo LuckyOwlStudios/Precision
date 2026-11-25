@@ -337,7 +337,7 @@ func _process(_delta: float) -> void:
 		pixel_material.set_shader_parameter("energy", 7.0 * level)
 
 	if ring_material:
-		_update_ring(c)
+		_update_ring()
 
 	beam_material.set_shader_parameter("beam_color", c)
 	beam_material.set_shader_parameter("intensity", _beam_intensity() * level * _beam_strength)
@@ -359,8 +359,8 @@ func _process(_delta: float) -> void:
 
 ## The LED ring: what its effect channel makes of the ring's LEDs. The
 ## fixture has no per-LED DMX channels, so these are a stand-in for the
-## built-in effects (see LedRingPreview). `base` is the fixture's own colour.
-func _update_ring(base: Color) -> void:
+## built-in effects (see LedRingPreview).
+func _update_ring() -> void:
 	var count := LedRingPreview.LED_COUNT
 	var grid := ring_material.get_shader_parameter("grid") as Vector2i
 	if _ring_image == null:
@@ -370,7 +370,7 @@ func _update_ring(base: Color) -> void:
 		ring_material.set_shader_parameter("pixel_data", _ring_texture)
 	var effect := fixture.raw_value("ring_effect", 0)
 	var speed := fixture.raw_value("ring_speed", 0)
-	var colors := LedRingPreview.leds(effect, speed, Time.get_ticks_msec() / 1000.0, base, grid.x)
+	var colors := LedRingPreview.leds(effect, speed, Time.get_ticks_msec() / 1000.0, grid.x)
 	for i in grid.x:
 		_ring_image.set_pixel(i, 0, colors[i])
 	_ring_texture.update(_ring_image)

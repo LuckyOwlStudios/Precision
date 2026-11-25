@@ -32,7 +32,7 @@ func setup(p_ctx: StudioContext) -> void:
 
 
 func _ready() -> void:
-	%RemoveButton.pressed.connect(func() -> void: ctx.delete_requested.emit())
+	%RemoveButton.pressed.connect(func() -> void: ctx.request_delete())
 	_list.item_selected.connect(func(_i: int) -> void: _queue_push())
 	_list.multi_selected.connect(func(_i: int, _on: bool) -> void: _queue_push())
 	_list.item_activated.connect(_start_rename) # double-click or Enter

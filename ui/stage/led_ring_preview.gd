@@ -18,7 +18,7 @@ const _PATTERNS := 6
 static func effect_number(value: int) -> int:
 	if value < 52:
 		return 0
-	return mini((value - 52) / 4 + 1, EFFECT_COUNT)
+	return mini(floori((value - 52) / 4.0) + 1, EFFECT_COUNT)
 
 
 ## Turns per second at ring speed value 0..255 (slow to fast).
@@ -26,21 +26,21 @@ static func turns_per_second(speed: int) -> float:
 	return lerpf(0.15, 2.5, clampf(speed / 255.0, 0.0, 1.0))
 
 
-## The colour of each of the `count` LEDs at time `t` seconds. `base` is the
-## fixture's own colour (not used yet: the built-in effects have their own colours).
-static func leds(effect_value: int, speed: int, t: float, base: Color, count: int = LED_COUNT) -> PackedColorArray:
+## The colour of each of the `count` LEDs at time `t` seconds. The built-in
+## effects have their own colours, so the fixture's colour doesn't come into it.
+static func leds(effect_value: int, speed: int, t: float, count: int = LED_COUNT) -> PackedColorArray:
 	var out := PackedColorArray()
 	out.resize(count)
 	var n := effect_number(effect_value)
 	var turn := fposmod(t * turns_per_second(speed), 1.0)
 	for i in count:
-		out[i] = pattern(n, i / float(count), turn, base)
+		out[i] = pattern(n, i / float(count), turn)
 	return out
 
 
 ## One LED: `pos` 0..1 round the ring from the top, clockwise; `turn` 0..1
 ## through one cycle of the effect.
-static func pattern(effect: int, pos: float, turn: float, base: Color) -> Color:
+static func pattern(effect: int, pos: float, turn: float) -> Color:
 	if effect == 0:
 		# Inner effect: a slow colour wash round the ring.
 		return Color.from_hsv(fposmod(pos + turn, 1.0), 0.85, 1.0)

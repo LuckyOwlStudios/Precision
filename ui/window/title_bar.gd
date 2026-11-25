@@ -58,7 +58,7 @@ func _snap_to_screen_edge() -> void:
 		window.current_screen = screen
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
 	elif mouse.x <= area.position.x + EDGE or mouse.x >= area.end.x - EDGE:
-		var half := Vector2i(area.size.x / 2, area.size.y)
+		var half := Vector2i(floori(area.size.x / 2.0), area.size.y)
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		window.size = half
 		window.position = area.position if mouse.x <= area.position.x + EDGE else Vector2i(area.end.x - half.x, area.position.y)

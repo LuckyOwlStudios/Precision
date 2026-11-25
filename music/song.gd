@@ -133,7 +133,7 @@ func apply_marks_state(state: Dictionary) -> void:
 
 static func format_time(seconds: float) -> String:
 	var t := int(roundf(seconds))
-	return "%d:%02d" % [t / 60, t % 60]
+	return "%d:%02d" % [floori(t / 60.0), t % 60]
 
 
 static func _trim_float(v: float) -> String:

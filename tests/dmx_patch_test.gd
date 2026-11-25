@@ -17,7 +17,7 @@ func _init() -> void:
 	await process_frame
 	var ctx: StudioContext = main.get_node("%Studio")
 	ctx.load_demo_rig()
-	ctx.set_workspace(0)
+	ctx.set_workspace(StudioContext.Workspace.STAGE)
 	(main.get_node("%RightTabs") as TabContainer).current_tab = 2
 	for i in 5: await process_frame
 	var fx := ctx.fixtures()
@@ -55,7 +55,7 @@ func _init() -> void:
 	var cs := 8.0
 	var slot := func(a: int) -> Vector2:
 		var i := a - 1
-		return Vector2(DMXOverview.GUTTER + (i % 32) * cs + 2, (i / 32) * cs + 2)
+		return Vector2(DMXOverview.GUTTER + (i % 32) * cs + 2, floori(i / 32.0) * cs + 2)
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true

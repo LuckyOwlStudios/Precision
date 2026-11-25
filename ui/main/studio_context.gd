@@ -232,6 +232,20 @@ func _follow_dj() -> void:
 
 # ---------------------------------------------------------------- fixtures
 
+## Ask the stage view and panels to act. Callers use these rather than
+## emitting the signals themselves, so the context is the one place that raises them.
+func request_group_rename(group: FixtureGroup) -> void:
+	group_rename_requested.emit(group)
+
+
+func request_delete() -> void:
+	delete_requested.emit()
+
+
+func request_duplicate() -> void:
+	duplicate_requested.emit()
+
+
 func fixtures() -> Array[DMXFixture]:
 	var list: Array[DMXFixture] = []
 	for child in rig.get_children():
@@ -1656,9 +1670,9 @@ func select_clip(clip: ShowClip) -> void:
 ## Drop a preset on the timeline: a new clip at `at` beats on these fixtures.
 ## Fixtures that can't do the effect (a sweep on a par) are left out; returns
 ## null if none of them can.
-func add_clip(preset: EffectPreset, at: float, fixtures: Array[DMXFixture]) -> ShowClip:
+func add_clip(preset: EffectPreset, at: float, targets: Array[DMXFixture]) -> ShowClip:
 	var paths := PackedStringArray()
-	for fx in fixtures:
+	for fx in targets:
 		if EffectTemplates.supports(preset.template, fx):
 			paths.append(str(rig.get_path_to(fx)))
 	if paths.is_empty():

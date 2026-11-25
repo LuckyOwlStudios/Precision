@@ -45,7 +45,7 @@ static func length_text(metres: float, decimals: int = 2) -> String:
 		return "%.*f m" % [decimals, metres]
 	var negative := metres < 0.0
 	var inches := roundi(absf(metres) / 0.0254)
-	var feet := inches / 12
+	var feet := floori(inches / 12.0)
 	inches = inches % 12
 	return "%s%d' %d\"" % ["-" if negative and (feet > 0 or inches > 0) else "", feet, inches]
 

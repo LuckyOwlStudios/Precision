@@ -226,7 +226,7 @@ func _on_command_key(key: InputEventKey) -> void:
 			if not _paste_look():
 				return
 		KEY_D:
-			ctx.duplicate_requested.emit()
+			ctx.request_duplicate()
 		KEY_G:
 			_make_group()
 		KEY_K:
@@ -261,7 +261,7 @@ func _notification(what: int) -> void:
 func _make_group() -> bool:
 	var g := ctx.make_group()
 	if g:
-		ctx.group_rename_requested.emit(g)
+		ctx.request_group_rename(g)
 	return g != null
 
 

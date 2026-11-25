@@ -162,7 +162,7 @@ func test_pieces() -> void:
 	check(near(b.global_basis * Vector3.RIGHT, ctx.symmetry.mirror_dir(a.global_basis * Vector3.RIGHT)) or near(b.global_basis * Vector3.RIGHT, -ctx.symmetry.mirror_dir(a.global_basis * Vector3.RIGHT)), "turning one turns the other (its tube still lines up)")
 
 	view._select_piece(a)
-	view.key(KEY_DELETE) if view.has_method("key") else _key(KEY_DELETE)
+	_key(KEY_DELETE)
 	check(view._pieces().size() == n, "Delete removes both pieces")
 	ctx.undo()
 	check(view._pieces().size() == n + 2, "one undo restores both")

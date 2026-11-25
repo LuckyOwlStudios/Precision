@@ -149,7 +149,9 @@ func _bind(s: HSlider, box: SpinBox, prop: String) -> void:
 
 ## Set a look property (0..1, or 0..255 for strobe) and show it in both widgets.
 func _write(prop: String, v: float) -> void:
-	var value: Variant = roundi(v) if prop == "strobe" else clampf(v, 0.0, 1.0)
+	var value: Variant = clampf(v, 0.0, 1.0)
+	if prop == "strobe":
+		value = roundi(v)
 	if _drag_prop == prop:
 		for f in _drag_fixtures:
 			f.set(prop, value) # recorded as one step when the drag ends

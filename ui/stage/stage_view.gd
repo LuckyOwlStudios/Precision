@@ -1257,7 +1257,9 @@ func _box_of(items: Array[Object]) -> Variant:
 			continue
 		box = part if not any else box.merge(part)
 		any = true
-	return box if any else null
+	if not any:
+		return null
+	return box
 
 
 ## Point the camera at `box` (an AABB, or null: nothing to do) and back off until it fits.
@@ -1459,9 +1461,9 @@ func _mirror_spot(fx: DMXFixture, want: Transform3D) -> Variant:
 		var mid := want * StageRoom.centre_of(mounts)
 		var pipe := StageRoom.pipe_near(_pipes, mid)
 		if pipe != null and pipe.distance_to(mid) < 0.3:
-			var snapped := StageRoom.slide(pipe, want, mounts, pipe.along_of(mid))
-			if StageRoom.pipe_holding(_pipes, snapped, mounts) != null:
-				return snapped
+			var slid := StageRoom.slide(pipe, want, mounts, pipe.along_of(mid))
+			if StageRoom.pipe_holding(_pipes, slid, mounts) != null:
+				return slid
 		return "no truss on the other side"
 	# Not on a tube: if it rests on a surface, its twin must too.
 	if _surface_under(want, offset) == null:
@@ -1893,12 +1895,12 @@ func _is_hidden(o: Object) -> bool:
 	return o is Node3D and not (o as Node3D).visible
 
 
-func _set_hidden(o: Object, hidden: bool) -> void:
+func _set_hidden(o: Object, is_hidden: bool) -> void:
 	if o is DMXFixture:
 		if _visuals.has(o):
-			(_visuals[o] as Node3D).visible = not hidden
+			(_visuals[o] as Node3D).visible = not is_hidden
 	elif o is Node3D:
-		(o as Node3D).visible = not hidden
+		(o as Node3D).visible = not is_hidden
 
 
 ## Everything that can be hidden: every fixture and set piece.
@@ -2142,11 +2144,11 @@ func _style_look_edit_badge() -> void:
 	%LookEditText.add_theme_color_override("font_color", UIPalette.APP_BG)
 
 
-func _show_look_edit_badge(look: Look) -> void:
+func _show_look_edit_badge(editing: Look) -> void:
 	var badge: Control = %LookEditBadge
-	badge.visible = look != null
-	if look:
-		%LookEditText.text = "EDITING LOOK: %s   ·   Save changes or Cancel in the Cues tab" % look.look_name.to_upper()
+	badge.visible = editing != null
+	if editing:
+		%LookEditText.text = "EDITING LOOK: %s   ·   Save changes or Cancel in the Cues tab" % editing.look_name.to_upper()
 
 
 # ---------------------------------------------------------------- point moving heads at a spot

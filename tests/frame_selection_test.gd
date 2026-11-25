@@ -77,7 +77,6 @@ func _init() -> void:
 		view._zoom(0.9)
 	check(is_equal_approx(view._distance, StageView.DISTANCE_MIN) and view._distance < 0.1, "wheel zooms to centimetres")
 	check(view.get_node("%Camera").near < view._distance, "near plane stays in front of the pivot")
-	var d := view._distance
 	view._zoom(0.9)
 	view._zoom(1.1)
 	view._distance = 1.0

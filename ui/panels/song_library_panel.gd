@@ -113,10 +113,10 @@ func _on_menu(id: int) -> void:
 
 
 func _on_rename_confirmed() -> void:
-	var name := _rename_edit.text.strip_edges()
-	if _menu_song and not name.is_empty():
-		_menu_song.show_name = name
+	var new_name := _rename_edit.text.strip_edges()
+	if _menu_song and not new_name.is_empty():
+		_menu_song.show_name = new_name
 		ctx.library.update(_menu_song)
 		if ctx.song == _menu_song:
-			ctx.show_name = name
+			ctx.show_name = new_name
 			ctx.transport_changed.emit()

@@ -344,7 +344,6 @@ func _beam_of(fx: DMXFixture) -> Dictionary:
 		var t := TAU * i / RIM_RAYS
 		var d := (dir * cos(half) + (u * cos(t) + w * sin(t)) * sin(half)).normalized()
 		rim.append(_land(origin, d, reach))
-	var centre_hit := StageRoom.raycast(surfaces, origin, dir)
 	var result := {
 		"key": key,
 		"origin": origin,
@@ -387,8 +386,9 @@ func _draw_beam(fx: DMXFixture) -> void:
 		return
 	if kind == Kind.PLAN:
 		var width := 0.0
-		for i in RIM_RAYS / 2:
-			width = maxf(width, rim[i].distance_to(rim[i + RIM_RAYS / 2]))
+		var half_rim := floori(RIM_RAYS / 2.0) # opposite rim points are half the rays apart
+		for i in half_rim:
+			width = maxf(width, rim[i].distance_to(rim[i + half_rim]))
 		var tag := "Ø %s" % _len(width) # centred above where it lands, clear of the label below the fixture
 		_text(to + Vector2(-_text_width(tag, SMALL_FONT_SIZE) * 0.5, -10.0), tag, Color(c, 0.95), SMALL_FONT_SIZE)
 	else:
